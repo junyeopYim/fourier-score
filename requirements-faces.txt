@@ -1,0 +1,10 @@
+# Legacy pip compatibility snapshot; uv does NOT read this file.
+# Canonical dependencies and PyTorch index are in pyproject.toml.
+# Preferred: uv sync (then uv run --locked ...).
+# These are direct requirements, NOT a transitive or hashed lock.
+# This pip fallback uses PyPI and does not select the uv CUDA index.
+-r requirements.txt
+tensorflow==2.15.1
+tensorflow-datasets==4.9.3
+tensorflow-metadata==1.15.0
+setuptools>=65.5.1,<81

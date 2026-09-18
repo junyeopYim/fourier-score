@@ -1,0 +1,174 @@
+{
+  "source_repository": "https://github.com/junyeopYim/score_sde_pytorch",
+  "source_commit": "534c75478bf30acbff83568a52d843d0ff99913f",
+  "source_commit_message": "Add mmse",
+  "template_inspiration": "https://github.com/victoresque/pytorch-template",
+  "method": "Source files read through GitHub connection; selected code adapted into a standalone template. Not byte-identical copies.",
+  "files": [
+    {
+      "source": "mnist_compare/core.py",
+      "source_blob_sha": "eb534fd0967389c641c895113c6d6b538ff9728a",
+      "destinations": [
+        "model/gaussian.py"
+      ]
+    },
+    {
+      "source": "models/ncsnpp.py",
+      "source_blob_sha": "0557eb0a848e0cb60e427776656aef88afd4a139",
+      "destinations": [
+        "model/backbones/ncsnpp.py"
+      ]
+    },
+    {
+      "source": "models/layers.py",
+      "source_blob_sha": "296a2a0559a18e0488ea5341b40c11530ad0e492",
+      "destinations": [
+        "model/backbones/layers.py"
+      ]
+    },
+    {
+      "source": "models/layerspp.py",
+      "source_blob_sha": "948b06884f72ffc4ec2bae0fa91fae9f5c863412",
+      "destinations": [
+        "model/backbones/layerspp.py"
+      ]
+    },
+    {
+      "source": "models/up_or_down_sampling.py",
+      "source_blob_sha": "a5d0fef7b95a156addc5eb3656648623f55452de",
+      "destinations": [
+        "model/backbones/up_or_down_sampling.py"
+      ]
+    },
+    {
+      "source": "op/upfirdn2d.py",
+      "source_blob_sha": "05c0897dc931b74ee3c394f5b5e806756d1e2d04",
+      "destinations": [
+        "model/backbones/up_or_down_sampling.py"
+      ]
+    },
+    {
+      "source": "models/utils.py",
+      "source_blob_sha": "8848dfce8dfb95970b3a686417ed890c09dd6fcb",
+      "destinations": [
+        "model/model.py"
+      ]
+    },
+    {
+      "source": "models/ema.py",
+      "source_blob_sha": "7355511aba1646d9645de1e3375218613b978d0b",
+      "destinations": [
+        "utils/ema.py"
+      ]
+    },
+    {
+      "source": "losses.py",
+      "source_blob_sha": "37719bbd900cb8ef22e490a1c5a881b6c062211b",
+      "destinations": [
+        "model/loss.py",
+        "base/base_trainer.py"
+      ]
+    },
+    {
+      "source": "sde_lib.py",
+      "source_blob_sha": "1d8b373f0b870fd42eb10ac98d3fff873ed669e2",
+      "destinations": [
+        "sde/sde_lib.py"
+      ]
+    },
+    {
+      "source": "sampling.py",
+      "source_blob_sha": "05517135a90bef0db28d006d3ab3f5e2274370a2",
+      "destinations": [
+        "sde/sampling.py"
+      ]
+    },
+    {
+      "source": "mnist_compare/run.py",
+      "source_blob_sha": "30dcf8eec155a225b92f3ebdefa615d7360134db",
+      "destinations": [
+        "trainer/trainer.py",
+        "data_loader/data_loaders.py",
+        "base/base_data_loader.py"
+      ]
+    },
+    {
+      "source": "mnist_compare/face_data.py",
+      "source_blob_sha": "dc6838e18fbe4fdaad6bf0a0453293861b5dd139",
+      "destinations": [
+        "data_loader/face_data.py"
+      ]
+    },
+    {
+      "source": "mnist_compare/face_run.py",
+      "source_blob_sha": "0e4688bc3426d7beacb84c573b5b94f70fbb3ad7",
+      "destinations": [
+        "model/model.py"
+      ]
+    },
+    {
+      "source": "evaluation.py",
+      "source_blob_sha": "982e0d0ef0391bdba2a44d3266da29c6c1d475fc",
+      "destinations": [
+        "metrics.py"
+      ]
+    },
+    {
+      "source": "mnist_compare/cifar_metrics.py",
+      "source_blob_sha": "28116a035900531120c5d9edf7b4a2295fbe9bfc",
+      "destinations": [
+        "sample.py",
+        "metrics.py"
+      ]
+    },
+    {
+      "source": "configs/default_cifar10_configs.py",
+      "source_blob_sha": "1561cffcea408b36529bef03071d0bd0c287aa80",
+      "destinations": [
+        "configs/cifar10_upstream.json"
+      ]
+    },
+    {
+      "source": "configs/ve/cifar10_ncsnpp_continuous.py",
+      "source_blob_sha": "0b9f2faaebc9e8fb88665486b01a08408c2d1b9b",
+      "destinations": [
+        "configs/cifar10_upstream.json"
+      ]
+    },
+    {
+      "source": "configs/ve/celeba_ncsnpp.py",
+      "source_blob_sha": "4ab338fd015716d3575d30c05223e74e1f87b84c",
+      "destinations": [
+        "configs/celeba64.json"
+      ]
+    },
+    {
+      "source": "configs/default_celeba_configs.py",
+      "source_blob_sha": "09b4145f4fd95718e9d22a8e1dd9f0c1c5b97e7f",
+      "destinations": [
+        "configs/celeba64.json"
+      ]
+    },
+    {
+      "source": "configs/ve/ffhq_256_ncsnpp_continuous.py",
+      "source_blob_sha": "265a584f872cefe1e7ceb062aa46f471abe1c316",
+      "destinations": [
+        "configs/ffhq256.json"
+      ]
+    },
+    {
+      "source": "configs/default_lsun_configs.py",
+      "source_blob_sha": "1dc750dca976a0ff31c68b07de2b716d9cb5e5f0",
+      "destinations": [
+        "configs/ffhq256.json"
+      ]
+    },
+    {
+      "source": "configs/vp/cifar10_ddpmpp_continuous.py",
+      "source_blob_sha": "1936916b9e56a5cbf440db5cd1fc5f7c4b00d8b4",
+      "destinations": [
+        "configs/cifar10_vp.json"
+      ]
+    }
+  ]
+}

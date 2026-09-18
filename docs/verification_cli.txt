@@ -1,0 +1,27 @@
+{"dsm_mean": 0.4252486526966095, "n_images": 4, "reduction": "pixel_mean", "eval_seed": 17001, "eval_batch_size": 2, "step": 0, "split": "validation", "weights": "EMA"}
+{"step": 1, "split": "train", "dsm_mean": 0.9698137044906616, "lr": 0.0, "session_wall_seconds": 0.0982970939999177}
+{"step": 2, "split": "train", "dsm_mean": 0.9858429431915283, "lr": 0.0002, "session_wall_seconds": 0.14795608399981575}
+{"dsm_mean": 0.425017386674881, "n_images": 4, "reduction": "pixel_mean", "eval_seed": 17001, "eval_batch_size": 2, "step": 2, "split": "validation", "weights": "EMA"}
+{"step": 3, "split": "train", "dsm_mean": 0.06962238997220993, "lr": 0.0002, "session_wall_seconds": 0.21897526499992637}
+{"dsm_mean": 0.4247712641954422, "n_images": 4, "reduction": "pixel_mean", "eval_seed": 17001, "eval_batch_size": 2, "step": 3, "split": "validation", "weights": "EMA"}
+{"step": 4, "split": "train", "dsm_mean": 0.00028517545433714986, "lr": 0.0002, "session_wall_seconds": 0.05901635800000804}
+{"dsm_mean": 0.42455875873565674, "n_images": 4, "reduction": "pixel_mean", "eval_seed": 17001, "eval_batch_size": 2, "step": 4, "split": "validation", "weights": "EMA"}
+samples=2/3, shard_NFE=4
+samples=3/3, shard_NFE=4
+{'dsm_mean': 0.42455875873565674, 'n_images': 4, 'reduction': 'pixel_mean', 'eval_seed': 17001, 'eval_batch_size': 2, 'step': 4, 'weights': 'EMA', 'split': 'validation', 'reference': 'spectral_mmse', 'dataset': 'MNIST', 'checkpoint_sha256': '1eb2c7cc9ea38700de6a6fd5d6ca09f3e321ca71da6e153f9f23a9a593d2022d'}
+usage: metrics.py [-h] {extract-real,score} ...
+
+Optional offline FID/IS from NPZ sample shards, using source TF-Hub backends.
+Not imported during training. Requires requirements-metrics.txt, Python 3.11,
+network access for the first model download, and matching real feature
+statistics. This optional integration has NOT been exercised in the bundled
+CPU-only tests.
+
+positional arguments:
+  {extract-real,score}
+    extract-real        Extract features from the configured real training
+                        images
+    score               Compare generated shards with real pool_3 features
+
+options:
+  -h, --help            show this help message and exit

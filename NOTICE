@@ -1,0 +1,35 @@
+Score SDE Research Template
+
+Derived from junyeopYim/score_sde_pytorch at revision:
+534c75478bf30acbff83568a52d843d0ff99913f ("Add mmse").
+Source repository: https://github.com/junyeopYim/score_sde_pytorch
+Original score-SDE implementation: https://github.com/yang-song/score_sde_pytorch
+Copyright 2020 The Google Research Authors.
+The source repository distributes its code under the Apache License, Version 2.0.
+A copy is included as LICENSE. Adapted files are marked and the source-to-target
+mapping is recorded in docs/PROVENANCE.json and docs/MIGRATION.md.
+
+NCSN++, SDE, DSM, sampling and initialization code was adapted from that source.
+Gaussian score references and their MMSE/linear variants were adapted from the
+fork's mnist_compare/core.py. Face record reading was adapted from face_data.py.
+
+The source EMA implementation attributes fadel/pytorch_ema and TensorFlow's
+moving-average code. Those attribution references are retained here:
+https://github.com/fadel/pytorch_ema
+https://github.com/tensorflow/tensorflow/blob/r1.13/tensorflow/python/training/moving_averages.py
+
+The source resampling layers attribute StyleGAN2, and the native upfirdn
+implementation was taken from the source repository's op/upfirdn2d.py:
+https://github.com/NVlabs/stylegan2
+These provenance references are not grants of rights to any separately obtained
+NVIDIA model weights, data, or other software.
+
+Folder/CLI design inspired by victoresque/pytorch-template:
+https://github.com/victoresque/pytorch-template
+Its implementation is not vendored; the configuration and trainer infrastructure
+in this archive was written for the score-SDE application.
+
+No pretrained weights, datasets, downloaded Inception models or TF-Hub packages
+are redistributed in this archive. Their respective terms apply when obtained.
+This is a refactoring/adaptation, not an unmodified upstream release and not a
+claim of bitwise equivalence to every source runner or of reproduced paper FID.

@@ -1,0 +1,47 @@
+{
+  "extends": "mnist.json",
+  "name": "smoke",
+  "device": "cpu",
+  "data_loader": {
+    "kind": "synthetic",
+    "validation_size": 8,
+    "stats_batch_size": 16
+  },
+  "reference": {
+    "mode": "spectral_mmse"
+  },
+  "model": {
+    "nf": 8,
+    "ch_mult": [
+      1,
+      2
+    ],
+    "num_res_blocks": 1,
+    "attn_resolutions": [
+      16
+    ],
+    "num_scales": 4
+  },
+  "training": {
+    "batch_size": 2,
+    "n_iters": 3,
+    "log_freq": 1,
+    "eval_freq": 2,
+    "snapshot_freq": 3,
+    "snapshot_freq_for_preemption": 1
+  },
+  "optim": {
+    "warmup": 1
+  },
+  "eval": {
+    "batch_size": 2,
+    "max_images": 4,
+    "num_samples": 4
+  },
+  "sampling": {
+    "corrector": "none"
+  },
+  "provenance": {
+    "recipe": "Synthetic input with a real, reduced NCSN++; plumbing test only, NOT a dataset experiment"
+  }
+}

@@ -1,0 +1,10 @@
+# Legacy pip compatibility snapshot; uv does NOT read this file.
+# Canonical dependencies and PyTorch index are in pyproject.toml.
+# Preferred: uv sync (then uv run --locked ...).
+# These are direct requirements, NOT a transitive or hashed lock.
+# This pip fallback uses PyPI and does not select the uv CUDA index.
+torch==2.10.0
+torchvision==0.25.0
+numpy>=1.26.4,<2
+scipy>=1.11,<2
+pillow>=10,<13

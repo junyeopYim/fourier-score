@@ -1,0 +1,32 @@
+[
+  {
+    "command": "uv lock --offline --no-python-downloads",
+    "returncode": 2,
+    "stdout": "",
+    "stderr": "error: No interpreter found for Python 3.11 in managed installations or search path\n\nhint: A managed Python download is available for Python 3.11, but Python downloads are set to 'never'\n"
+  },
+  {
+    "command": "uv pip compile pyproject.toml --python-version 3.11 --all-extras --offline",
+    "returncode": 1,
+    "stdout": "",
+    "stderr": "warning: The requested Python version 3.11 is not available; 3.13.5 will be used to build dependencies instead.\n  × No solution found when resolving dependencies:\n  ╰─▶ Because there is no version of torch{sys_platform == 'linux' or\n      sys_platform == 'win32'}==2.10.0 and score-sde-template depends on\n      torch{sys_platform == 'linux' or sys_platform == 'win32'}==2.10.0, we\n      can conclude that your requirements are unsatisfiable.\n"
+  },
+  {
+    "command": "/opt/pyvenv/bin/python train.py --help",
+    "returncode": 0,
+    "stdout": "usage: train.py [-h] [-c CONFIG] [--set KEY=VALUE] [-r RESUME] [--dry-run]\n\nTrain, or resume a template checkpoint. Run from the project root.\n\noptions:\n  -h, --help           show this help message and exit\n  -c, --config CONFIG\n  --set KEY=VALUE\n  -r, --resume RESUME\n  --dry-run            Print resolved config without loading data or training\n",
+    "stderr": ""
+  },
+  {
+    "command": "/opt/pyvenv/bin/python train.py -c configs/cifar10_paper.json --dry-run",
+    "returncode": 0,
+    "stdout": "{\n  \"name\": \"cifar10_baseline_paper\",\n  \"seed\": 42,\n  \"device\": \"auto\",\n  \"data\": {\n    \"dataset\": \"CIFAR10\",\n    \"image_size\": 32,\n    \"num_channels\": 3,\n    \"centered\": false,\n    \"random_flip\": true,\n    \"uniform_dequantization\": false,\n    \"tfds_dir\": \"data/faces/tfds\",\n    \"tfrecords_path\": \"data/faces/ffhq/ffhq-r08.tfrecords\"\n  },\n  \"training\": {\n    \"sde\": \"vesde\",\n    \"continuous\": true,\n    \"reduce_mean\": false,\n    \"likelihood_weighting\": false,\n    \"batch_size\": 128,\n    \"n_iters\": 950000,\n    \"eval_freq\": 100,\n    \"snapshot_freq\": 50000,\n    \"snapshot_freq_for_preemption\": 10000,\n    \"log_freq\": 50\n  },\n  \"model\": {\n    \"name\": \"ncsnpp\",\n    \"nf\": 128,\n    \"ch_mult\": [\n      1,\n      2,\n      2,\n      2\n    ],\n    \"num_res_blocks\": 4,\n    \"attn_resolutions\": [\n      16\n    ],\n    \"dropout\": 0.1,\n    \"resamp_with_conv\": true,\n    \"conditional\": true,\n    \"fir\": true,\n    \"fir_kernel\": [\n      1,\n      3,\n      3,\n      1\n    ],\n    \"skip_rescale\": true,\n    \"resblock_type\": \"biggan\",\n    \"progressive\": \"none\",\n    \"progressive_input\": \"residual\",\n    \"progressive_combine\": \"sum\",\n    \"embedding_type\": \"fourier\",\n    \"fourier_scale\": 16,\n    \"init_scale\": 0.0,\n    \"scale_by_sigma\": true,\n    \"sigma_min\": 0.01,\n    \"sigma_max\": 50.0,\n    \"num_scales\": 1000,\n    \"ema_rate\": 0.999,\n    \"normalization\": \"GroupNorm\",\n    \"nonlinearity\": \"swish\",\n    \"attention_type\": \"ddpm\",\n    \"conv_size\": 3,\n    \"beta_min\": 0.1,\n    \"beta_max\": 20.0\n  },\n  \"optim\": {\n    \"optimizer\": \"Adam\",\n    \"lr\": 0.0002,\n    \"beta1\": 0.9,\n    \"eps\": 1e-08,\n    \"weight_decay\": 0.0,\n    \"warmup\": 5000,\n    \"grad_clip\": 1.0\n  },\n  \"sampling\": {\n    \"method\": \"pc\",\n    \"predictor\": \"reverse_diffusion\",\n    \"corrector\": \"langevin\",\n    \"snr\": 0.16,\n    \"n_steps_each\": 1,\n    \"noise_removal\": true,\n    \"probability_flow\": false,\n    \"eps\": 1e-05,\n    \"rtol\": 1e-05,\n    \"atol\": 1e-05,\n    \"ode_method\": \"RK45\"\n  },\n  \"reference\": {\n    \"mode\": \"baseline\",\n    \"floor\": 0.0001,\n    \"stats_path\": null\n  },\n  \"data_loader\": {\n    \"kind\": \"torchvision\",\n    \"data_dir\": \"data\",\n    \"cache_dir\": \"data/cache\",\n    \"download\": false,\n    \"protocol\": \"full_train\",\n    \"validation_size\": 0,\n    \"split_seed\": 2026,\n    \"stats_batch_size\": 512,\n    \"synthetic_size\": 64\n  },\n  \"trainer\": {\n    \"save_dir\": \"saved\",\n    \"microbatch_size\": null,\n    \"tensorboard\": false\n  },\n  \"backend\": {\n    \"precision\": \"fp32\",\n    \"tf32\": false,\n    \"cpu_threads\": 2\n  },\n  \"eval\": {\n    \"batch_size\": 128,\n    \"max_images\": 128,\n    \"seed\": 17001,\n    \"num_samples\": 50000\n  },\n  \"provenance\": {\n    \"recipe\": \"mnist_compare/run.py --dataset cifar10 --protocol paper; 950000 updates\",\n    \"claim\": \"Numerical recipe from source; not a reproduction result\"\n  }\n}\n",
+    "stderr": ""
+  },
+  {
+    "command": "/opt/pyvenv/bin/python metrics.py --help",
+    "returncode": 0,
+    "stdout": "usage: metrics.py [-h] {extract-real,score} ...\n\nOptional offline FID/IS from NPZ sample shards, using source TF-Hub backends.\nNot imported during training. Requires requirements-metrics.txt, Python 3.11,\nnetwork access for the first model download, and matching real feature\nstatistics. This optional integration has NOT been exercised in the bundled\nCPU-only tests.\n\npositional arguments:\n  {extract-real,score}\n    extract-real        Extract features from the configured real training\n                        images\n    score               Compare generated shards with real pool_3 features\n\noptions:\n  -h, --help            show this help message and exit\n",
+    "stderr": ""
+  }
+]

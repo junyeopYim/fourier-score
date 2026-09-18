@@ -1,0 +1,127 @@
+{
+  "name": "mnist_baseline",
+  "seed": 0,
+  "device": "auto",
+  "data": {
+    "dataset": "MNIST",
+    "image_size": 32,
+    "num_channels": 1,
+    "centered": true,
+    "random_flip": false,
+    "uniform_dequantization": false,
+    "tfds_dir": "data/faces/tfds",
+    "tfrecords_path": "data/faces/ffhq/ffhq-r08.tfrecords"
+  },
+  "training": {
+    "sde": "vesde",
+    "continuous": true,
+    "reduce_mean": true,
+    "likelihood_weighting": false,
+    "batch_size": 128,
+    "n_iters": 10000,
+    "eval_freq": 2000,
+    "snapshot_freq": 10000,
+    "snapshot_freq_for_preemption": 2000,
+    "log_freq": 100
+  },
+  "model": {
+    "name": "ncsnpp",
+    "nf": 32,
+    "ch_mult": [
+      1,
+      2,
+      2
+    ],
+    "num_res_blocks": 2,
+    "attn_resolutions": [
+      8
+    ],
+    "dropout": 0.1,
+    "resamp_with_conv": true,
+    "conditional": true,
+    "fir": true,
+    "fir_kernel": [
+      1,
+      3,
+      3,
+      1
+    ],
+    "skip_rescale": true,
+    "resblock_type": "biggan",
+    "progressive": "none",
+    "progressive_input": "residual",
+    "progressive_combine": "sum",
+    "embedding_type": "fourier",
+    "fourier_scale": 16,
+    "init_scale": 0.0,
+    "scale_by_sigma": true,
+    "sigma_min": 0.01,
+    "sigma_max": 50.0,
+    "num_scales": 1000,
+    "ema_rate": 0.999,
+    "normalization": "GroupNorm",
+    "nonlinearity": "swish",
+    "attention_type": "ddpm",
+    "conv_size": 3,
+    "beta_min": 0.1,
+    "beta_max": 20.0
+  },
+  "optim": {
+    "optimizer": "Adam",
+    "lr": 0.0002,
+    "beta1": 0.9,
+    "eps": 1e-08,
+    "weight_decay": 0.0,
+    "warmup": 500,
+    "grad_clip": 1.0
+  },
+  "sampling": {
+    "method": "pc",
+    "predictor": "reverse_diffusion",
+    "corrector": "langevin",
+    "snr": 0.16,
+    "n_steps_each": 1,
+    "noise_removal": true,
+    "probability_flow": false,
+    "eps": 1e-05,
+    "rtol": 1e-05,
+    "atol": 1e-05,
+    "ode_method": "RK45"
+  },
+  "reference": {
+    "mode": "baseline",
+    "floor": 0.0001,
+    "stats_path": null
+  },
+  "data_loader": {
+    "kind": "torchvision",
+    "data_dir": "data",
+    "cache_dir": "data/cache",
+    "download": false,
+    "protocol": "holdout",
+    "validation_size": 5000,
+    "split_seed": 2026,
+    "stats_batch_size": 512,
+    "synthetic_size": 64
+  },
+  "trainer": {
+    "save_dir": "saved",
+    "microbatch_size": null,
+    "tensorboard": false
+  },
+  "backend": {
+    "precision": "fp32",
+    "tf32": false,
+    "cpu_threads": 2
+  },
+  "eval": {
+    "batch_size": 128,
+    "max_images": 5000,
+    "seed": 17001,
+    "num_samples": 50000
+  },
+  "provenance": {
+    "recipe": "mnist_compare/run.py:config; MNIST small, holdout 5000",
+    "claim": "Numerical recipe from source; not a reproduction result"
+  }
+}

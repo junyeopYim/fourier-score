@@ -1,0 +1,45 @@
+{
+  "extends": "mnist.json",
+  "name": "cifar10_baseline_upstream",
+  "seed": 42,
+  "data": {
+    "dataset": "CIFAR10",
+    "num_channels": 3,
+    "centered": false,
+    "random_flip": true
+  },
+  "training": {
+    "reduce_mean": false,
+    "n_iters": 1300001,
+    "eval_freq": 100,
+    "snapshot_freq": 50000,
+    "snapshot_freq_for_preemption": 10000,
+    "log_freq": 50
+  },
+  "model": {
+    "nf": 128,
+    "ch_mult": [
+      1,
+      2,
+      2,
+      2
+    ],
+    "num_res_blocks": 4,
+    "attn_resolutions": [
+      16
+    ]
+  },
+  "optim": {
+    "warmup": 5000
+  },
+  "data_loader": {
+    "protocol": "full_train",
+    "validation_size": 0
+  },
+  "eval": {
+    "max_images": 128
+  },
+  "provenance": {
+    "recipe": "configs/ve/cifar10_ncsnpp_continuous.py + defaults; full train; 1300001 updates"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "extends": "cifar10_upstream.json",
+  "name": "celeba64_baseline",
+  "data": {
+    "dataset": "CELEBA",
+    "image_size": 64
+  },
+  "training": {
+    "continuous": false
+  },
+  "model": {
+    "sigma_max": 90.0,
+    "embedding_type": "positional"
+  },
+  "sampling": {
+    "snr": 0.17
+  },
+  "data_loader": {
+    "kind": "faces",
+    "stats_batch_size": 32
+  },
+  "provenance": {
+    "recipe": "configs/ve/celeba_ncsnpp.py + defaults; TFDS official train split; SMLD"
+  }
+}

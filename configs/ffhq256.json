@@ -1,0 +1,43 @@
+{
+  "extends": "cifar10_upstream.json",
+  "name": "ffhq256_baseline",
+  "data": {
+    "dataset": "FFHQ",
+    "image_size": 256
+  },
+  "training": {
+    "batch_size": 64,
+    "n_iters": 2400001,
+    "snapshot_freq_for_preemption": 5000
+  },
+  "model": {
+    "ch_mult": [
+      1,
+      1,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "num_res_blocks": 2,
+    "sigma_max": 348,
+    "num_scales": 2000,
+    "dropout": 0.0,
+    "progressive": "output_skip",
+    "progressive_input": "input_skip"
+  },
+  "sampling": {
+    "snr": 0.075
+  },
+  "data_loader": {
+    "kind": "faces",
+    "stats_batch_size": 32
+  },
+  "eval": {
+    "max_images": 64
+  },
+  "provenance": {
+    "recipe": "configs/ve/ffhq_256_ncsnpp_continuous.py + default_lsun_configs; all 70000 records"
+  }
+}
