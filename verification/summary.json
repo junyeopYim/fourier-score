@@ -1,0 +1,42 @@
+{
+  "date": "2026-09-19",
+  "runtime": {
+    "python": "3.13.5",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "torch": "2.10.0+cpu",
+    "torchvision": "0.25.0+cpu",
+    "numpy": "2.3.5",
+    "pillow": "12.3.0",
+    "pytest": "9.0.2",
+    "uv": "0.10.0"
+  },
+  "target_dependencies": {
+    "torch": "2.14.0",
+    "torchvision": "0.29.0",
+    "default_python": "3.11"
+  },
+  "source_sha256": "e3c05e2d4517f4b624d19a587b3ab9dac94227d25d3caedb60046d9a242a4995",
+  "tests": {
+    "passed": 114,
+    "skipped": 3,
+    "failed": 0,
+    "log": "verification/pytest.txt"
+  },
+  "devices": {
+    "cpu_tested": true,
+    "cuda_available": false,
+    "mps_available": false,
+    "mps_hardware_tested": false,
+    "cuda_hardware_tested": false
+  },
+  "uv_lock_included": false,
+  "uv_resolution": "FAILED: external PyPI access timed out",
+  "cli_record": "verification/cli_commands.json",
+  "limitations": [
+    "No torch 2.14 / torchvision 0.29 runtime execution",
+    "No real Apple MPS or CUDA execution",
+    "No downloaded MNIST/CIFAR or full training / FID quality evaluation",
+    "No optional Inception / TensorBoard runtime test",
+    "No GPU bitwise reproduction guarantee"
+  ]
+}

@@ -1,77 +1,26 @@
 [project]
-name = "score-sde-template"
+name = "fourier-image-template"
 version = "0.1.0"
-description = "Score-SDE research template with fixed Gaussian reference scores"
-readme = "README.md"
-requires-python = ">=3.11,<3.12"
-license = "Apache-2.0"
+description = "Identical NCSN++ backbones for Fourier Gaussian, score DSM, and diffusion"
+requires-python = ">=3.11,<3.15"
 dependencies = [
-    "torch==2.10.0",
-    "torchvision==0.25.0",
-    "numpy>=1.26.4,<2",
-    "scipy>=1.11,<2",
-    "pillow>=10,<13",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
+  "numpy>=1.26.4,<3",
+  "pillow>=10.4,<14",
 ]
 
 [project.optional-dependencies]
-# TensorFlow is used on CPU by face_data.py, without tensorflow[and-cuda].
-# Pin the tensorflow distribution itself: TF-GAN can otherwise pull in a
-# second, newer TensorFlow beside tensorflow-cpu.
-faces = [
-    "tensorflow==2.15.1",
-    "tensorflow-datasets==4.9.3",
-    "tensorflow-metadata==1.15.0",
-    "setuptools>=65.5.1,<81",
-]
-metrics = [
-    "tensorflow==2.15.1",
-    "tensorflow-datasets==4.9.3",
-    "tensorflow-metadata==1.15.0",
-    "tensorflow-gan==2.1.0",
-    "tensorflow-hub==0.15.0",
-    "tensorflow-probability==0.23.0",
-    "setuptools>=65.5.1,<81",
-]
-tensorboard = [
-    "tensorboard>=2.15,<2.16",
-    "setuptools>=65.5.1,<81",
-]
+metrics = ["torch-fidelity>=0.3.0,<0.4"]
+tensorboard = ["tensorboard>=2.18,<3"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]
 
 [tool.uv]
-# Keep the existing flat, script-based project; do not build a wheel.
 package = false
-required-version = ">=0.10.0"
-default-groups = ["dev"]
-# Wheel targets for this bundle. MPS training remains unsupported by the code.
-environments = [
-    "sys_platform == 'linux' and platform_machine == 'x86_64'",
-    "sys_platform == 'win32' and platform_machine == 'AMD64'",
-    "sys_platform == 'darwin' and platform_machine == 'arm64'",
-]
-
-[tool.uv.sources]
-# CUDA 12.8 on Linux/Windows; official PyPI wheels on Apple Silicon.
-# This does not install an NVIDIA driver and does not enable TF32 or AMP.
-torch = [
-    { index = "pytorch", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-]
-torchvision = [
-    { index = "pytorch", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
-]
-
-[[tool.uv.index]]
-name = "pytorch"
-url = "https://download.pytorch.org/whl/cu128"
-explicit = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = "-ra"
-
-[tool.ruff]
-line-length = 110
-target-version = "py311"
+markers = ["mps: requires Apple MPS hardware", "cuda: requires NVIDIA CUDA hardware"]

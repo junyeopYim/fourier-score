@@ -1,0 +1,3 @@
+$ /opt/pyvenv/bin/python sample.py -r /mnt/data/final_validation/runs/synthetic_ve_score_s0/last.pt -o /mnt/data/final_validation/samples/score --num-samples 3 --batch-size 2
+2/3 images; 7 batched score calls
+3/3 images; 14 batched score calls

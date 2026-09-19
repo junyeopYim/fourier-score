@@ -1,67 +1,74 @@
-"""Model factory and the original score/output convention adapters."""
+"""Same NCSN++ backbone and initialization for every objective.
+
+Original deterministic sigma division is moved into the objective adapter;
+no convolution, attention, normalization, resblock or learned weight changes.
+"""
+from __future__ import annotations
+from types import SimpleNamespace
+import copy
+import hashlib
+import json
 import torch
-from .backbones.ncsnpp import NCSNpp
-from .gaussian import ResidualScore, make_reference
-from sde.sde_lib import VESDE, VPSDE, subVPSDE, make_sde
+from base.base_model import BaseModel
+from model.backbones.ncsnpp import NCSNpp
+from model.spectral import FourierGaussian
+from sde.process import NoiseProcess
 
 
-class DiscreteResidualScore(torch.nn.Module):
-    """Labels go to NCSN++; their actual SMLD sigmas go to the reference."""
-    def __init__(self, backbone, reference, sigmas):
+def backbone_config(cfg):
+    a=copy.deepcopy(cfg['arch']['args']); p=cfg['process']; d=cfg['data_loader']['args']
+    a.update(scale_by_sigma=False,sigma_min=p['sigma_min'],sigma_max=p['sigma_max'],num_scales=p['num_scales'])
+    # Fourier embedding accepts real sigma even with a discrete DDPM schedule.
+    return SimpleNamespace(model=SimpleNamespace(**a),data=SimpleNamespace(image_size=d['image_size'],num_channels=d['channels'],centered=d['centered']),training=SimpleNamespace(continuous=True))
+
+
+def architecture_report(backbone):
+    shapes={n:{'shape':list(p.shape),'trainable':p.requires_grad} for n,p in backbone.named_parameters()}
+    modules={n:type(m).__name__ for n,m in backbone.named_modules()}
+    serial=json.dumps({'parameters':shapes,'modules':modules},sort_keys=True)
+    return {'trainable_parameters':sum(p.numel() for p in backbone.parameters() if p.requires_grad),
+            'all_parameters':sum(p.numel() for p in backbone.parameters()),
+            'architecture_sha256':hashlib.sha256(serial.encode()).hexdigest(),
+            'parameter_shapes':shapes,'modules':modules}
+
+
+def weight_hash(backbone):
+    h=hashlib.sha256()
+    for n,p in backbone.named_parameters():
+        h.update(n.encode()); h.update(p.detach().cpu().contiguous().numpy().tobytes())
+    return h.hexdigest()
+
+
+class GenerativeModel(BaseModel):
+    def __init__(self,cfg,stats=None):
         super().__init__()
-        self.backbone, self.reference = backbone, reference
-        self.register_buffer('reference_sigmas', sigmas.clone())
+        self.cfg=copy.deepcopy(cfg)
+        self.process=NoiseProcess(cfg['process'])
+        self.objective=cfg['loss']['type']
+        self.embedding=cfg['arch']['args']['embedding_type']
+        # Source creates one unused float64 sigma buffer. Convert on CPU FIRST,
+        # before transfer to MPS, where float64 is not used by this project.
+        self.backbone=NCSNpp(backbone_config(cfg)).float()
+        self.reference=None
+        if self.objective=='fourier_gaussian':
+            if stats is None: raise ValueError('fourier_gaussian requires training-only statistics')
+            self.reference=FourierGaussian(stats,cfg['backend']['spectral_transform'])
 
-    def forward(self, x, labels):
-        residual = self.backbone(x, labels)
-        if self.reference is None:
-            return residual
-        return residual + self.reference(x, self.reference_sigmas[labels.long()])
+    def scaled_from_raw(self,raw,y,level):
+        if self.objective=='score': return raw
+        if self.objective=='diffusion': return -raw
+        return self.reference.scaled_score(raw,y,level.alpha,level.sigma)
 
+    def scaled_score(self,y,level):
+        raw=self.backbone(y,self.process.condition(level,self.embedding))
+        return self.scaled_from_raw(raw,y,level)
 
-def build_model(cfg, stats=None, device='cpu'):
-    if cfg.model.name != 'ncsnpp':
-        raise ValueError('This lean template retains NCSN++ and its DDPM++ configuration only')
-    mode = cfg.reference.mode
-    if cfg.training.sde.lower() != 'vesde' and mode != 'baseline':
-        raise ValueError('Gaussian residual modes are defined for VE/SMLD, not VP/subVP')
-    base = NCSNpp(cfg)
-    reference = make_reference(stats or {}, mode, sigma_min=cfg.model.sigma_min, sigma_max=cfg.model.sigma_max)
-    if cfg.training.sde.lower() == 'vesde' and not cfg.training.continuous:
-        model = DiscreteResidualScore(base, reference, make_sde(cfg).discrete_sigmas.flip(0))
-    else:
-        model = ResidualScore(base, reference)
-    # Avoid the upstream positional sigma buffer's float64 promotion.
-    return model.to(device=device, dtype=torch.float32)
+    def forward(self,y,level):
+        return self.scaled_score(y,level)/level.sigma[:,None,None,None]
 
-
-def get_model_fn(model, train=False):
-    def model_fn(x, labels):
-        model.train(train)
-        return model(x, labels)
-    return model_fn
+    def denoise(self,y,level):
+        return (y+level.sigma[:,None,None,None]*self.scaled_score(y,level))/level.alpha[:,None,None,None]
 
 
-def get_score_fn(sde, model, train=False, continuous=False):
-    model_fn = get_model_fn(model, train)
-    if isinstance(sde, (VPSDE, subVPSDE)):
-        def score_fn(x, t):
-            if continuous or isinstance(sde, subVPSDE):
-                labels = t * 999
-                score = model_fn(x, labels)
-                std = sde.marginal_prob(torch.zeros_like(x), t)[1]
-            else:
-                labels = t * (sde.N - 1)
-                score = model_fn(x, labels)
-                std = sde.sqrt_1m_alphas_cumprod.to(labels.device)[labels.long()]
-            return -score / std[:, None, None, None]
-        return score_fn
-    if isinstance(sde, VESDE):
-        def score_fn(x, t):
-            if continuous:
-                labels = sde.marginal_prob(torch.zeros_like(x), t)[1]
-            else:
-                labels = torch.round((sde.T - t) * (sde.N - 1)).long()
-            return model_fn(x, labels)
-        return score_fn
-    raise ValueError(f'Unsupported SDE: {type(sde).__name__}')
+def build_model(cfg,stats=None,device='cpu'):
+    return GenerativeModel(cfg,stats).to(device=device,dtype=torch.float32)

@@ -1,0 +1,13 @@
+{
+  "extends": "cifar10.json",
+  "process": {
+    "type": "ddpm"
+  },
+  "loss": {
+    "type": "diffusion",
+    "reduction": "mean"
+  },
+  "sampling": {
+    "method": "ddpm"
+  }
+}

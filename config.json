@@ -1,7 +1,3 @@
 {
-  "extends": "configs/mnist.json",
-  "name": "mnist_spectral_mmse",
-  "reference": {
-    "mode": "spectral_mmse"
-  }
+  "extends": "configs/mnist.json"
 }

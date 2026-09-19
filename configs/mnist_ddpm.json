@@ -1,0 +1,12 @@
+{
+  "extends": "mnist.json",
+  "process": {
+    "type": "ddpm"
+  },
+  "loss": {
+    "type": "diffusion"
+  },
+  "sampling": {
+    "method": "ddpm"
+  }
+}

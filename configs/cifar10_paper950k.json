@@ -1,0 +1,6 @@
+{
+  "extends": "cifar10_full.json",
+  "trainer": {
+    "iterations": 950000
+  }
+}

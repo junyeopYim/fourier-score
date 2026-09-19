@@ -1,94 +1,69 @@
-"""Shared optimizer/EMA/checkpoint lifecycle for step-based trainers."""
-from pathlib import Path
+"""Checkpoint / optimizer / EMA lifecycle, template-style separation."""
+from __future__ import annotations
 import copy
-import platform
+from pathlib import Path
 import torch
-from parse_config import plain
-from utils.ema import ExponentialMovingAverage
-from utils.util import atomic_save, rng_state, restore_rng, source_hash, json_write
+from parse_config import experiment_name
+from utils.ema import EMA
+from utils.util import atomic_save,capture_rng,restore_rng,environment,json_write,source_hash
+from model.model import architecture_report,weight_hash
 
-FORMAT_VERSION = 1
+FORMAT='fourier-image-template-v1'
 
 
-def resume_signature(config):
-    data = copy.deepcopy(plain(config))
-    # These alter logging/output or the final stopping point, not updates.
-    for key in ('name', 'device', 'eval', 'provenance'):
-        data.pop(key, None)
-    for key in ('n_iters', 'log_freq', 'eval_freq', 'snapshot_freq', 'snapshot_freq_for_preemption'):
-        data['training'].pop(key, None)
-    data['trainer'].pop('save_dir', None)
-    data['trainer'].pop('tensorboard', None)
-    data['reference'].pop('stats_path', None)
-    for key in ('data_dir', 'cache_dir', 'download'):
-        data['data_loader'].pop(key, None)
-    # Dataset identity/preprocessing are additionally validated against stats.
-    return data
-
+def resume_signature(cfg):
+    c=copy.deepcopy(cfg)
+    for k in ('name','device','evaluation','sampling'): c.pop(k)
+    for k in ('iterations','save_dir','save_every','snapshot_every','log_every','eval_every','tensorboard'): c['trainer'].pop(k)
+    for k in ('root','download','num_workers'): c['data_loader']['args'].pop(k)
+    c['fourier'].pop('cache_dir'); c['fourier'].pop('stats_batch_size')
+    return c
 
 class BaseTrainer:
-    def __init__(self, cfg, model, stats, stream, device, checkpoint=None):
-        self.cfg, self.model, self.stats = cfg, model, stats
-        self.stream, self.device = stream, device
-        self.step = 0
-        self.out = Path(cfg.trainer.save_dir) / cfg.name
-        self.out.mkdir(parents=True, exist_ok=True)
-        if checkpoint is None and (self.out / 'config.json').exists():
-            raise FileExistsError(f'Run already exists: {self.out}; use --resume or a new name')
-        if cfg.optim.optimizer != 'Adam':
-            raise ValueError('Only source Adam recipe is retained')
-        self.optimizer = torch.optim.Adam(model.parameters(), lr=cfg.optim.lr,
-                                         betas=(cfg.optim.beta1, .999), eps=cfg.optim.eps,
-                                         weight_decay=cfg.optim.weight_decay)
-        self.ema = ExponentialMovingAverage(model.parameters(), cfg.model.ema_rate)
-        self.code_hash = source_hash()
+    def __init__(self,cfg,model,stats,stream,device,checkpoint=None):
+        self.cfg=cfg; self.model=model; self.stats=stats; self.stream=stream; self.device=device; self.step=0
+        self.out=Path(cfg['trainer']['save_dir'])/experiment_name(cfg)
+        if checkpoint is None and self.out.exists() and any(self.out.iterdir()): raise FileExistsError(f'Run exists: {self.out}; use --resume or a new name')
+        self.out.mkdir(parents=True,exist_ok=True)
+        o=dict(cfg['optimizer']['args']); o['betas']=tuple(o['betas'])
+        self.optimizer=torch.optim.Adam(model.parameters(),**o)
+        self.ema=EMA(model,cfg['trainer']['ema_decay'])
+        self.generator=torch.Generator().manual_seed(cfg['seed']+2000)
+        self.env=environment(device,cfg)
+        self.initial_hash=weight_hash(model.backbone)
         if checkpoint is not None:
-            if checkpoint.get('format_version') != FORMAT_VERSION:
-                raise ValueError('Expected a template v1 checkpoint; legacy checkpoints need explicit conversion')
-            if checkpoint['resume_signature'] != resume_signature(cfg):
-                raise ValueError('Resume configuration mismatch (model/loss/data/optimizer/batch/backend)')
-            if checkpoint['source_sha256'] != self.code_hash:
-                raise ValueError('Source code differs from checkpoint; refuse silent cross-version resume')
-            model.load_state_dict(checkpoint['model'], strict=True)
+            if checkpoint.get('format')!=FORMAT or checkpoint.get('kind')!='training': raise ValueError('Only v1 training checkpoints can resume')
+            if checkpoint['signature']!=resume_signature(cfg): raise ValueError('Resume config mismatch: model/loss/process/data/optimizer/backend must match')
+            if checkpoint['source_sha256']!=source_hash(): raise ValueError('Source differs from checkpoint; no silent cross-version resume')
+            old=checkpoint['environment']
+            if old['device']!=str(device) or old['torch']!=str(torch.__version__): raise ValueError('Resume requires same device type/index and PyTorch version; start a new explicit fine-tuning experiment instead')
+            model.load_state_dict(checkpoint['model'],strict=True)
             self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.ema.load_state_dict(checkpoint['ema'])
+            self.ema.load_state_dict(checkpoint['ema'],model)
             self.stream.load_state_dict(checkpoint['stream'])
-            self.step = checkpoint['step']
-            restore_rng(checkpoint['rng'])
-        json_write(plain(cfg), self.out / 'config.json')
-        json_write({'torch': str(torch.__version__), 'python': platform.python_version(),
-                    'device': str(device), 'cuda': torch.version.cuda,
-                    'device_name': torch.cuda.get_device_name(device) if device.type == 'cuda' else 'CPU',
-                    'source_sha256': self.code_hash, 'tf32': False, 'amp': False,
-                    'trainable_parameters': sum(p.numel() for p in model.parameters() if p.requires_grad)},
-                   self.out / 'environment.json')
+            self.generator.set_state(checkpoint['generator'].cpu())
+            self.step=checkpoint['step']; self.initial_hash=checkpoint['initial_backbone_sha256']
+            restore_rng(checkpoint['rng'],device)
+        report=architecture_report(model.backbone); report['initial_backbone_sha256']=self.initial_hash
+        if model.reference is not None: self.env['spectral_transform_resolved']=model.reference.filter.resolved_backend(device)
+        json_write(cfg,self.out/'config.resolved.json'); json_write(self.env,self.out/'environment.json'); json_write(report,self.out/'architecture.json')
 
     def optimize(self):
-        # Preserve the source's pre-increment warmup: the first LR is zero.
-        if self.cfg.optim.warmup > 0:
-            lr = self.cfg.optim.lr * min(self.step / self.cfg.optim.warmup, 1.)
-            for group in self.optimizer.param_groups:
-                group['lr'] = lr
-        if self.cfg.optim.grad_clip >= 0:
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.optim.grad_clip,
-                                         error_if_nonfinite=True)
-        elif any(p.grad is not None and not torch.isfinite(p.grad).all() for p in self.model.parameters()):
-            raise FloatingPointError('Non-finite gradients')
-        self.optimizer.step()
-        self.step += 1
-        self.ema.update(self.model.parameters())
+        warmup=self.cfg['trainer']['warmup']
+        lr=self.cfg['optimizer']['args']['lr']*(min(self.step/warmup,1.) if warmup else 1.)
+        for group in self.optimizer.param_groups: group['lr']=lr
+        norm=torch.nn.utils.clip_grad_norm_(self.model.parameters(),self.cfg['trainer']['grad_clip'],error_if_nonfinite=True,foreach=False)
+        self.optimizer.step(); self.step+=1; self.ema.update(self.model); self.stream.advance()
+        return float(norm)
 
-    def save(self, snapshot=False):
-        state = dict(format_version=FORMAT_VERSION, model=self.model.state_dict(),
-                     optimizer=self.optimizer.state_dict(), ema=self.ema.state_dict(),
-                     step=self.step, stats=self.stats, stream=self.stream.state_dict(),
-                     rng=rng_state(), config=plain(self.cfg),
-                     resume_signature=resume_signature(self.cfg), source_sha256=self.code_hash)
-        atomic_save(state, self.out / 'last.pt')
+    def save(self,snapshot=False):
+        state={'format':FORMAT,'kind':'training','config':self.cfg,'step':self.step,'model':self.model.state_dict(),
+               'optimizer':self.optimizer.state_dict(),'ema':self.ema.state_dict(),'stats':self.stats,
+               'stream':self.stream.state_dict(),'generator':self.generator.get_state(),'rng':capture_rng(self.device),
+               'signature':resume_signature(self.cfg),'source_sha256':source_hash(),'environment':self.env,
+               'initial_backbone_sha256':self.initial_hash}
+        atomic_save(state,self.out/'last.pt')
         if snapshot:
-            # Lightweight EMA-only snapshot, not resumable.
             with self.ema.average_parameters(self.model):
-                atomic_save(dict(format_version=FORMAT_VERSION, weights='EMA',
-                                 model=self.model.state_dict(), step=self.step,
-                                 stats=self.stats, config=plain(self.cfg), source_sha256=self.code_hash),
-                            self.out / f'ema_step_{self.step:07d}.pt')
+                atomic_save({'format':FORMAT,'kind':'ema','config':self.cfg,'step':self.step,'model':self.model.state_dict(),
+                             'stats':self.stats,'source_sha256':source_hash(),'environment':self.env},self.out/f'ema_{self.step:09d}.pt')

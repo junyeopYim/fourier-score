@@ -1,0 +1,50 @@
+{
+  "extends": "base.json",
+  "data_loader": {
+    "args": {
+      "dataset": "image_folder",
+      "root": "data/ffhq256",
+      "image_size": 256,
+      "batch_size": 64
+    }
+  },
+  "arch": {
+    "args": {
+      "ch_mult": [
+        1,
+        1,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "attn_resolutions": [
+        16
+      ],
+      "num_res_blocks": 2,
+      "dropout": 0.0,
+      "progressive": "output_skip",
+      "progressive_input": "input_skip"
+    }
+  },
+  "process": {
+    "sigma_max": 348.0,
+    "num_scales": 2000
+  },
+  "sampling": {
+    "steps": 2000,
+    "batch_size": 16,
+    "snr": 0.075
+  },
+  "trainer": {
+    "iterations": 2400001,
+    "microbatch_size": 4
+  },
+  "fourier": {
+    "stats_batch_size": 32
+  },
+  "evaluation": {
+    "max_images": 64
+  }
+}

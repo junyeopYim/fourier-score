@@ -1,150 +1,159 @@
-"""JSON configuration and strict dotted CLI overrides; no eval or dynamic imports."""
+"""One strict JSON schema, inherited presets, and shared CLI overrides.
+
+No implicit architecture / process changes when loss.type changes.
+Paths in `extends` are relative to their declaring JSON file.
+Data / output paths are relative to the current working directory.
+"""
+from __future__ import annotations
 import argparse
 import copy
 import json
 import math
 from pathlib import Path
-from types import SimpleNamespace
+
+ROOT = Path(__file__).resolve().parent
 
 
-def namespace(value):
-    if isinstance(value, dict):
-        return SimpleNamespace(**{k: namespace(v) for k, v in value.items()})
-    if isinstance(value, list):
-        return [namespace(v) for v in value]
-    return value
-
-
-def plain(value):
-    if isinstance(value, SimpleNamespace):
-        value = vars(value)
-    if isinstance(value, dict):
-        return {k: plain(v) for k, v in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [plain(v) for v in value]
-    return value
-
-
-def deep_merge(base, update):
+def deep_merge(base: dict, patch: dict, prefix: str = '') -> dict:
     out = copy.deepcopy(base)
-    for key, value in update.items():
-        if isinstance(value, dict) and isinstance(out.get(key), dict):
-            out[key] = deep_merge(out[key], value)
+    for key, value in patch.items():
+        path = f'{prefix}.{key}' if prefix else key
+        if key not in out:
+            raise ValueError(f'Unknown configuration key: {path}')
+        if isinstance(out[key], dict):
+            if not isinstance(value, dict):
+                raise ValueError(f'{path} must be an object')
+            out[key] = deep_merge(out[key], value, path)
         else:
-            out[key] = copy.deepcopy(value)
+            out[key] = value
     return out
 
 
-def read_json(path, seen=None):
-    path = Path(path).resolve()
-    seen = set() if seen is None else set(seen)
-    if path in seen:
-        raise ValueError(f'Cyclic config inheritance: {path}')
-    seen.add(path)
-    data = json.loads(path.read_text(encoding='utf-8'))
-    base = data.pop('extends', None)
-    if base is not None:
-        data = deep_merge(read_json(path.parent / base, seen), data)
-    return data
+def _read(path: Path, stack: tuple = ()) -> dict:
+    path = path.resolve()
+    if path in stack:
+        raise ValueError(f'Configuration inheritance cycle: {path}')
+    obj = json.loads(path.read_text(encoding='utf-8'))
+    if not isinstance(obj, dict):
+        raise ValueError('Configuration must be a JSON object')
+    parent = obj.pop('extends', None)
+    if parent is None:
+        if path == (ROOT / 'configs/base.json').resolve():
+            return obj
+        defaults = json.loads((ROOT / 'configs/base.json').read_text())
+    else:
+        if not isinstance(parent, str):
+            raise ValueError('extends must be one JSON filename')
+        defaults = _read(path.parent / parent, stack + (path,))
+    return deep_merge(defaults, obj)
 
 
-def validate(c):
-    from model.gaussian import REFERENCE_MODES
-    if c['reference']['mode'] not in REFERENCE_MODES:
-        raise ValueError('Unknown reference.mode')
-    if c['model']['name'] != 'ncsnpp':
-        raise ValueError('This compact template retains only the NCSN++/DDPM++ backbone')
-    if c['training']['sde'] not in ('vesde', 'vpsde', 'subvpsde'):
-        raise ValueError('Unknown SDE')
-    if c['reference']['mode'] != 'baseline' and c['training']['sde'] != 'vesde':
-        raise ValueError('Gaussian reference modes support VE/SMLD only')
-    if c['data']['uniform_dequantization']:
-        raise ValueError('Uniform dequantization is not supported by the Gaussian statistics protocol')
-    if c['backend']['precision'] != 'fp32' or c['backend']['tf32']:
-        raise ValueError('This comparison template deliberately requires FP32 and TF32=false')
-    for key in ('batch_size', 'n_iters', 'log_freq', 'eval_freq', 'snapshot_freq', 'snapshot_freq_for_preemption'):
-        if not isinstance(c['training'][key], int) or c['training'][key] < 1:
-            raise ValueError(f'training.{key} must be a positive integer')
-    micro = c['trainer']['microbatch_size']
-    if micro is not None and (not isinstance(micro, int) or micro < 1):
-        raise ValueError('microbatch_size must be null or a positive integer')
-    if c['data_loader']['kind'] not in ('torchvision', 'faces', 'synthetic', 'image_folder'):
-        raise ValueError('Unknown data_loader.kind')
-    if c['data_loader']['protocol'] not in ('holdout', 'full_train'):
-        raise ValueError('protocol must be holdout or full_train')
-    if c['data']['image_size'] % 2 ** (len(c['model']['ch_mult']) - 1):
-        raise ValueError('image_size must be divisible by the model downsampling factor')
-    if c['model']['nf'] < 4 or c['model']['nf'] % 4:
-        raise ValueError('model.nf must be a positive multiple of 4 (GroupNorm)')
-    if c['training']['continuous'] and c['training']['sde'] == 'vesde' and c['model']['embedding_type'] != 'fourier':
-        raise ValueError('Continuous VE presets use Fourier noise embeddings')
-    if not c['training']['continuous']:
-        if c['model']['embedding_type'] != 'positional' or c['training']['likelihood_weighting']:
-            raise ValueError('Discrete training requires positional embedding and no likelihood weighting')
-        if c['training']['sde'] == 'subvpsde':
-            raise ValueError('Discrete sub-VP is not supported')
-    if c['sampling']['predictor'] not in ('none', 'reverse_diffusion', 'euler_maruyama', 'ancestral_sampling'):
-        raise ValueError('Unknown predictor')
-    if c['sampling']['corrector'] not in ('none', 'langevin', 'ald'):
-        raise ValueError('Unknown corrector')
-    if c['sampling']['method'] == 'ode' and not c['training']['continuous']:
-        raise ValueError('ODE sampling requires continuous training')
-    if c['training']['sde'] == 'subvpsde' and c['sampling']['corrector'] != 'none':
-        raise ValueError('Sub-VP must use corrector=none')
-    if c['sampling']['method'] not in ('pc', 'ode'):
-        raise ValueError('Unknown sampling.method')
-    if not 0 < c['sampling']['eps'] < 1:
-        raise ValueError('sampling.eps must lie in (0,1)')
-    if c['sampling']['n_steps_each'] < 0 or c['sampling']['snr'] <= 0:
-        raise ValueError('Invalid corrector settings')
-    if c['model']['num_scales'] < 2 or not 0 < c['model']['sigma_min'] < c['model']['sigma_max']:
-        raise ValueError('Invalid noise schedule')
-    if c['reference']['floor'] <= 0 or not math.isfinite(c['reference']['floor']):
-        raise ValueError('reference.floor must be finite and positive')
-    if c['eval']['batch_size'] < 1 or c['eval']['max_images'] < 1:
-        raise ValueError('Evaluation limits must be positive')
-    return c
+def apply_overrides(cfg: dict, overrides: list[str]) -> dict:
+    cfg = copy.deepcopy(cfg)
+    for entry in overrides:
+        if '=' not in entry:
+            raise ValueError(f'Expected key=value, got {entry!r}')
+        path, raw = entry.split('=', 1)
+        try:
+            value = json.loads(raw)
+        except json.JSONDecodeError:
+            value = raw
+        parts = path.split('.')
+        parent = cfg
+        for key in parts[:-1]:
+            if key not in parent or not isinstance(parent[key], dict):
+                raise ValueError(f'Unknown configuration key: {path}')
+            parent = parent[key]
+        if parts[-1] not in parent:
+            raise ValueError(f'Unknown configuration key: {path}')
+        parent[parts[-1]] = value
+    return cfg
 
 
-class ConfigParser:
-    def __init__(self, data):
-        self.data = validate(copy.deepcopy(plain(data)))
+def validate(cfg: dict) -> dict:
+    defaults = json.loads((ROOT / 'configs/base.json').read_text())
+    cfg = deep_merge(defaults, cfg)
+    def shape(ref, obj, prefix=''):
+        for k, v in ref.items():
+            w = obj[k]; p = f'{prefix}.{k}' if prefix else k
+            if isinstance(v, dict):
+                shape(v, w, p)
+            elif v is not None:
+                good = type(w) is type(v) if not isinstance(v, float) else type(w) in (int, float)
+                if not good:
+                    raise ValueError(f'{p}: invalid type {type(w).__name__}')
+            if isinstance(w, float) and not math.isfinite(w):
+                raise ValueError(f'{p} must be finite')
+    shape(defaults, cfg)
+    def choice(path, options):
+        x=cfg
+        for p in path.split('.'): x=x[p]
+        if x not in options: raise ValueError(f'{path} must be one of {options}; got {x!r}')
+    choice('loss.type', ('fourier_gaussian','score','diffusion'))
+    choice('loss.reduction', ('mean','half_sum'))
+    choice('arch.type', ('NCSNpp',))
+    choice('data_loader.type', ('ImageDataLoader',))
+    choice('data_loader.args.dataset', ('mnist','cifar10','image_folder','synthetic'))
+    choice('process.type', ('ve','ddpm'))
+    choice('optimizer.type', ('Adam',))
+    choice('backend.precision', ('fp32',))
+    choice('backend.spectral_transform', ('auto','fft','matmul','cpu'))
+    a=cfg['arch']['args']; d=cfg['data_loader']['args']; p=cfg['process']; s=cfg['sampling']; t=cfg['trainer']
+    for key, vals in {'resblock_type':('biggan','ddpm'),'embedding_type':('fourier','positional'), 'progressive':('none','output_skip','residual'), 'progressive_input':('none','input_skip','residual'), 'progressive_combine':('cat','sum'),'nonlinearity':('swish','elu','relu','lrelu')}.items():
+        choice('arch.args.'+key,vals)
+    if cfg['schema_version']!=1: raise ValueError('Unsupported schema_version')
+    if not (cfg['device'] in ('auto','cpu','mps','cuda') or cfg['device'].startswith('cuda:')): raise ValueError('Invalid device')
+    if cfg['seed']<0 or d['split_seed']<0: raise ValueError('Seeds must be nonnegative')
+    if a['nf']<4 or a['nf']%4: raise ValueError('nf must be a positive multiple of 4')
+    if not a['ch_mult'] or any(type(x)!=int or x<1 for x in a['ch_mult']): raise ValueError('Invalid ch_mult')
+    if a['num_res_blocks']<1 or not 0<=a['dropout']<1 or a['init_scale']<0: raise ValueError('Invalid architecture values')
+    if a['fourier_scale']<=0: raise ValueError('fourier_scale must be positive')
+    if not a['fir_kernel'] or any(type(x) not in (int,float) or not math.isfinite(x) or x<0 for x in a['fir_kernel']) or sum(a['fir_kernel'])<=0: raise ValueError('Invalid fir_kernel')
+    if d['image_size']<4 or d['image_size']%2**(len(a['ch_mult'])-1): raise ValueError('image_size incompatible with ch_mult depth')
+    resolutions={d['image_size']//2**i for i in range(len(a['ch_mult']))}
+    if any(type(x)!=int or x not in resolutions for x in a['attn_resolutions']): raise ValueError('attn_resolutions must be actual resolution levels')
+    if d['channels'] not in (1,3): raise ValueError('Only 1 or 3 image channels are supported')
+    if d['dataset']=='mnist' and (d['channels']!=1 or d['image_size']!=32): raise ValueError('MNIST uses MNIST32-pad, channels=1')
+    if d['dataset']=='cifar10' and (d['channels']!=3 or d['image_size']!=32): raise ValueError('CIFAR10 requires 3x32x32')
+    if d['batch_size']<1 or d['num_workers']<0 or d['validation_size']<0 or d['synthetic_size']<4: raise ValueError('Invalid data settings')
+    if d['crop_size'] is not None and (type(d['crop_size'])!=int or d['crop_size']<1): raise ValueError('crop_size must be null or positive integer')
+    if not 0<p['sigma_min']<p['sigma_max'] or p['num_scales']<2 or not 0<p['t_min']<1: raise ValueError('Invalid noise schedule')
+    if not 0<p['beta_start']<=p['beta_end']<1: raise ValueError('Invalid DDPM betas')
+    if s['method'] not in (('pc','heun') if p['type']=='ve' else ('ddpm',)): raise ValueError('VE: pc/heun; DDPM: ddpm. Set sampling.method explicitly.')
+    if p['type']=='ddpm' and s['steps']!=p['num_scales']: raise ValueError('DDPM ancestral sampling must use all trained steps')
+    for key in ('steps','batch_size','num_samples'):
+        if s[key]<1: raise ValueError(f'sampling.{key} must be positive')
+    if s['steps']<2 or s['corrector_steps']<0 or s['snr']<=0: raise ValueError('Invalid sampler')
+    if s['clip_denoised'] and p['type']!='ddpm': raise ValueError('clip_denoised is a DDPM-only option')
+    for key in ('iterations','save_every','snapshot_every','log_every','eval_every'):
+        if t[key]<1: raise ValueError(f'trainer.{key} must be positive')
+    if t['warmup']<0 or not 0<t['ema_decay']<1 or t['grad_clip']<=0: raise ValueError('Invalid optimizer lifecycle')
+    if t['microbatch_size'] is not None and (type(t['microbatch_size'])!=int or not 1<=t['microbatch_size']<=d['batch_size']): raise ValueError('Invalid microbatch_size')
+    o=cfg['optimizer']['args']
+    if o['lr']<=0 or o['eps']<=0 or o['weight_decay']<0 or len(o['betas'])!=2 or any(type(x) not in (int,float) or not 0<=x<1 for x in o['betas']): raise ValueError('Invalid Adam settings')
+    if cfg['fourier']['power_floor']<=0 or cfg['fourier']['stats_batch_size']<1 or cfg['backend']['cpu_threads']<1: raise ValueError('Invalid Fourier/backend settings')
+    if any(cfg['evaluation'][k]<1 for k in ('batch_size','max_images','noise_bins')): raise ValueError('Invalid evaluation settings')
+    if cfg['name']!='auto' and (not cfg['name'] or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' for c in cfg['name'])): raise ValueError('name must be a simple experiment slug')
+    return cfg
 
-    @classmethod
-    def from_file(cls, path, overrides=()):
-        return cls.from_dict(read_json(path), overrides)
 
-    @classmethod
-    def from_dict(cls, data, overrides=()):
-        data = copy.deepcopy(plain(data))
-        for entry in overrides:
-            key, sep, raw = entry.partition('=')
-            if not sep:
-                raise ValueError('--set requires key=value')
-            try:
-                value = json.loads(raw)
-            except json.JSONDecodeError:
-                value = raw
-            node = data
-            parts = key.split('.')
-            for part in parts[:-1]:
-                if part not in node or not isinstance(node[part], dict):
-                    raise KeyError(f'Unknown configuration path: {key}')
-                node = node[part]
-            if parts[-1] not in node:
-                raise KeyError(f'Unknown configuration key: {key}')
-            node[parts[-1]] = value
-        return cls(data)
-
-    @property
-    def config(self):
-        return namespace(self.data)
-
-    def save(self, path):
-        Path(path).write_text(json.dumps(self.data, indent=2, ensure_ascii=False) + '\n', encoding='utf-8')
+def load_config(path='config.json', overrides=()) -> dict:
+    return validate(apply_overrides(_read(Path(path)), list(overrides)))
 
 
-def config_arguments(parser, default='config.json'):
-    parser.add_argument('-c', '--config', default=default)
+def experiment_name(cfg):
+    if cfg['name']!='auto': return cfg['name']
+    return f"{cfg['data_loader']['args']['dataset']}_{cfg['process']['type']}_{cfg['loss']['type']}_s{cfg['seed']}"
+
+
+def add_config_args(parser: argparse.ArgumentParser):
+    parser.add_argument('-c','--config',default='config.json')
     parser.add_argument('--set', action='append', default=[], metavar='KEY=VALUE')
+    parser.add_argument('--device', default=None, help='auto/cpu/cuda[:index]/mps')
     return parser
+
+
+def from_args(args):
+    changes=list(args.set)
+    if args.device is not None: changes.append('device='+args.device)
+    return load_config(args.config, changes)

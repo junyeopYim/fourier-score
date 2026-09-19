@@ -1,204 +1,192 @@
-# Score SDE Research Template
+# Fourier Image Generation Template
 
-`score_sde_pytorch`의 핵심 연구 코드를 `pytorch-template`과 비슷한 역할별 구조로 정리한 **독립 실행형 프로젝트**입니다. 원본 저장소를 다시 내려받는 부트스트랩이 아니라, 필요한 모델·수식·학습 코드가 이 폴더 안에 들어 있습니다.
+같은 **NCSN++ backbone**에서 `fourier_gaussian`, `score`, `diffusion`을 비교하는 이미지 생성 연구 프로젝트입니다. `victoresque/pytorch-template`의 역할별 폴더·JSON 설정·BaseTrainer 구조를 바탕으로 새로 구성했습니다. classifier용 LeNet이나 단순 CNN으로 대체하지 않았습니다.
 
-원본 기준: `junyeopYim/score_sde_pytorch@534c75478bf30acbff83568a52d843d0ff99913f` (`Add mmse`). 원본 GitHub 저장소는 수정하지 않았습니다. 출처·변경 범위는 `NOTICE`, `docs/PROVENANCE.json`, `docs/MIGRATION.md`에 정리했습니다.
+**MMSE scalar gate / linear gate / 학습형 gate는 없습니다.** 이전 대화에서 정의한 Fourier Gaussian은 고정 Gaussian score에 주파수별로 스케일된 신경망 잔차를 더합니다. 이름은 `fourier_gaussian`으로 통일했습니다.
 
-## 구조
+## 1. 설치
+
+기준 날짜: **2026-09-19**. 설치 목표는 **PyTorch 2.14.0 + TorchVision 0.29.0**, Python 3.11입니다. 실제 제작 환경의 실행 검증은 **Python 3.13.5 / PyTorch 2.10.0+cpu**에서 수행했습니다. 이 차이를 숨기지 않기 위해 상세 환경과 테스트 결과를 `verification/`에 포함했습니다.
+
+```bash
+cd fourier_image_template
+uv python install 3.11
+uv sync --python 3.11
+uv run --locked python -m pytest -q
+```
+
+**이 ZIP에는 `uv.lock`이 없습니다.** 제작 환경에서 패키지 서버 접근이 실패하여 정상적인 dependency resolution을 수행하지 못했습니다. 첫 `uv sync`로 실제 lockfile을 만든 뒤 커밋하십시오. 처음부터 `--locked`를 붙이지 마십시오. `pyproject.toml`의 torch/torchvision은 정확한 버전으로 고정되어 있지만, 이것이 전체 dependency lock을 대신하지는 않습니다. 실패 원문은 `verification/uv_lock_attempt.txt`입니다.
+
+기본 설치는 PyPI를 사용합니다. Apple Silicon에서는 macOS wheel을 사용하며, CUDA 머신은 설치된 wheel과 드라이버가 호환되어야 합니다. Windows의 기본 PyPI wheel에서 CUDA가 보이지 않는 경우에는 `docs/INSTALL.md`의 공식 index 설정 방법을 확인하십시오. 가상환경은 `.venv/`이며 TensorFlow를 설치하지 않습니다.
+
+```bash
+# 자동 선택: CUDA -> MPS -> CPU
+uv run --locked python doctor.py
+
+# Apple MPS: 실제 convolution/attention/FIR/backward/Adam/sample/RNG 검사
+uv run --locked python doctor.py --device mps
+
+# NVIDIA
+uv run --locked python doctor.py --device cuda
+```
+
+`doctor.py` 실패를 무시한 채 장기 학습을 시작하지 마십시오. 여기서는 MPS/CUDA 하드웨어가 없어 해당 device 테스트를 실행하지 못했습니다.
+
+## 2. 다운로드 없는 동작 검사
+
+```bash
+uv run --locked python train.py -c configs/smoke.json
+uv run --locked python sample.py \
+  -r saved/synthetic_ve_fourier_gaussian_s0/last.pt \
+  -o saved/smoke_samples
+uv run --locked python test.py \
+  -r saved/synthetic_ve_fourier_gaussian_s0/last.pt \
+  -o saved/smoke_dsm.json
+```
+
+Smoke는 실제 소형 NCSN++를 사용하지만 입력은 합성 noise입니다. 생성 품질이나 논문 성능을 평가하는 실험이 아닙니다. 같은 run 디렉터리를 덮어쓰지 않으므로 재실행 시 `--set name=smoke2`처럼 이름을 바꾸십시오.
+
+## 3. MNIST: loss만 바꾸기
+
+MNIST는 28×28을 32×32로 zero-padding하고 [-1,1] 좌표를 사용합니다. 학습 데이터 중 5,000장을 validation으로 분리합니다.
+
+```bash
+uv run --locked python prepare.py -c configs/mnist.json --download
+
+uv run --locked python train.py -c configs/mnist.json --set loss.type=score
+uv run --locked python train.py -c configs/mnist.json --set loss.type=diffusion
+uv run --locked python train.py -c configs/mnist.json --set loss.type=fourier_gaussian
+```
+
+`name=auto`이면 loss와 seed에 따라 별도 디렉터리가 자동으로 생성됩니다.
+
+```bash
+# 동일한 실험을 MPS에서 실행
+uv run --locked python train.py -c configs/mnist.json \
+  --device mps --set loss.type=fourier_gaussian
+
+# 전체 배치는 그대로, GPU에 올라가는 microbatch만 줄이기
+uv run --locked python train.py -c configs/mnist.json \
+  --device mps --set loss.type=fourier_gaussian \
+  --set trainer.microbatch_size=32
+```
+
+여러 실험군을 한 번에 순차 실행할 수도 있습니다. 이미 존재하는 실험은 덮어쓰지 않습니다.
+
+```bash
+uv run --locked python scripts/run_comparison.py -c configs/mnist.json --device mps
+```
+
+## 4. CIFAR-10: 실제 NCSN++ 구조 그대로
+
+```bash
+uv run --locked python prepare.py -c configs/cifar10.json --download
+uv run --locked python inspect_model.py -c configs/cifar10.json
+
+uv run --locked python train.py -c configs/cifar10.json \
+  --device cuda --set loss.type=fourier_gaussian \
+  --set trainer.microbatch_size=32
+```
+
+CIFAR-10 프리셋은 nf=128, ch_mult=[1,2,2,2], level당 residual block 4개, attention resolution 16, BigGAN++ residual block, FIR, progressive input residual 구조입니다. 실제 검사에서 세 loss 모두 다음과 같았습니다.
+
+| 항목 | 값 |
+|---|---:|
+| 학습 가능한 파라미터 | **62,758,787** |
+| 고정 Fourier time embedding을 포함한 전체 파라미터 | 62,758,915 |
+| Attention block | 6 |
+| BigGAN++ ResNet block | 44 |
+
+`verification/cifar10_architecture.json`에는 loss별 구조 hash와 **초기 가중치 hash가 같은 사실**을 기록했습니다. Gaussian 통계와 DFT 행렬은 학습 파라미터가 아닙니다.
+
+`configs/cifar10.json`은 5,000장 holdout을 사용합니다. `configs/cifar10_full.json`은 50,000장 전체 train과 test 진단을 사용하고, `configs/cifar10_paper950k.json`은 이전 fork의 950,000 update 설정입니다. 이름에 paper가 들어가도 논문 FID를 재현했다는 뜻은 아닙니다. test split을 하이퍼파라미터 튜닝에 사용하지 마십시오.
+
+## 5. 세 objective의 정확한 의미
+
+`h`는 동일 NCSN++의 **sigma division 전 출력**, forward process는 `Y = alpha X + sigma epsilon`입니다.
+
+| `loss.type` | 최종 scaled score `sigma*s` |
+|---|---|
+| `score` | `h` |
+| `diffusion` | `-h` (`h`를 epsilon prediction으로 해석) |
+| `fourier_gaussian` | `sigma*s_G + F^-1[b*F(h)]` |
+
+VE에서는 `alpha=1`, `s_G=-F^-1[F(Y-mu)/(P+sigma²)]`, `b=sqrt(P/(P+sigma²))`입니다. **Gaussian 기준항의 계수는 1**입니다. 기준항을 MMSE scalar로 축소하지 않습니다. 입력 whitening이나 sampler 변경도 loss 선택에 따라 몰래 켜지지 않습니다.
+
+세 경우 모두 최종 score의 `||sigma*s + epsilon||²`를 최소화합니다. `loss.reduction`으로 pixel mean 또는 원본 score-SDE의 half pixel sum을 선택하며, 같은 비교에서는 값을 고정하십시오. 평가 지표 `dsm_pixel_mean`은 모든 실험에서 동일한 pixel mean입니다.
+
+**중요:** 같은 forward process와 가중치를 사용하면 score DSM과 epsilon diffusion은 부호 재파라미터화 관계입니다. 독립적인 두 생성 원리의 성능 차이로 해석하면 안 됩니다. 일반 DDPM의 VP forward까지 비교하려면 다음 **별도 process 프리셋**을 사용하십시오.
+
+```bash
+uv run --locked python train.py -c configs/mnist_ddpm.json
+uv run --locked python train.py -c configs/cifar10_ddpm.json
+```
+
+이 프리셋은 `process.type=ddpm`, 1,000개 linear beta step, ancestral DDPM sampler를 사용합니다. backbone 구조는 각 데이터셋의 NCSN++와 같지만 forward가 달라지므로 **loss-only 비교와 분리**해야 합니다. DDPM forward에서도 세 objective를 선택할 수 있으며 Fourier Gaussian의 `P`는 `alpha² P`, 평균은 `alpha mu`로 일반화됩니다. 이는 원래 VE 제안의 명시적인 확장입니다. 자세한 수식은 `docs/MATH.md`에 있습니다.
+
+## 6. EMA 생성·평가·재시작
+
+```bash
+uv run --locked python sample.py \
+  -r saved/mnist_ve_fourier_gaussian_s0/last.pt \
+  -o saved/mnist_fg_samples --num-samples 1000 --batch-size 64 --steps 1000
+
+uv run --locked python test.py \
+  -r saved/mnist_ve_fourier_gaussian_s0/last.pt \
+  -o saved/mnist_fg_dsm.json
+
+uv run --locked python train.py \
+  -r saved/mnist_ve_fourier_gaussian_s0/last.pt \
+  --set trainer.iterations=20000
+```
+
+생성 결과는 `png/`, `samples_00000.npz` 등의 uint8 NHWC 배열, `preview.png`, `settings.json`으로 저장됩니다. NPZ key는 `samples`입니다. 마지막 round도 먼저 유효 배치 전체를 생성한 뒤 필요한 개수만 저장합니다. PC의 Langevin norm이 batch mean이기 때문에 **sampling batch size를 바꾸면 다른 sampling protocol**입니다.
+
+VE는 `sampling.method=pc` 또는 `heun`을 지원합니다. DDPM ancestral sampler는 훈련된 전체 grid를 사용하므로 임의 `--steps` 축소를 거부합니다. 샘플링은 always EMA이며, `last.pt`와 `ema_*.pt` 모두 추론에 사용할 수 있습니다.
+
+`last.pt`는 model, Adam, EMA, noise generator, 소비 완료된 data cursor, CPU/CUDA/MPS RNG, train-only 통계, 최종 config와 코드 hash를 저장합니다. `ema_*.pt`는 추론용이며 학습 재시작용이 아닙니다. 실제 장기 실험 도중에는 코드·loss·구조·process·optimizer·microbatch·backend 설정을 바꾸지 마십시오. 재시작 검사는 이를 거부합니다. 기존 `fourier-score` 체크포인트를 새 형식으로 resume하는 자동 변환은 없습니다.
+
+## 7. 선택 기능: FID/IS
+
+```bash
+uv sync --extra metrics
+
+# 학습과 동일한 resize/crop/좌표 변환을 거친 real 이미지
+uv run --locked python export_real.py -c configs/cifar10_full.json \
+  --split train -o saved/cifar_real
+
+# 생성 이미지가 실제로 50,000장 있는지 settings.json으로 확인
+uv run --locked python sample.py -r saved/cifar10_ve_fourier_gaussian_s42/last.pt \
+  -o saved/cifar_fg_50k --num-samples 50000 --batch-size 64
+
+uv run --locked python metrics.py --real saved/cifar_real/png \
+  --generated saved/cifar_fg_50k/png --device cuda -o saved/cifar_fg_fid.json
+```
+
+FID는 선택 dependency인 torch-fidelity를 사용하며 최초 Inception weight 다운로드가 필요합니다. TensorFlow는 필요하지 않습니다. **원본 score-SDE의 TF-Hub/TF-GAN 프로토콜과 수치를 직접 동일시하지 마십시오.** real split, 샘플 수, resize, library version, sampler batch, step 수를 모든 비교군에서 통일하십시오. MPS에서 훈련한 결과의 Inception 평가는 `metrics.py --device cpu`로 할 수 있습니다. 제작 환경에서는 Inception 다운로드와 FID 실행을 검증하지 못했습니다.
+
+## 8. 폴더 구조와 추가 프리셋
 
 ```text
-score_sde_template/
-├── train.py                 # 학습 / last.pt 재시작
-├── prepare.py               # 데이터 준비 및 train-only 가우시안 통계
-├── sample.py                # EMA 이미지 생성, NPZ 분할 저장
-├── test.py                  # EMA DSM 평가
-├── metrics.py               # 선택 기능: TF-Hub / TF-GAN FID·IS
-├── pyproject.toml           # uv 의존성·선택 기능·PyTorch 인덱스
-├── .python-version          # Python 3.11
-├── uv.lock                  # 첫 uv sync 성공 시 생성; Git에 커밋
-├── config.json              # 기본값: MNIST spectral_mmse
-├── parse_config.py          # JSON 상속, 설정 검증, --set
-├── configs/                 # 데이터셋별 숫자 설정
-├── base/                    # 체크포인트 생명주기, 재시작 가능한 배치 스트림
-├── data_loader/             # MNIST/CIFAR, CelebA/FFHQ, 이미지 폴더
-├── model/
-│   ├── model.py             # 모델 생성, score convention, 이산/연속 wrapper
-│   ├── gaussian.py          # baseline / spectral / isotropic / linear / MMSE
-│   ├── loss.py              # continuous DSM, discrete SMLD/DDPM
-│   ├── metric.py            # 난수 상태를 분리한 DSM 평가
-│   └── backbones/           # NCSN++, 레이어, native PyTorch FIR 연산
-├── sde/                     # VE / VP / sub-VP, PC / probability-flow ODE
-├── trainer/trainer.py       # 하나의 step 기반 Trainer
-├── logger/                  # JSONL, 선택적 TensorBoard
-├── utils/                   # EMA, 체크포인트, RNG, inference
-├── tests/                   # 수식·설정·모델·재시작 회귀 검사
-├── docs/                    # 변경 내역, 검증 기록, 출처
-├── data/                    # 데이터와 통계 캐시 (빈 디렉터리)
-└── saved/                   # 실험 결과 (빈 디렉터리)
+train.py / prepare.py / sample.py / test.py
+inspect_model.py / doctor.py / export_real.py / metrics.py
+parse_config.py / config.json / pyproject.toml
+base/           BaseModel, BaseTrainer, consumed-cursor DataLoader
+model/          동일 NCSN++, score adapters, Fourier 연산, DSM, 평가
+sde/            forward processes, 공통 PC/Heun/DDPM samplers
+trainer/        공통 학습 loop
+logger/         JSONL, 선택 TensorBoard
+data_loader/    MNIST, CIFAR10, 일반 image_folder, synthetic
+configs/        하나의 strict schema를 상속하는 JSON
+utils/          RNG, EMA, checkpoint, inference, image 저장
+scripts/        동일 조건 비교 실행
+verification/   실제 테스트 결과·환경·architecture audit
 ```
 
-## 1. 설치와 동작 검사
+`configs/celeba64_folder.json`, `configs/ffhq256_folder.json`은 일반 이미지 디렉터리를 읽습니다. root 경로를 바꾸십시오. 파일 경로와 metadata로 cache identity를 만들므로 데이터 이동/수정이 기존 통계 cache에 영향을 줄 수 있습니다. 임의 폴더는 train 내부 holdout을 요구하며 검증 데이터가 없다고 train 성능을 validation으로 표시하지 않습니다.
 
-프로젝트 루트에서 실행합니다. Python은 `.python-version`과 `requires-python`으로 **3.11**을 지정했습니다. 설치·실행은 `uv`로 관리합니다. 가상환경은 `.venv/`이며 별도로 activate할 필요가 없습니다.
+FFHQ는 source의 output_skip/input_skip 구조와 level당 2개 residual block을 반영했습니다. **CelebA 폴더 프리셋은 positional embedding 구조를 사용하지만 forward는 continuous VE이며 원본 discrete SMLD/TFDS 레시피 재현이 아닙니다.** 얼굴 프리셋의 일반 folder crop/resize·holdout도 원본 공식 데이터 프로토콜과 다를 수 있습니다. 서로 다른 folder 실험은 `--set name=ffhq256_fg`처럼 이름을 구분하십시오.
 
-**이 ZIP에는 `uv.lock`이 아직 없습니다.** 제작 환경에서 외부 패키지 서버의 DNS 조회가 실패하여 실제 의존성 해석·설치를 검증하지 못했습니다. 처음에는 `uv sync`를 실행해 lockfile을 생성하십시오. 첫 실행부터 `--locked`를 붙이면 lockfile이 없어 실패합니다. 생성 후에는 `uv.lock`을 Git에 커밋하고 `uv sync --locked` / `uv run --locked`를 사용합니다.
+프로젝트는 단일 CPU, 단일 CUDA GPU 또는 단일 MPS device를 지원합니다. DDP/multi-GPU 묶음 학습, AMP, compilation, 학습형 gate, graph latent, automatic pretrained download는 포함하지 않았습니다. 여러 GPU에서 독립 비교군을 병렬로 실행할 때는 각 프로세스의 `CUDA_VISIBLE_DEVICES`와 run 이름을 분리하십시오.
 
-```bash
-# uv가 없는 경우 한 번 설치 (Linux/macOS)
-curl -LsSf https://astral.sh/uv/install.sh | sh
-# 셸을 다시 열거나: source "$HOME/.local/bin/env"
-
-uv python install 3.11
-uv sync                           # 첫 설치: .venv + uv.lock 생성
-uv run --locked python -m pytest -q
-
-# 다운로드 없이 합성 입력 + 실제 소형 NCSN++로 실행 경로 확인
-uv run --locked python train.py -c configs/smoke.json
-uv run --locked python sample.py -r saved/smoke/last.pt -o saved/smoke/samples \
-  --num-samples 4 --batch-size 2 --steps 4
-uv run --locked python test.py -r saved/smoke/last.pt -o saved/smoke/evaluation.json
-```
-
-Linux x86-64 / Windows AMD64는 **torch 2.10.0 + torchvision 0.25.0의 CUDA 12.8 빌드**를 명시적으로 선택합니다. Apple Silicon macOS는 PyPI 휠을 사용하며 학습 코드는 CPU로 실행합니다. Intel Mac / Linux ARM은 이 설정의 지원 대상이 아닙니다. NVIDIA 드라이버는 별도로 준비해야 하며, 이 ZIP에 CUDA 패키지나 드라이버가 들어 있는 것은 아닙니다. GPU 없이도 CUDA 휠의 CPU 연산을 사용할 수 있지만 다운로드가 큽니다. CPU 전용 인덱스로 바꾸는 방법은 `docs/UV.md`에 있습니다.
-
-기본 `uv sync`는 테스트용 `dev` 그룹도 설치하며 TensorFlow는 설치하지 않습니다. 얼굴 입력은 `--extra faces`, FID/IS는 `--extra metrics`, TensorBoard는 `--extra tensorboard`로 선택합니다. NumPy는 선택적 TensorFlow 2.15와 함께 쓸 수 있도록 `>=1.26.4,<2`로 제한했습니다. **설치 방식만 바꿨으며 Python 소스와 실험 JSON 설정은 이전 ZIP과 바이트 단위로 같습니다.** 라이브러리 버전이 달라진 환경에서의 학습 재현성은 별개입니다.
-
-`smoke`는 생성 품질 실험이 아닙니다. 출력은 무작위 입력으로 몇 step 학습한 결과이며 품질을 평가할 의미가 없습니다. 같은 실험 이름의 재실행은 덮어쓰지 않고 오류를 냅니다. 다른 이름은 `--set name=smoke2`로 지정하십시오.
-
-## 2. MNIST
-
-```bash
-uv run --locked python prepare.py -c config.json --download
-uv run --locked python train.py -c config.json
-
-# baseline 비교: 이름과 reference.mode 두 곳을 변경
-uv run --locked python train.py -c configs/mnist.json --set name=mnist_baseline
-```
-
-기본 `config.json`은 `configs/mnist.json`을 상속하고 `spectral_mmse`만 선택합니다. MNIST는 28×28을 32×32로 패딩하고 [-1,1] 좌표를 사용합니다. 5,000장 holdout을 유지합니다.
-
-## 3. CIFAR-10 spectral_mmse
-
-```bash
-uv run --locked python prepare.py -c configs/cifar10_paper.json --download
-uv run --locked python train.py -c configs/cifar10_paper.json \
-  --set name=cifar10_spectral_mmse \
-  --set reference.mode=spectral_mmse
-```
-
-학습 VRAM이 부족하면 **총 배치는 유지하고** `--set trainer.microbatch_size=32`를 추가하십시오. 한 총 배치를 모두 처리한 뒤 gradient clipping, Adam, EMA를 각각 한 번 적용합니다. 마이크로배치 분할은 난수 호출 순서를 바꾸므로 모든 비교군에서 같은 값을 사용해야 합니다. 재시작 중에는 변경을 허용하지 않습니다.
-
-기본은 FP32, TF32 비활성화, AMP 미사용, native PyTorch FIR입니다. CUDA JIT 확장을 빌드하지 않습니다. **단일 CPU 또는 단일 CUDA GPU** 학습입니다. DDP나 여러 GPU를 묶는 기능은 넣지 않았습니다. 서로 다른 GPU에서 독립적인 비교군을 병렬 실행하는 것은 가능합니다.
-
-```bash
-CUDA_VISIBLE_DEVICES=0 uv run --locked python train.py -c configs/cifar10_paper.json --set name=cifar_baseline
-CUDA_VISIBLE_DEVICES=1 uv run --locked python train.py -c configs/cifar10_paper.json \
-  --set name=cifar_mmse --set reference.mode=spectral_mmse
-```
-
-위 두 명령은 각각 별도의 터미널에서 실행합니다. 첫 통계 생성은 `prepare.py`를 한 번 완료한 뒤 공유하십시오. 동시에 같은 통계 파일을 생성하거나 같은 실험 디렉터리에 쓰는 사용법은 지원하지 않습니다.
-
-## 4. 설정 프리셋
-
-| 파일 | 학습 설정의 출처 / 주요 값 |
-|---|---|
-| `mnist.json` | fork의 MNIST-small: nf 32, 10,000 updates, batch 128, 5,000 holdout |
-| `cifar10_upstream.json` | 원본 VE NCSN++ config: nf 128, 1,300,001 updates, batch 128, 전체 train |
-| `cifar10_paper.json` | fork의 `--protocol paper`: 위 모델/optimizer, **950,000 updates**, 전체 train |
-| `cifar10_vp.json` | 원본 continuous VP DDPM++ config: positional embedding, EMA 0.9999, FIR off |
-| `celeba64.json` | 원본 64×64 **discrete VE/SMLD**: 1,300,001 updates, batch 128, sigma_max 90 |
-| `ffhq256.json` | 원본 256×256 continuous VE: 2,400,001 updates, batch 64, sigma_max 348, 2,000 scales |
-| `smoke.json` | 합성 데이터, 축소 NCSN++, 3 updates; 실행 검사 전용 |
-
-학습 recipe의 핵심 숫자는 유지했지만, 전체 원본 CLI와 모든 평가 옵션을 1:1로 복제한 것은 아닙니다. 특히 **샘플 미리보기의 기본 배치는 64**이며, 원본 CIFAR FID의 유효 배치 1024를 자동으로 사용하지 않습니다. `cifar10_paper`라는 이름도 이미 논문 수치를 재현했다는 뜻이 아닙니다.
-
-JSON은 `extends`로 공통 설정을 상속합니다. 최종 값을 확인하려면 다음을 실행하십시오.
-
-```bash
-uv run --locked python train.py -c configs/cifar10_paper.json --dry-run
-uv run --locked python train.py -c configs/cifar10_paper.json --dry-run \
-  --set training.batch_size=128 --set trainer.microbatch_size=32
-```
-
-지원 기준항은 `baseline`, `spectral`, `isotropic`, `spectral_linear`, `isotropic_linear`, `spectral_mmse`, `isotropic_mmse`입니다. 가우시안 기준항은 VE/SMLD에서만 허용합니다. VP/sub-VP는 baseline 경로입니다. MMSE는 full FFT power에 대한 **이미지별 스칼라 가중치**이며, 주파수별 gate로 변경하지 않았습니다.
-
-## 5. 재시작 / 출력
-
-```bash
-uv run --locked python train.py -r saved/cifar10_spectral_mmse/last.pt
-
-# 원래 종료 지점보다 더 학습: 총 update 수를 지정
-uv run --locked python train.py -r saved/mnist_spectral_mmse/last.pt --set training.n_iters=20000
-```
-
-`last.pt`에는 모델, Adam, EMA, 완료 step, 가우시안 통계, train/validation index, 배치 permutation/cursor, Python/NumPy/Torch/CUDA RNG, 설정과 코드 해시가 들어갑니다. `ema_step_*.pt`는 추론용 경량 EMA 스냅숏이므로 학습 재시작에는 사용하지 않습니다.
-
-재시작은 모델·손실·optimizer·배치·마이크로배치·통계·코드가 달라지면 실패하도록 했습니다. 같은 하드웨어·라이브러리·설정에서의 재현성을 목표로 하며, CPU↔GPU 또는 다른 CUDA 환경 사이의 bitwise 동일성을 보장하지 않습니다. 데이터가 이동하면 얼굴 데이터의 경로 기반 fingerprint가 달라져 재시작이 거부될 수 있습니다.
-
-**원래 `mnist_compare`에서 만든 체크포인트를 이 템플릿으로 직접 resume하는 기능은 없습니다.** 기존 장기 실험은 원래 코드에서 마무리하십시오. 이것은 이후 실험용으로 정리한 새 프로젝트이며, 자동 변환기 없이 예전 파일을 새 형식으로 추측해 읽지 않습니다.
-
-## 6. 샘플 생성 / DSM 평가
-
-```bash
-uv run --locked python sample.py -r saved/cifar10_spectral_mmse/last.pt \
-  -o saved/cifar10_spectral_mmse/preview --num-samples 64 --batch-size 64
-
-uv run --locked python test.py -r saved/cifar10_spectral_mmse/last.pt \
-  -o saved/cifar10_spectral_mmse/dsm.json --max-images 10000 --batch-size 128
-```
-
-생성 파일은 `samples_00000.npz` 등의 uint8 NHWC 배열(`samples` key), `preview.png`, `settings.json`입니다. 큰 표본은 작은 파일로 나누며, 마지막 round도 먼저 유효 배치 전체를 생성하고 필요한 개수만 내보냅니다. 출력 디렉터리가 비어 있지 않으면 덮어쓰지 않습니다. 부분 샘플 생성 자동 resume는 포함하지 않았습니다.
-
-연속 시간 모델은 `--steps`로 샘플러 grid만 바꿀 수 있습니다. 이산 CelebA는 훈련된 sigma/label grid를 유지해야 합니다. `--sampler ode`도 사용할 수 있습니다. 원본의 배치 평균 Langevin norm을 유지했으므로 **유효 샘플 배치 변경은 다른 샘플 프로토콜**입니다. `--model-batch-size`는 모델 forward만 분할하므로 이 norm을 보존합니다.
-
-DSM 평가는 원본과 같은 손실식/축약을 쓰지만, 평가 난수 bank와 집계 구현은 이 템플릿 방식입니다. 예전 runner의 평가 숫자와 bitwise 일치를 주장하지 않습니다. `FFHQ`처럼 별도 holdout이 없는 경우 결과를 `train_diagnostic`으로 명시합니다. 이를 검증 성능으로 해석하지 마십시오.
-
-## 7. 선택 기능: CelebA / FFHQ, FID / IS
-
-얼굴 reader는 원본 TFDS/TFRecord 전처리를 유지하며 TensorFlow를 선택 의존성으로 남겼습니다. CelebA는 TFDS의 **준비된** `celeb_a` 데이터와 공식 split이 필요하고, FFHQ는 원본 `ffhq-r08.tfrecords` 70,000개 레코드가 필요합니다. 원본 JPEG 폴더를 이 파일로 오인해 넣으면 안 됩니다.
-
-```bash
-uv sync --locked --extra faces
-uv run --locked --extra faces python prepare.py -c configs/celeba64.json --set data.tfds_dir=/workspace/datasets/tfds
-uv run --locked --extra faces python train.py -c configs/celeba64.json \
-  --set data.tfds_dir=/workspace/datasets/tfds \
-  --set name=celeba_mmse --set reference.mode=spectral_mmse
-
-uv run --locked --extra faces python prepare.py -c configs/ffhq256.json \
-  --set data.tfrecords_path=/workspace/datasets/ffhq/ffhq-r08.tfrecords
-```
-
-이 경로들을 계속 쓰려면 JSON에 저장하십시오. `prepare.py`에서 준 override는 원래 JSON 파일을 바꾸지 않으므로 `train.py`에도 같은 값을 주어야 합니다. `.data_loader.data_dir`은 MNIST/CIFAR 경로이며 얼굴 입력 경로를 바꾸는 옵션이 아닙니다.
-
-기본 학습은 TensorFlow를 import하지 않습니다. FID/IS는 다음 선택 의존성을 사용합니다. **이 선택 기능은 번들 CPU 테스트에서 실행 검증되지 않았습니다.** 첫 사용 시 TF-Hub 모델 다운로드가 필요합니다. CIFAR10/CELEBA는 원본 TF-GAN Hub 모델, `--inception-v3`는 원본 FFHQ용 feature-vector 모델입니다. 두 backend의 특징 통계를 섞으면 안 됩니다.
-
-```bash
-uv sync --locked --extra metrics
-
-# 예: 원본 CIFAR 프로토콜처럼 유효 배치 1024, forward만 32로 분할
-uv run --locked python sample.py -r saved/cifar10_spectral_mmse/last.pt \
-  -o saved/cifar10_spectral_mmse/samples50k \
-  --num-samples 50000 --batch-size 1024 --model-batch-size 32 --steps 1000
-
-# 준비된 real feature 파일의 key는 pool_3, shape는 [N,2048]
-uv run --locked --extra metrics python metrics.py score --samples saved/cifar10_spectral_mmse/samples50k \
-  --reference data/cifar10_stats.npz -o saved/cifar10_spectral_mmse/fid.json
-
-# 필요하면 같은 backend로 실제 train 이미지에서 특징을 추출
-uv run --locked --extra metrics python metrics.py extract-real -c configs/cifar10_paper.json -o data/cifar10_real.npz
-```
-
-`extract-real`은 새로운 reference 통계를 만드는 기능이며 원본 배포 통계와 같다고 자동 인증하지 않습니다. 직접 만든 통계에는 backend sidecar를 기록합니다. sidecar가 없는 외부 통계는 backend 검증 불가를 결과에 표시합니다. 수치를 비교하려면 데이터 split·전처리·양자화·특징 모델·sample count·sampler grid·유효 배치를 모두 맞추십시오. IS는 TF-GAN 전체 logits 방식이며 별도의 10-split 평균±표준편차를 출력하지 않습니다. 특징 배열은 RAM에 모으므로 50,000장 평가에는 충분한 시스템 메모리가 필요합니다.
-
-## 유지한 것과 제외한 것
-
-유지: NCSN++/DDPM++ backbone, Gaussian 7개 모드, VE/VP/sub-VP, DSM/SMLD/DDPM 손실, PC/ODE, Adam warmup/clipping, EMA, train-only FFT 통계, native FIR, 재시작 검사, 핵심 데이터셋 recipe.
-
-제외: 과거 NCSN/NCSNv2 및 별도 legacy DDPM 모델, 데모 notebook/그림/실험 산출물, 중복 shell runner, CUDA JIT 소스, `absl`·`ml_collections` 중심 CLI, 모든 원본 config 조합, LSUN 전용 TF 데이터 파이프라인, likelihood/BPD·inpainting·colorization runner, 다중 GPU DDP. 데이터나 모델 가중치는 포함하지 않습니다. `image_folder`는 미리 전처리한 정확한 크기의 RGB 이미지를 읽는 확장점이지, 공식 LSUN 전처리 재현 구현은 아닙니다.
-
-원본 코드 전체의 완전한 호환 레이어가 아니라, **다음 실험에서 수정할 파일을 찾기 쉽도록 핵심 경로를 남긴 템플릿**입니다. 새 기준항은 `model/gaussian.py`, 손실은 `model/loss.py`, 모델은 `model/backbones/`, 학습 흐름은 `trainer/trainer.py`에서 수정하십시오.
-
-
-## uv 의존성 관리
-
-`pyproject.toml`이 의존성 선언의 기준입니다. `requirements*.txt`는 이전 소스의 설치 안내와 호환되는 참고용 direct-dependency 스냅숏이며 uv는 읽지 않습니다. 새 의존성은 `uv add 패키지명`, 개발 의존성은 `uv add --dev 패키지명`, 삭제는 `uv remove 패키지명`으로 관리합니다. lockfile 생성·GPU/CPU 선택·선택 기능 실행·검증 한계는 `docs/UV.md`와 `docs/UV_VERIFICATION.md`에 정리했습니다.
+추가 문서: `docs/CONFIG.md`, `docs/MATH.md`, `docs/MPS.md`, `docs/PROVENANCE.md`, `docs/VALIDATION.md`.

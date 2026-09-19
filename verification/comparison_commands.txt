@@ -1,0 +1,3 @@
+["/opt/pyvenv/bin/python", "train.py", "-c", "configs/mnist.json", "--set", "loss.type=score"]
+["/opt/pyvenv/bin/python", "train.py", "-c", "configs/mnist.json", "--set", "loss.type=diffusion"]
+["/opt/pyvenv/bin/python", "train.py", "-c", "configs/mnist.json", "--set", "loss.type=fourier_gaussian"]

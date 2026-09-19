@@ -1,0 +1,30 @@
+{
+  "score": {
+    "trainable_parameters": 62758787,
+    "all_parameters": 62758915,
+    "architecture_sha256": "cc8bff01905aaf3664530d9962459586b6061625df7fc70a5a6a5fe6906ec315",
+    "initial_backbone_sha256": "3ba7cb242c00639abafd98fc619305d35e0666a4f59adf46d7c0aa6688e61be3",
+    "attention_blocks": 6,
+    "biggan_resblocks": 44,
+    "ddpm_resblocks": 0
+  },
+  "diffusion": {
+    "trainable_parameters": 62758787,
+    "all_parameters": 62758915,
+    "architecture_sha256": "cc8bff01905aaf3664530d9962459586b6061625df7fc70a5a6a5fe6906ec315",
+    "initial_backbone_sha256": "3ba7cb242c00639abafd98fc619305d35e0666a4f59adf46d7c0aa6688e61be3",
+    "attention_blocks": 6,
+    "biggan_resblocks": 44,
+    "ddpm_resblocks": 0
+  },
+  "fourier_gaussian": {
+    "trainable_parameters": 62758787,
+    "all_parameters": 62758915,
+    "architecture_sha256": "cc8bff01905aaf3664530d9962459586b6061625df7fc70a5a6a5fe6906ec315",
+    "initial_backbone_sha256": "3ba7cb242c00639abafd98fc619305d35e0666a4f59adf46d7c0aa6688e61be3",
+    "attention_blocks": 6,
+    "biggan_resblocks": 44,
+    "ddpm_resblocks": 0
+  },
+  "identical": true
+}

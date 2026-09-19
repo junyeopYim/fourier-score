@@ -1,0 +1,34 @@
+{
+  "extends": "base.json",
+  "data_loader": {
+    "args": {
+      "dataset": "image_folder",
+      "root": "data/celeba/img_align_celeba",
+      "image_size": 64,
+      "crop_size": 140
+    }
+  },
+  "arch": {
+    "args": {
+      "ch_mult": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "attn_resolutions": [
+        16
+      ],
+      "embedding_type": "positional"
+    }
+  },
+  "process": {
+    "sigma_max": 90.0
+  },
+  "sampling": {
+    "snr": 0.17
+  },
+  "fourier": {
+    "stats_batch_size": 32
+  }
+}

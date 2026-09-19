@@ -1,0 +1,14 @@
+{
+  "extends": "cifar10.json",
+  "data_loader": {
+    "args": {
+      "validation_size": 0
+    }
+  },
+  "evaluation": {
+    "max_images": 128
+  },
+  "trainer": {
+    "eval_every": 100
+  }
+}

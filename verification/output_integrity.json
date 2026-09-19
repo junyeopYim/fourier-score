@@ -1,0 +1,54 @@
+{
+  "score": {
+    "png_count": 3,
+    "npz_samples": 3,
+    "npz_dtype": "uint8",
+    "npz_shape": [
+      3,
+      8,
+      8,
+      1
+    ],
+    "complete": true,
+    "score_calls": 14
+  },
+  "diffusion": {
+    "png_count": 3,
+    "npz_samples": 3,
+    "npz_dtype": "uint8",
+    "npz_shape": [
+      3,
+      8,
+      8,
+      1
+    ],
+    "complete": true,
+    "score_calls": 14
+  },
+  "fourier_gaussian": {
+    "png_count": 3,
+    "npz_samples": 3,
+    "npz_dtype": "uint8",
+    "npz_shape": [
+      3,
+      8,
+      8,
+      1
+    ],
+    "complete": true,
+    "score_calls": 14
+  },
+  "ddpm": {
+    "png_count": 3,
+    "npz_samples": 3,
+    "npz_dtype": "uint8",
+    "npz_shape": [
+      3,
+      8,
+      8,
+      1
+    ],
+    "complete": true,
+    "score_calls": 32
+  }
+}

@@ -1,47 +1,53 @@
 {
   "extends": "mnist.json",
-  "name": "smoke",
-  "device": "cpu",
   "data_loader": {
-    "kind": "synthetic",
-    "validation_size": 8,
-    "stats_batch_size": 16
+    "args": {
+      "dataset": "synthetic",
+      "image_size": 8,
+      "batch_size": 2,
+      "validation_size": 4,
+      "synthetic_size": 16
+    }
   },
-  "reference": {
-    "mode": "spectral_mmse"
+  "arch": {
+    "args": {
+      "nf": 8,
+      "ch_mult": [
+        1,
+        2
+      ],
+      "num_res_blocks": 1,
+      "attn_resolutions": [
+        4
+      ],
+      "dropout": 0.0
+    }
   },
-  "model": {
-    "nf": 8,
-    "ch_mult": [
-      1,
-      2
-    ],
-    "num_res_blocks": 1,
-    "attn_resolutions": [
-      16
-    ],
-    "num_scales": 4
+  "process": {
+    "sigma_max": 2.0,
+    "num_scales": 16
   },
-  "training": {
-    "batch_size": 2,
-    "n_iters": 3,
-    "log_freq": 1,
-    "eval_freq": 2,
-    "snapshot_freq": 3,
-    "snapshot_freq_for_preemption": 1
+  "fourier": {
+    "stats_batch_size": 4
   },
-  "optim": {
-    "warmup": 1
-  },
-  "eval": {
-    "batch_size": 2,
-    "max_images": 4,
-    "num_samples": 4
+  "trainer": {
+    "iterations": 3,
+    "warmup": 0,
+    "save_every": 1,
+    "snapshot_every": 3,
+    "log_every": 1,
+    "eval_every": 2
   },
   "sampling": {
-    "corrector": "none"
+    "steps": 4,
+    "batch_size": 2,
+    "num_samples": 4,
+    "corrector_steps": 0,
+    "method": "heun"
   },
-  "provenance": {
-    "recipe": "Synthetic input with a real, reduced NCSN++; plumbing test only, NOT a dataset experiment"
+  "evaluation": {
+    "batch_size": 2,
+    "max_images": 4,
+    "noise_bins": 4
   }
 }

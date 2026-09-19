@@ -1,0 +1,56 @@
+{
+  "python": "3.13.5",
+  "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+  "torch": "2.10.0+cpu",
+  "device": "cpu",
+  "cuda_runtime": null,
+  "mps_available": false,
+  "tf32": false,
+  "precision": "fp32",
+  "amp": false,
+  "spectral_transform_config": "auto",
+  "mps_fallback_environment": "unset",
+  "source_sha256": "e3c05e2d4517f4b624d19a587b3ab9dac94227d25d3caedb60046d9a242a4995",
+  "device_name": "CPU",
+  "tests": [
+    {
+      "loss": "score",
+      "loss_value": 0.9135380983352661,
+      "gradient_norm": 1.706941843032837,
+      "sample_shape": [
+        2,
+        1,
+        8,
+        8
+      ],
+      "nfe": 7
+    },
+    {
+      "loss": "diffusion",
+      "loss_value": 0.9135453104972839,
+      "gradient_norm": 1.7069600820541382,
+      "sample_shape": [
+        2,
+        1,
+        8,
+        8
+      ],
+      "nfe": 7
+    },
+    {
+      "loss": "fourier_gaussian",
+      "loss_value": 0.6211419105529785,
+      "gradient_norm": 0.6179748177528381,
+      "sample_shape": [
+        2,
+        1,
+        8,
+        8
+      ],
+      "nfe": 7
+    }
+  ],
+  "passed": true,
+  "matmul_fft_max_abs_error": 2.384185791015625e-07,
+  "rng_restore": true
+}

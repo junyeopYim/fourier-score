@@ -1,31 +1,25 @@
-"""Train, or resume a template checkpoint. Run from the project root."""
+"""Train or resume. All options are resolved into one saved JSON config."""
 import argparse
-from pathlib import Path
-from parse_config import ConfigParser, config_arguments
+import json
+from parse_config import add_config_args,load_config,apply_overrides,validate
 from trainer.trainer import Trainer
 from utils.util import load_checkpoint
 
-
 def main():
-    p = config_arguments(argparse.ArgumentParser(description=__doc__), default=None)
-    p.add_argument('-r', '--resume', type=Path)
-    p.add_argument('--dry-run', action='store_true', help='Print resolved config without loading data or training')
-    a = p.parse_args()
-    ck = load_checkpoint(a.resume) if a.resume else None
-    if a.config is None and ck is not None:
-        if 'optimizer' not in ck:
-            p.error('EMA-only snapshots cannot resume training; use last.pt')
-        config_path = a.resume.parent / 'config.json'
-        # Read embedded config, not a potentially unrelated neighboring file.
-        parser = ConfigParser.from_dict(ck['config'], a.set)
-    else:
-        parser = ConfigParser.from_file(a.config or 'config.json', a.set)
-    if a.dry_run:
-        import json
-        print(json.dumps(parser.data, indent=2))
-        return
-    Trainer(parser.config, ck).train()
+    parser=add_config_args(argparse.ArgumentParser(description=__doc__))
+    parser.set_defaults(config=None)
+    parser.add_argument('-r','--resume')
+    parser.add_argument('--dry-run',action='store_true',help='Print resolved config without loading data or training')
+    args=parser.parse_args(); changes=list(args.set)
+    if args.device is not None: changes.append('device='+args.device)
+    checkpoint=None
+    if args.resume:
+        if args.config is not None: parser.error('Resume uses checkpoint config; use --set for allowed changes')
+        checkpoint=load_checkpoint(args.resume)
+        cfg=validate(apply_overrides(checkpoint['config'],changes))
+    else: cfg=load_config(args.config or 'config.json',changes)
+    if args.dry_run:
+        print(json.dumps(cfg,indent=2,ensure_ascii=False)); return
+    Trainer(cfg,checkpoint).train()
 
-
-if __name__ == '__main__':
-    main()
+if __name__=='__main__': main()

@@ -1,0 +1,256 @@
+[
+  {
+    "label": "smoke_train_score",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "train.py",
+      "-c",
+      "configs/smoke.json",
+      "--device",
+      "cpu",
+      "--set",
+      "trainer.save_dir=/mnt/data/final_validation/runs",
+      "--set",
+      "fourier.cache_dir=/mnt/data/final_validation/stats",
+      "--set",
+      "loss.type=score"
+    ],
+    "exit_code": 0,
+    "seconds": 2.761,
+    "log": "verification/smoke_train_score.txt"
+  },
+  {
+    "label": "smoke_sample_score",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "sample.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_score_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/samples/score",
+      "--num-samples",
+      "3",
+      "--batch-size",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 1.981,
+    "log": "verification/smoke_sample_score.txt"
+  },
+  {
+    "label": "smoke_eval_score",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "test.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_score_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/score_dsm.json"
+    ],
+    "exit_code": 0,
+    "seconds": 1.84,
+    "log": "verification/smoke_eval_score.txt"
+  },
+  {
+    "label": "smoke_train_diffusion",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "train.py",
+      "-c",
+      "configs/smoke.json",
+      "--device",
+      "cpu",
+      "--set",
+      "trainer.save_dir=/mnt/data/final_validation/runs",
+      "--set",
+      "fourier.cache_dir=/mnt/data/final_validation/stats",
+      "--set",
+      "loss.type=diffusion"
+    ],
+    "exit_code": 0,
+    "seconds": 2.8,
+    "log": "verification/smoke_train_diffusion.txt"
+  },
+  {
+    "label": "smoke_sample_diffusion",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "sample.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_diffusion_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/samples/diffusion",
+      "--num-samples",
+      "3",
+      "--batch-size",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 1.844,
+    "log": "verification/smoke_sample_diffusion.txt"
+  },
+  {
+    "label": "smoke_eval_diffusion",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "test.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_diffusion_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/diffusion_dsm.json"
+    ],
+    "exit_code": 0,
+    "seconds": 1.825,
+    "log": "verification/smoke_eval_diffusion.txt"
+  },
+  {
+    "label": "smoke_train_fourier_gaussian",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "train.py",
+      "-c",
+      "configs/smoke.json",
+      "--device",
+      "cpu",
+      "--set",
+      "trainer.save_dir=/mnt/data/final_validation/runs",
+      "--set",
+      "fourier.cache_dir=/mnt/data/final_validation/stats",
+      "--set",
+      "loss.type=fourier_gaussian"
+    ],
+    "exit_code": 0,
+    "seconds": 2.767,
+    "log": "verification/smoke_train_fourier_gaussian.txt"
+  },
+  {
+    "label": "smoke_sample_fourier_gaussian",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "sample.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_fourier_gaussian_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/samples/fourier_gaussian",
+      "--num-samples",
+      "3",
+      "--batch-size",
+      "2"
+    ],
+    "exit_code": 0,
+    "seconds": 1.986,
+    "log": "verification/smoke_sample_fourier_gaussian.txt"
+  },
+  {
+    "label": "smoke_eval_fourier_gaussian",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "test.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_fourier_gaussian_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/fourier_gaussian_dsm.json"
+    ],
+    "exit_code": 0,
+    "seconds": 1.888,
+    "log": "verification/smoke_eval_fourier_gaussian.txt"
+  },
+  {
+    "label": "smoke_resume",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "train.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ve_fourier_gaussian_s0/last.pt",
+      "--set",
+      "trainer.iterations=4"
+    ],
+    "exit_code": 0,
+    "seconds": 2.722,
+    "log": "verification/smoke_resume.txt"
+  },
+  {
+    "label": "smoke_export",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "export_real.py",
+      "-c",
+      "configs/smoke.json",
+      "-o",
+      "/mnt/data/final_validation/real",
+      "--num-images",
+      "4"
+    ],
+    "exit_code": 2,
+    "seconds": 1.694,
+    "log": "verification/smoke_export_invalid_arg.txt",
+    "note": "Verification command used wrong flag; rejected as expected by argparse; corrected to --limit below."
+  },
+  {
+    "label": "smoke_export",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "export_real.py",
+      "-c",
+      "configs/smoke.json",
+      "-o",
+      "/mnt/data/final_validation/real",
+      "--limit",
+      "4"
+    ],
+    "exit_code": 0,
+    "seconds": 1.722,
+    "log": "verification/smoke_export.txt"
+  },
+  {
+    "label": "metrics_help",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "metrics.py",
+      "--help"
+    ],
+    "exit_code": 0,
+    "seconds": 1.65,
+    "log": "verification/metrics_help.txt"
+  },
+  {
+    "label": "smoke_ddpm_train",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "train.py",
+      "-c",
+      "configs/smoke.json",
+      "--device",
+      "cpu",
+      "--set",
+      "trainer.save_dir=/mnt/data/final_validation/runs",
+      "--set",
+      "fourier.cache_dir=/mnt/data/final_validation/stats",
+      "--set",
+      "process.type=ddpm",
+      "--set",
+      "loss.type=diffusion",
+      "--set",
+      "sampling.method=ddpm",
+      "--set",
+      "sampling.steps=16"
+    ],
+    "exit_code": 0,
+    "log": "verification/smoke_ddpm_train.txt"
+  },
+  {
+    "label": "smoke_ddpm_sample",
+    "command": [
+      "/opt/pyvenv/bin/python",
+      "sample.py",
+      "-r",
+      "/mnt/data/final_validation/runs/synthetic_ddpm_diffusion_s0/last.pt",
+      "-o",
+      "/mnt/data/final_validation/samples/ddpm",
+      "--num-samples",
+      "3"
+    ],
+    "exit_code": 0,
+    "log": "verification/smoke_ddpm_sample.txt"
+  }
+]

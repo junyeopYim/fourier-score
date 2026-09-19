@@ -1,15 +1,16 @@
-import torch
+import copy
 import pytest
-from parse_config import ConfigParser
-
+import torch
+from parse_config import load_config
 
 @pytest.fixture(autouse=True)
-def cpu_threads():
+def threads():
     torch.set_num_threads(2)
 
+@pytest.fixture
+def cfg(tmp_path):
+    return load_config('configs/smoke.json',[f'trainer.save_dir={tmp_path}/runs',f'fourier.cache_dir={tmp_path}/stats','backend.cpu_threads=2','device=cpu'])
 
 @pytest.fixture
-def smoke_config(tmp_path):
-    return ConfigParser.from_file('configs/smoke.json', [
-        f'trainer.save_dir={tmp_path / "runs"}',
-        f'data_loader.cache_dir={tmp_path / "cache"}']).config
+def stats():
+    return {'mean':torch.zeros(1,8,8),'power':torch.ones(1,8,8)}

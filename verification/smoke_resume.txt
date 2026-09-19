@@ -1,0 +1,3 @@
+$ /opt/pyvenv/bin/python train.py -r /mnt/data/final_validation/runs/synthetic_ve_fourier_gaussian_s0/last.pt --set trainer.iterations=4
+{"step": 4, "split": "train", "loss": 1.017438530921936, "reduction": "mean", "grad_norm_before_clip": 0.9137307405471802, "lr": 0.0002, "session_wall_seconds": 0.05132306600012271}
+{"dsm_pixel_mean": 0.6951621845364571, "standard_error": 0.17584979534687262, "n_images": 4, "eval_seed": 17001, "eval_batch_size": 2, "bin_axis": "linear t = logarithmic sigma", "dsm_by_noise": [{"bin": 0, "count": 2, "mean": 0.7843583226203918}, {"bin": 1, "count": 0, "mean": null}, {"bin": 2, "count": 1, "mean": 1.0175204277038574}, {"bin": 3, "count": 1, "mean": 0.19441166520118713}], "step": 4, "split": "validation", "weights": "EMA"}

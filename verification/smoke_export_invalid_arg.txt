@@ -1,0 +1,4 @@
+$ /opt/pyvenv/bin/python export_real.py -c configs/smoke.json -o /mnt/data/final_validation/real --num-images 4
+usage: export_real.py [-h] [-c CONFIG] [--set KEY=VALUE] [--device DEVICE]
+                      -o OUTPUT [--split {train,validation}] [--limit LIMIT]
+export_real.py: error: unrecognized arguments: --num-images 4

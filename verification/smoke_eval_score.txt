@@ -1,0 +1,49 @@
+$ /opt/pyvenv/bin/python test.py -r /mnt/data/final_validation/runs/synthetic_ve_score_s0/last.pt -o /mnt/data/final_validation/score_dsm.json
+{
+  "dsm_pixel_mean": 0.8483882546424866,
+  "standard_error": 0.06597747676413666,
+  "n_images": 4,
+  "eval_seed": 17001,
+  "eval_batch_size": 2,
+  "bin_axis": "linear t = logarithmic sigma",
+  "dsm_by_noise": [
+    {
+      "bin": 0,
+      "count": 2,
+      "mean": 0.7758306264877319
+    },
+    {
+      "bin": 1,
+      "count": 0,
+      "mean": null
+    },
+    {
+      "bin": 2,
+      "count": 1,
+      "mean": 1.0450432300567627
+    },
+    {
+      "bin": 3,
+      "count": 1,
+      "mean": 0.7968485355377197
+    }
+  ],
+  "step": 3,
+  "split": "validation",
+  "weights": "EMA",
+  "environment": {
+    "python": "3.13.5",
+    "platform": "Linux-6.18.44-x86_64-with-glibc2.41",
+    "torch": "2.10.0+cpu",
+    "device": "cpu",
+    "cuda_runtime": null,
+    "mps_available": false,
+    "tf32": false,
+    "precision": "fp32",
+    "amp": false,
+    "spectral_transform_config": "auto",
+    "mps_fallback_environment": "unset",
+    "source_sha256": "e3c05e2d4517f4b624d19a587b3ab9dac94227d25d3caedb60046d9a242a4995",
+    "device_name": "CPU"
+  }
+}
