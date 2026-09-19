@@ -16,3 +16,6 @@ saved/*
 .env
 .env.*
 !.env.example
+
+.evaluation/*
+!.evaluation/.gitkeep
