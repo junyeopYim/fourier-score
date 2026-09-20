@@ -1,0 +1,13 @@
+{
+  "extends": "base.json",
+  "name": "cifar10_950k_full_{parameterization}_s{seed}",
+  "parameterization": "fourier_gaussian",
+  "data_loader": {
+    "args": {
+      "validation_size": 0
+    }
+  },
+  "trainer": {
+    "iterations": 950000
+  }
+}

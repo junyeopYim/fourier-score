@@ -1,6 +1,6 @@
 import pytest
 import torch
-from doctor import run
+from scripts.doctor import run
 
 @pytest.mark.mps
 @pytest.mark.skipif(not torch.backends.mps.is_available(),reason='No MPS hardware in this test environment')

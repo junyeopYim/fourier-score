@@ -1,6 +1,6 @@
 {
-  "extends": "cifar10.json",
-  "name": "cifar10_ablation",
+  "extends": "base.json",
+  "name": "cifar10_50k_holdout5000_{parameterization}_s{seed}",
   "trainer": {
     "iterations": 50000,
     "snapshot_every": 10000

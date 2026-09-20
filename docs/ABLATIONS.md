@@ -71,7 +71,7 @@ backbone, microbatch, optimizer, EMA, noise sampling과 평가 설정을 유지�
 비교 전에 공통 통계를 준비해 모든 실험을 같은 cache 조건에서 실행하고,
 통계 추정 비용은 별도로 보고하십시오. 진단/저장 주기와 장치도 맞춰야 합니다.
 
-FID는 기존 `sample.py` → `metrics.py` 경로로 checkpoint별 평가합니다.
+FID는 기존 `sample.py` → `evaluate.py fid` 경로로 checkpoint별 평가합니다.
 공통 real split, 샘플 수, sampler, sampling batch, 실제 NFE와 평가 구현을
 맞추고, pilot의 적은 샘플 수와 최종 평가의 샘플 수를 구분해 기록하십시오.
 낮은 초기 DSM만으로 FID 향상을 주장하지 않습니다. 같은 품질에 도달하는
@@ -87,4 +87,4 @@ FID는 기존 `sample.py` → `metrics.py` 경로로 checkpoint별 평가합니�
 코드 hash 검사도 유지하므로 패치 전 checkpoint의 학습은 원래 코드 checkout에서
 재개해야 합니다. 이전 checkpoint의 EMA 추론은 기존처럼 source 차이 경고와
 함께 가능하며, 새로운 주파수 진단도 선택할 수 있습니다. 비교 실험의 이름은
-`cifar10_ablation_{loss}_s{seed}`이므로 기존 기본 run과 구분됩니다.
+`cifar10_50k_holdout5000_{parameterization}_s{seed}`이므로 기존 기본 run과 구분됩니다.

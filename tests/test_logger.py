@@ -2,8 +2,8 @@ import io
 import json
 import os
 
-from logger.logger import ExperimentLogger
-from logger.progress import ConsoleProgress
+from fourier_score.logging import ExperimentLogger
+from fourier_score.logging import ConsoleProgress
 
 
 class Terminal(io.StringIO):
@@ -14,8 +14,8 @@ def test_terminal_refresh_is_throttled_and_cleared_before_messages(monkeypatch):
     stream=Terminal()
     clock={'now':0.}
     monkeypatch.setenv('TERM','xterm')
-    monkeypatch.setattr('logger.progress.time.perf_counter',lambda:clock['now'])
-    monkeypatch.setattr('logger.progress.shutil.get_terminal_size',lambda fallback:os.terminal_size((40,24)))
+    monkeypatch.setattr('fourier_score.logging.time.perf_counter',lambda:clock['now'])
+    monkeypatch.setattr('fourier_score.logging.shutil.get_terminal_size',lambda fallback:os.terminal_size((40,24)))
     console=ConsoleProgress(interval=5.,stream=stream)
     console.progress('x'*100)
     assert stream.getvalue()=='\r'+'x'*39

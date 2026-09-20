@@ -2,9 +2,9 @@ import copy
 import math
 import pytest
 import torch
-from model.metric import evaluate_dsm,frequency_band_sums,radial_frequency_bands
-from trainer.trainer import Trainer
-from utils.util import capture_rng
+from fourier_score.evaluation import evaluate_dsm,frequency_band_sums,radial_frequency_bands
+from fourier_score.training import Trainer
+from fourier_score.utils import capture_rng
 
 
 def test_radial_energy_locates_dc_and_known_sinusoid():

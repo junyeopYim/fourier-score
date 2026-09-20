@@ -3,17 +3,17 @@ import hashlib
 from pathlib import Path
 import pytest
 import torch
-from model.model import build_model,architecture_report,weight_hash,backbone_config
-from model.backbones.ncsnpp import NCSNpp
-from model.loss import training_loss
-from model.objectives import OBJECTIVES
+from fourier_score.model import build_model,architecture_report,weight_hash,backbone_config
+from fourier_score.backbones.ncsnpp import NCSNpp
+from fourier_score.loss import training_loss
+from fourier_score.method import OBJECTIVES
 
 @pytest.mark.parametrize('filename,sha',[
  ('ncsnpp.py','ea16eb35b5e6f2fa92db10be2552b3acdfe8fa7b'),
  ('layers.py','eb772b2e6606ed92295dd031cb43be8a82a992c7'),
  ('layerspp.py','2eb4e5de372e799f0608272408718664c35719c0')])
 def test_source_files_exact(filename,sha):
-    b=(Path('model/backbones')/filename).read_bytes()
+    b=(Path('fourier_score/backbones')/filename).read_bytes()
     assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha
 
 

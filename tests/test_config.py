@@ -1,8 +1,8 @@
 import copy
 from pathlib import Path
 import pytest
-from parse_config import load_config,validate,apply_overrides
-from model.objectives import OBJECTIVES
+from fourier_score.config import load_config,validate,apply_overrides
+from fourier_score.method import OBJECTIVES
 
 @pytest.mark.parametrize('path',sorted(Path('configs').glob('*.json')))
 def test_all_presets(path):

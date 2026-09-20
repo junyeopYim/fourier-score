@@ -1,0 +1,4 @@
+["/home/junyeop/projects/fourier-score/.venv/bin/python3", "/home/junyeop/projects/fourier-score/train.py", "-c", "configs/cifar10_1m3.json", "--set", "loss.type=score", "--set", "seed=42"]
+["/home/junyeop/projects/fourier-score/.venv/bin/python3", "/home/junyeop/projects/fourier-score/train.py", "-c", "configs/cifar10_1m3.json", "--set", "loss.type=scalar_gaussian", "--set", "seed=42"]
+["/home/junyeop/projects/fourier-score/.venv/bin/python3", "/home/junyeop/projects/fourier-score/train.py", "-c", "configs/cifar10_1m3.json", "--set", "loss.type=fourier_gaussian_unscaled", "--set", "seed=42"]
+["/home/junyeop/projects/fourier-score/.venv/bin/python3", "/home/junyeop/projects/fourier-score/train.py", "-c", "configs/cifar10_1m3.json", "--set", "loss.type=fourier_gaussian", "--set", "seed=42"]

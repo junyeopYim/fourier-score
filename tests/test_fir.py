@@ -2,7 +2,7 @@
 import pytest
 import torch
 from torch.nn import functional as F
-from model.backbones.up_or_down_sampling import upfirdn2d_native
+from fourier_score.backbones.up_or_down_sampling import upfirdn2d_native
 
 
 def original(input,kernel,ux,uy,dx,dy,px0,px1,py0,py1):

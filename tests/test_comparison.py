@@ -1,7 +1,7 @@
 import copy
 import pytest
-from model.objectives import COMPARISON_OBJECTIVES
-from parse_config import experiment_name
+from fourier_score.method import COMPARISON_OBJECTIVES
+from fourier_score.config import experiment_name
 from scripts.run_comparison import comparison_runs,check_outputs
 
 

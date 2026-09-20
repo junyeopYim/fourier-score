@@ -6,9 +6,9 @@
 명령을 실행하십시오.
 
 ```bash
-uv run --locked python train.py -c configs/cifar10.json --dry-run
-uv run --locked python train.py -c configs/cifar10.json --dry-run \
-  --set loss.type=score --set trainer.microbatch_size=32
+uv run --locked python train.py -c configs/cifar10_950k.json --dry-run
+uv run --locked python train.py -c configs/cifar10_950k.json --dry-run \
+  --parameterization score --set trainer.microbatch_size=32
 ```
 
 미등록 key, 오탈자, 잘못된 type, 음수 learning rate, 비양수 sigma,
@@ -21,7 +21,7 @@ uv run --locked python train.py -c configs/cifar10.json --dry-run \
 | 데이터·image shape·전체 배치·worker | `data_loader.args.*` |
 | NCSN++ 학습 레이어 구조 | `arch.args.*` |
 | sigma/beta schedule·forward process | `process.*` |
-| 출력 재매개화·공통 DSM reduction | `loss.*` |
+| 출력 재매개화 / 공통 DSM reduction | `parameterization` / `loss.reduction` |
 | Gaussian 통계 floor/cache | `fourier.*` |
 | Adam | `optimizer.args.*` |
 | update 수·warmup·clip·EMA·microbatch | `trainer.*` |
@@ -45,7 +45,7 @@ forward를 바꾸려면 process와 sampler가 일치하는 `_ddpm.json`을 선�
 
 `evaluation.frequency_bins`는 기본값 0으로 진단을 끕니다. 양수로 지정하면
 노이즈×방사형 주파수 대역 DSM과 대역 경계를 기록합니다. 추론 시에도
-`test.py --set evaluation.frequency_bins=6`으로 켤 수 있습니다.
+`evaluate.py dsm --set evaluation.frequency_bins=6`으로 켤 수 있습니다.
 `configs/cifar10_ablation.json`은 50,000 update와 6개 주파수 대역을 사용하는
 탐색용 프리셋이며, 수렴 또는 논문 품질을 보장하는 설정이 아닙니다.
 
@@ -98,15 +98,33 @@ uv run --locked --extra tensorboard tensorboard --logdir saved
 기존 source 검사에 의해 거부**됩니다. 진행 중인 실험을 재개하려면 해당 코드
 버전을 유지하고, 새 표시 기능은 새 run에서 사용하십시오.
 
+
+## 출력 재매개화 선택
+
+`--parameterization fourier_gaussian` 또는 `--set parameterization=fourier_gaussian`으로
+출력 규약을 선택할 수 있습니다. JSON 최상위 `parameterization`도 지원합니다.
+최종 저장 config는 v1 checkpoint 호환성을 위해 `loss.type`으로 정규화합니다.
+JSON에 두 이름을 동시에 쓰고 값이 다르면 거부합니다. `train.py --download`는
+MNIST/CIFAR-10 다운로드와 통계 준비를 학습 준비 과정에서 수행합니다.
+새 CIFAR-10 950K/1.3M 설정은 공통 base를 직접 상속합니다.
+
 ## Output naming
 
-`name=auto`이면 `{dataset}_{process}_{loss}_s{seed}`를 사용합니다. 고정 이름을
-설정했다면 loss를 바꿀 때 이름도 직접 구분해야 합니다. 동일 directory는
-덮어쓰지 않고 실패합니다. image_folder를 여러 데이터셋에 쓸 때는 이름을
-명시적으로 구분하십시오. Compare script는 custom name 뒤에 `{loss}_s{seed}`를 붙입니다.
-기본 네 비교군은 `--objectives`로 선택할 수 있으며 `--seeds 42 43 44`는
-각 seed에 대해 동일 설정의 모든 비교군을 실행합니다. `--dry-run`은 명령만
-출력하며 데이터 로딩·통계 추정·학습·디렉터리 생성을 하지 않습니다.
+새 CIFAR-10 프리셋은 `name`에 `{parameterization}`과 `{seed}`를 함께 사용합니다.
+예: `cifar10_950k_full_{parameterization}_s{seed}`는
+`cifar10_950k_full_fourier_gaussian_s42`로 저장됩니다. 학습 길이를 연장해 resume해도
+이미 선택한 실험 이름은 유지됩니다. 예산이나 split을 비교하는 새 실험에는 해당
+프리셋을 사용하십시오. template에는 이 두 placeholder만 허용합니다.
+
+기존 `name=auto` 규칙은 `{dataset}_{process}_{loss}_s{seed}`로 유지합니다.
+직접 정한 고정 이름은 별도 비교군마다 구분해야 합니다. 비교 실행기는 고정 이름에
+`{loss}_s{seed}`를 붙이며, template에는 중복 suffix를 붙이지 않습니다.
+기존 결과 디렉터리는 덮어쓰지 않고 실패합니다.
+
+`--parameterizations` (`--objectives`도 지원)로 비교군을 선택하고,
+`--seeds 42 43 44`로 paired seed를 지정합니다. `--dry-run`은 명령만 출력하며
+데이터 로딩·통계 추정·학습·디렉터리 생성을 하지 않습니다. 실제 비교 실행은 모든
+저장 경로를 먼저 확인하고 공통 통계를 한 번 준비한 뒤 순차 학습합니다.
 
 ## Resume
 

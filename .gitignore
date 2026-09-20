@@ -19,3 +19,6 @@ saved/*
 
 evaluation/*
 !evaluation/.gitkeep
+
+# Downloaded official checkpoints and their configs/manifests.
+pretrained/

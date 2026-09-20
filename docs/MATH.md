@@ -1,5 +1,9 @@
 # Objective definitions and comparison boundaries
 
+Implementation: [method.py](../fourier_score/method.py),
+[statistics.py](../fourier_score/statistics.py), and
+[loss.py](../fourier_score/loss.py).
+
 ## Backbone convention
 
 The vendored NCSN++ code is unchanged. Its final deterministic `scale_by_sigma`

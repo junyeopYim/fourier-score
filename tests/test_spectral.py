@@ -1,6 +1,8 @@
 import pytest
 import torch
-from model.spectral import SpectralFilter,FourierGaussian,estimate_stats,conjugate_symmetrize
+from fourier_score.spectral import SpectralFilter,conjugate_symmetrize
+from fourier_score.method import FourierGaussian
+from fourier_score.statistics import estimate_stats
 
 @pytest.mark.parametrize('shape',[(8,8),(7,9),(16,12)])
 @pytest.mark.parametrize('backend',['matmul','cpu'])

@@ -2,14 +2,14 @@ import copy
 import json
 import pytest
 import torch
-from trainer.trainer import Trainer
-from data_loader.data_loaders import build_data,prepare_stats
-from base.base_data_loader import BaseDataLoader
-from model.metric import evaluate_dsm
-from utils.util import load_checkpoint,capture_rng
-from utils.inference import load_inference
-from parse_config import experiment_name
-from model.objectives import GAUSSIAN_OBJECTIVES
+from fourier_score.training import Trainer
+from fourier_score.data import build_data,prepare_stats
+from fourier_score.data import BatchStream
+from fourier_score.evaluation import evaluate_dsm
+from fourier_score.utils import load_checkpoint,capture_rng
+from fourier_score.checkpoints import load_inference
+from fourier_score.config import experiment_name
+from fourier_score.method import GAUSSIAN_OBJECTIVES
 
 
 @pytest.mark.parametrize('objective',GAUSSIAN_OBJECTIVES)
@@ -87,7 +87,7 @@ def test_report_averages_weight_partial_batches_and_exclude_evaluation_time(cfg,
     cfg['data_loader']['args'].update(synthetic_size=9,validation_size=4)  # Batches of 2, 2, 1.
     trainer=Trainer(cfg)
     clock={'now':0.}
-    monkeypatch.setattr('trainer.trainer.time.perf_counter',lambda:clock['now'])
+    monkeypatch.setattr('fourier_score.training.time.perf_counter',lambda:clock['now'])
     def train_step(clean):
         clock['now']+=2.
         trainer.step+=1; trainer.stream.advance()
@@ -145,10 +145,10 @@ def test_augmentation_mixture_stats(cfg):
 @pytest.mark.parametrize('workers',[0,2])
 def test_prefetch_cursor_resume(cfg,workers):
     b=build_data(cfg)
-    a=BaseDataLoader(b.train,2,100,workers); saved=None
+    a=BatchStream(b.train,2,100,workers); saved=None
     for _ in range(3): a.next_batch(); a.advance()
     saved=a.state_dict(); expected=a.next_batch()
-    second=BaseDataLoader(b.train,2,100,workers); second.load_state_dict(saved)
+    second=BatchStream(b.train,2,100,workers); second.load_state_dict(saved)
     torch.testing.assert_close(second.next_batch(),expected,rtol=0,atol=0)
 
 
@@ -159,7 +159,7 @@ def test_inference_rejects_loss_change(cfg):
 
 def test_cumulative_time_excludes_resume_downtime(cfg,monkeypatch):
     clock={'now':10.}
-    monkeypatch.setattr('base.base_trainer.time.perf_counter',lambda:clock['now'])
+    monkeypatch.setattr('fourier_score.training.time.perf_counter',lambda:clock['now'])
     first=Trainer(cfg)
     clock['now']=17.
     first.save(snapshot=True); first.log.close()

@@ -16,10 +16,10 @@ CPU/CUDA의 auto는 `torch.fft.fft2/ifft2`입니다. 실수 DFT는 FFT보다 점
 
 ```bash
 # 설치된 Mac에서 실제 전 경로 검사
-uv run --locked python doctor.py --device mps
+uv run --locked python scripts/doctor.py --device mps
 
 # Fourier 연산만 CPU에서 수행하고 differentiable copy로 연결
-uv run --locked python doctor.py --device mps --spectral cpu
+uv run --locked python scripts/doctor.py --device mps --spectral cpu
 uv run --locked python train.py -c configs/mnist.json --device mps \
   --set backend.spectral_transform=cpu
 ```
@@ -40,5 +40,5 @@ MPS availability와 OS 요구사항은 현재 설치한 torch의 공식 문서�
 
 **제작 환경에는 MPS 하드웨어가 없습니다.** real DFT의 FFT 일치, gradient,
 신경망·학습·샘플링은 CPU에서 검사했지만 실제 Mac에서 성공했다는 뜻은 아닙니다.
-`tests/test_devices.py`의 MPS 테스트와 `doctor.py --device mps`로 현장에서 검증하십시오.
+`tests/test_devices.py`의 MPS 테스트와 `scripts/doctor.py --device mps`로 현장에서 검증하십시오.
 최근 torch wheel이 제공되지 않는 Intel Mac에 대해 native wheel 설치를 보장하지 않습니다.

@@ -27,9 +27,9 @@
     "reduction": "mean"
   },
   "trainer": {
-    "iterations": 10000,
+    "iterations": 100000,
     "warmup": 500,
-    "save_every": 2000,
+    "save_every": 10000,
     "snapshot_every": 10000,
     "eval_every": 2000
   },

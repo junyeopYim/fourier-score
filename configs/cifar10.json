@@ -1,3 +1,4 @@
 {
-  "extends": "base.json"
+  "extends": "base.json",
+  "name": "cifar10_1300001_holdout5000_{parameterization}_s{seed}"
 }

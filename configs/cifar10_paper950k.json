@@ -1,6 +1,16 @@
 {
-  "extends": "cifar10_full.json",
+  "extends": "base.json",
+  "name": "cifar10_legacy950k_full_{parameterization}_s{seed}",
+  "data_loader": {
+    "args": {
+      "validation_size": 0
+    }
+  },
+  "evaluation": {
+    "max_images": 128
+  },
   "trainer": {
-    "iterations": 950000
+    "iterations": 950000,
+    "eval_every": 100
   }
 }

@@ -1,8 +1,12 @@
 {
-  "extends": "mnist.json",
+  "extends": "base.json",
+  "seed": 0,
   "data_loader": {
     "args": {
       "dataset": "synthetic",
+      "channels": 1,
+      "centered": true,
+      "random_flip": false,
       "image_size": 8,
       "batch_size": 2,
       "validation_size": 4,
@@ -29,6 +33,9 @@
   },
   "fourier": {
     "stats_batch_size": 4
+  },
+  "loss": {
+    "reduction": "mean"
   },
   "trainer": {
     "iterations": 3,

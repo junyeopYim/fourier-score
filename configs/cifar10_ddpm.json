@@ -1,5 +1,6 @@
 {
-  "extends": "cifar10.json",
+  "extends": "base.json",
+  "name": "cifar10_ddpm_1300001_holdout5000_{parameterization}_s{seed}",
   "process": {
     "type": "ddpm"
   },

@@ -12,7 +12,7 @@ this was not a clean-install or MPS validation.
 ```bash
 uv python install 3.11
 uv sync --locked --python 3.11
-uv run --locked python doctor.py
+uv run --locked python scripts/doctor.py
 uv run --locked python -m pytest -q
 ```
 

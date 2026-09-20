@@ -1,7 +1,7 @@
 import copy
 import pytest
 import torch
-from parse_config import load_config
+from fourier_score.config import load_config
 
 @pytest.fixture(autouse=True)
 def threads():

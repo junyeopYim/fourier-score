@@ -1,11 +1,11 @@
 import copy
 import pytest
 import torch
-from model.model import build_model
-from model.loss import training_loss
-from sde.process import NoiseProcess
-from sde.sampling import sample_batch
-from model.objectives import OBJECTIVES
+from fourier_score.model import build_model
+from fourier_score.loss import training_loss
+from fourier_score.diffusion import NoiseProcess
+from fourier_score.diffusion import sample_batch
+from fourier_score.method import OBJECTIVES
 
 
 def test_score_epsilon_algebraic_equivalence(cfg,stats):

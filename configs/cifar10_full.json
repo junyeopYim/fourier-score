@@ -1,5 +1,6 @@
 {
-  "extends": "cifar10.json",
+  "extends": "base.json",
+  "name": "cifar10_1300001_full_{parameterization}_s{seed}",
   "data_loader": {
     "args": {
       "validation_size": 0
