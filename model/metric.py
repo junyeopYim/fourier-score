@@ -30,7 +30,7 @@ def frequency_band_sums(residual,band_ids,bins):
 
 
 @torch.no_grad()
-def evaluate_dsm(model,cfg,dataset,device):
+def evaluate_dsm(model,cfg,dataset,device,progress=None):
     opt=cfg['evaluation']; n=min(len(dataset),opt['max_images'])
     if n<1: raise ValueError('Empty evaluation set')
     bins=opt['noise_bins']; sums=torch.zeros(bins,dtype=torch.float64); counts=torch.zeros(bins,dtype=torch.long)
@@ -57,6 +57,7 @@ def evaluate_dsm(model,cfg,dataset,device):
                         band_ids,mode_counts,band_edges=radial_frequency_bands(*residual.shape[-2:],frequency_bins)
                     spectral_sums.index_add_(0,which,frequency_band_sums(residual,band_ids,frequency_bins))
                 total+=values.sum().item(); sq+=values.square().sum().item(); seen+=len(values)
+                if progress is not None: progress(seen,n)
     finally: model.train(old)
     mean=total/seen; var=max(0.,(sq-seen*mean*mean)/max(1,seen-1))
     result={'dsm_pixel_mean':mean,'standard_error':(var/seen)**0.5,'n_images':seen,

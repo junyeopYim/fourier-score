@@ -92,6 +92,7 @@ def validate(cfg: dict) -> dict:
         if x not in options: raise ValueError(f'{path} must be one of {options}; got {x!r}')
     choice('loss.type', OBJECTIVES)
     choice('loss.reduction', ('mean','half_sum'))
+    choice('trainer.console', ('human','json','quiet'))
     choice('arch.type', ('NCSNpp',))
     choice('data_loader.type', ('ImageDataLoader',))
     choice('data_loader.args.dataset', ('mnist','cifar10','image_folder','synthetic'))
@@ -128,6 +129,7 @@ def validate(cfg: dict) -> dict:
     if s['clip_denoised'] and p['type']!='ddpm': raise ValueError('clip_denoised is a DDPM-only option')
     for key in ('iterations','save_every','snapshot_every','log_every','eval_every'):
         if t[key]<1: raise ValueError(f'trainer.{key} must be positive')
+    if t['progress_every_seconds']<=0: raise ValueError('trainer.progress_every_seconds must be positive')
     if t['warmup']<0 or not 0<t['ema_decay']<1 or t['grad_clip']<=0: raise ValueError('Invalid optimizer lifecycle')
     if t['microbatch_size'] is not None and (type(t['microbatch_size'])!=int or not 1<=t['microbatch_size']<=d['batch_size']): raise ValueError('Invalid microbatch_size')
     o=cfg['optimizer']['args']

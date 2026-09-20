@@ -16,6 +16,8 @@ def test_all_presets(path):
  'process.type=ddpm','fourier.power_floor=0','name=../escape',
  'data_loader.args.channels=2','data_loader.args.batch_size=true',
  'evaluation.frequency_bins=-1','evaluation.frequency_bins=true',
+ 'trainer.console=verbose','trainer.progress_every_seconds=0',
+ 'trainer.progress_every_seconds=-1','trainer.progress_every_seconds=true',
 ])
 def test_reject_bad_settings(change):
     with pytest.raises((ValueError,TypeError)): load_config('configs/smoke.json',[change])

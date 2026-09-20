@@ -181,6 +181,14 @@ VE는 `sampling.method=pc` 또는 `heun`을 지원합니다. DDPM ancestral samp
 
 새 학습 기록·체크포인트·샘플 `settings.json`에는 재개 전후를 합친 `training_wall_seconds`가 들어갑니다. 설정/데이터/통계 준비와 검증, 이전 저장 시간을 포함하며 세션 사이 중단 시간과 해당 체크포인트 자체의 저장 시간은 제외합니다. 과거 체크포인트의 시간을 추정해서 채우지 않습니다. `evaluation.frequency_bins>0`이면 노이즈×주파수 대역 DSM을 추가 기록합니다. 이는 CPU FFT로 계산하는 평가용 진단이며, 동일 비교에서는 진단 설정도 맞추십시오.
 
+학습 콘솔은 기본적으로 진행률, 구간 평균 loss와 pixel mean 환산값, 속도, 학습 ETA,
+평가·저장 상태를 요약합니다. CUDA에서는 할당/예약 메모리도 표시합니다.
+첫 update와 이후 약 5초마다 진행 상태를 보여주며, 노이즈·주파수별 상세 값은
+`metrics.jsonl`에 그대로 남습니다. `--set trainer.progress_every_seconds=1`로
+갱신 주기를, `--set trainer.console=json` 또는 `quiet`로 출력 방식을 바꿀 수 있습니다.
+ETA 범위, TensorBoard, source hash에 따른 기존 checkpoint 재개 제한은
+[학습 상태 표시](docs/CONFIG.md#학습-상태-표시)를 참고하십시오.
+
 ## 7. 선택 기능: FID/IS
 
 ```bash
@@ -210,7 +218,7 @@ base/           BaseModel, BaseTrainer, consumed-cursor DataLoader
 model/          동일 NCSN++, score adapters, Fourier 연산, DSM, 평가
 sde/            forward processes, 공통 PC/Heun/DDPM samplers
 trainer/        공통 학습 loop
-logger/         JSONL, 선택 TensorBoard
+logger/         터미널 진행 상태, JSONL, 선택 TensorBoard
 data_loader/    MNIST, CIFAR10, 일반 image_folder, synthetic
 configs/        하나의 strict schema를 상속하는 JSON
 utils/          RNG, EMA, checkpoint, inference, image 저장

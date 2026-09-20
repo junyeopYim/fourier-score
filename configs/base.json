@@ -92,6 +92,8 @@
     "save_every": 10000,
     "snapshot_every": 50000,
     "log_every": 50,
+    "console": "human",
+    "progress_every_seconds": 5.0,
     "eval_every": 2000,
     "warmup": 5000,
     "grad_clip": 1.0,

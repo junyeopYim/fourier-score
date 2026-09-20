@@ -16,6 +16,7 @@ def resume_signature(cfg):
     c=copy.deepcopy(cfg)
     for k in ('name','device','evaluation','sampling'): c.pop(k)
     for k in ('iterations','save_dir','save_every','snapshot_every','log_every','eval_every','tensorboard'): c['trainer'].pop(k)
+    for k in ('console','progress_every_seconds'): c['trainer'].pop(k,None)
     for k in ('root','download','num_workers'): c['data_loader']['args'].pop(k)
     c['fourier'].pop('cache_dir'); c['fourier'].pop('stats_batch_size')
     return c

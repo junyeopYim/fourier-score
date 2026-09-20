@@ -49,6 +49,55 @@ forward를 바꾸려면 process와 sampler가 일치하는 `_ddpm.json`을 선�
 `configs/cifar10_ablation.json`은 50,000 update와 6개 주파수 대역을 사용하는
 탐색용 프리셋이며, 수렴 또는 논문 품질을 보장하는 설정이 아닙니다.
 
+## 학습 상태 표시
+
+`trainer.console=human`이 기본값입니다. stderr에 준비 단계, 평가 이미지 수,
+학습 진행률·loss·속도·ETA, checkpoint 저장 시작/완료와 경로를 표시합니다.
+터미널에서는 진행 행을 갱신하고, 리다이렉션/`tee`에서는 제어 문자 없는 줄을
+출력합니다. 첫 update를 즉시 표시하며, 이후 `trainer.progress_every_seconds`
+(기본 5초)마다 update/평가 batch가 끝나는 시점에 갱신합니다. 하나의 update가
+오래 걸리면 그 update가 완료될 때까지 기다립니다.
+
+`trainer.log_every`는 기존처럼 상세 JSONL/TensorBoard 기록 주기이며,
+콘솔 갱신 주기와 독립적입니다. 노이즈·주파수별 배열을 포함한 평가 결과는
+항상 run directory의 `metrics.jsonl`에 기록하고 콘솔에는 DSM 요약만 표시합니다.
+
+- `loss`: 마지막 update의 loss. `avg` / `loss_avg`: 직전 JSONL train 기록 이후
+  실제 이미지 수로 가중 평균한 loss (`window_steps`, `window_images`도 기록).
+- `pixel(avg)` / `loss_pixel_mean_avg`: 같은 평균을 pixel mean으로 환산한 값.
+  `half_sum`이면 `2 / (channels × height × width)`를 곱합니다. 평가와 단위는
+  같지만 평가에는 EMA 가중치와 별도 이미지·noise를 사용합니다.
+- `it/s`, `images_per_second`: 해당 기록 구간에서 데이터 대기와 학습에 걸린
+  시간 기준입니다. `ETA(train)`은 이번 세션의 평균 update 시간으로 추정한
+  **남은 학습 시간**이며 향후 평가·저장 시간은 제외합니다.
+- CUDA에서는 PyTorch가 현재 할당/예약한 GiB도 표시합니다. GPU 전체 사용량은
+  아닙니다. CPU/MPS에서는 이 필드를 생략합니다.
+
+```bash
+# 콘솔 갱신을 1초 간격으로; 상세 파일 기록 주기는 유지
+uv run --locked python train.py -c configs/cifar10_ablation.json \
+  --set trainer.progress_every_seconds=1
+
+# 이전처럼 각 상세 JSON record를 stdout에도 출력
+uv run --locked python train.py -c configs/cifar10_ablation.json \
+  --set trainer.console=json
+```
+
+`trainer.console=quiet`는 콘솔만 끕니다. JSONL과 선택 TensorBoard 기록은
+유지합니다. 사람이 읽는 로그를 파일에도 남기려면 `2>&1 | tee train.log`를
+사용하십시오. TensorBoard는 선택 dependency와 기록 옵션을 함께 켭니다.
+
+```bash
+uv run --locked --extra tensorboard python train.py -c configs/cifar10_ablation.json \
+  --set trainer.tensorboard=true
+uv run --locked --extra tensorboard tensorboard --logdir saved
+```
+
+콘솔 설정은 같은 코드 버전의 checkpoint resume에서 변경할 수 있습니다.
+단, 이 패치도 학습 소스 hash를 바꾸므로 **패치 이전 checkpoint의 학습 resume는
+기존 source 검사에 의해 거부**됩니다. 진행 중인 실험을 재개하려면 해당 코드
+버전을 유지하고, 새 표시 기능은 새 run에서 사용하십시오.
+
 ## Output naming
 
 `name=auto`이면 `{dataset}_{process}_{loss}_s{seed}`를 사용합니다. 고정 이름을
