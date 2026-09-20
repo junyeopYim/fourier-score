@@ -37,6 +37,35 @@ def test_ema_snapshot_matches_last(cfg,objective):
     for n,p in a.state_dict().items(): torch.testing.assert_close(p,b.state_dict()[n],atol=0,rtol=0)
 
 
+@pytest.mark.parametrize('source_change', ['edited', 'missing'])
+def test_checkpoint_keeps_startup_source_when_checkout_changes(cfg, monkeypatch, source_change):
+    trainer = Trainer(cfg)
+    startup_hash = trainer.env['source_sha256']
+    trainer.train_step(trainer.stream.next_batch())
+
+    def changed_source_hash():
+        if source_change == 'missing':
+            raise FileNotFoundError('Source file moved while training was running')
+        return '0' * 64
+
+    monkeypatch.setattr('fourier_score.training.source_hash', changed_source_hash)
+    try:
+        trainer.save(snapshot=True)
+    finally:
+        trainer.log.close()
+    checkpoint = load_checkpoint(trainer.out / 'last.pt')
+    snapshot = load_checkpoint(trainer.out / f'ema_{trainer.step:09d}.pt')
+    for state in (checkpoint, snapshot):
+        assert state['step'] == 1
+        assert state['source_sha256'] == startup_hash
+        assert state['source_sha256'] == state['environment']['source_sha256']
+
+    # Freezing save-time provenance must not bypass the resume source guard.
+    if source_change == 'edited':
+        with pytest.raises(ValueError, match='Source differs from checkpoint'):
+            Trainer(cfg, checkpoint)
+
+
 def test_eval_isolated_and_repeatable(cfg):
     t=Trainer(cfg); before=capture_rng(t.device)
     a=evaluate_dsm(t.model,cfg,t.bundle.validation,t.device); after=capture_rng(t.device)

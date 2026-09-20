@@ -328,6 +328,10 @@ class Trainer:
 
     def _save_checkpoint(self, snapshot=False):
         elapsed = self.training_wall_seconds()
+        # The process keeps using its loaded code even if the checkout changes.
+        # Reuse the startup fingerprint: rereading files here can fail after a
+        # refactor or falsely attribute old in-memory code to a new revision.
+        run_source_sha256 = self.env["source_sha256"]
         state = {
             "format": FORMAT,
             "kind": "training",
@@ -341,7 +345,7 @@ class Trainer:
             "generator": self.generator.get_state(),
             "rng": capture_rng(self.device),
             "signature": resume_signature(self.cfg),
-            "source_sha256": source_hash(),
+            "source_sha256": run_source_sha256,
             "environment": self.env,
             "initial_backbone_sha256": self.initial_hash,
             "training_wall_seconds": elapsed,
@@ -357,7 +361,7 @@ class Trainer:
                         "step": self.step,
                         "model": self.model.state_dict(),
                         "stats": self.stats,
-                        "source_sha256": source_hash(),
+                        "source_sha256": run_source_sha256,
                         "environment": self.env,
                         "training_wall_seconds": elapsed,
                     },

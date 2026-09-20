@@ -59,3 +59,23 @@ revision. The latest pre-refactor revision is `865e84e`. No compatibility flag
 silently bypasses that check. New runs preserve deterministic CPU resume across
 interruptions within this revision. Changing a run's update limit does not change
 its explicit preset name or output path.
+
+## Editing while training is running
+
+Keep a training checkout at its starting revision until that process finishes.
+Use a separate Git worktree for development; do not pull, switch revisions, or
+move Python modules inside an active training checkout. Lazy imports can still
+read files after startup.
+
+Checkpoints now reuse the source fingerprint recorded in the run's startup
+environment. Saving no longer rereads source files: a moved file cannot prevent
+checkpoint saving, and edited files cannot relabel the loaded model code as a
+different source revision. Resume still checks the current source against the
+checkpoint's fingerprint. This fix only applies to newly started processes;
+already running Python processes keep their old checkpoint implementation.
+
+If an older run failed while saving after files were moved, use the last complete
+`last.pt` with a separate checkout of its matching source revision. Restore the
+same locked environment, data, and device, and change `trainer.save_dir` when
+keeping the failed attempt's logs separate. A save failure does not establish that
+the step shown in the log reached disk; inspect the checkpoint's `step` field.
