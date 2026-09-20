@@ -1,0 +1,22 @@
+{
+  "recorded_at_utc": "2026-09-20T06:25:28.906512+00:00",
+  "python": "3.11.15",
+  "python_executable": "/home/junyeop/projects/fourier-score/.venv/bin/python",
+  "platform": "Linux-6.18.33.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "torch": "2.14.0+cu130",
+  "torchvision": "0.29.0+cu130",
+  "numpy": "2.4.6",
+  "pillow": "12.3.0",
+  "pytest": "9.1.1",
+  "uv": "uv 0.11.8 (x86_64-unknown-linux-gnu)",
+  "cuda_runtime": "13.0",
+  "cudnn": 92400,
+  "cuda_available": true,
+  "cuda_devices": [
+    {
+      "index": 0,
+      "name": "NVIDIA GeForce RTX 5060 Ti"
+    }
+  ],
+  "mps_available": false
+}

@@ -1,23 +1,40 @@
 # Fourier Image Generation Template
 
-같은 **NCSN++ backbone과 DSM 목적함수**에서 score 출력과 Gaussian 출력 재매개화를 비교하는 이미지 생성 연구 프로젝트입니다. 주 비교군은 `score`, `scalar_gaussian`, `fourier_gaussian_unscaled`, `fourier_gaussian`이며, `diffusion`도 부호 규약 비교용으로 유지합니다. 실험 설계와 실행 방법은 [docs/ABLATIONS.md](docs/ABLATIONS.md)에 있습니다. `victoresque/pytorch-template`의 역할별 폴더·JSON 설정·BaseTrainer 구조를 바탕으로 구성했습니다.
+같은 **NCSN++ backbone과 DSM 목적함수**에서 score 출력과 Gaussian 출력 재매개화를 비교하는 이미지 생성 연구 프로젝트입니다. 첫 비교는 `score`, `scalar_gaussian`, `fourier_gaussian`으로 진행하고, `fourier_gaussian_unscaled`로 잔차 스케일링의 효과를 추가 분석할 수 있습니다. `diffusion`도 부호 규약 비교용으로 유지합니다. 실험 설계와 실행 방법은 [docs/ABLATIONS.md](docs/ABLATIONS.md)에 있습니다. `victoresque/pytorch-template`의 역할별 폴더·JSON 설정·BaseTrainer 구조를 바탕으로 구성했습니다.
 
-**MMSE scalar gate / linear gate / 학습형 gate는 없습니다.** 이전 대화에서 정의한 Fourier Gaussian은 고정 Gaussian score에 주파수별로 스케일된 신경망 잔차를 더합니다. 이름은 `fourier_gaussian`으로 통일했습니다.
+Fourier Gaussian은 고정 Gaussian score에 주파수별로 스케일된 신경망 잔차를 더합니다. **MMSE scalar gate / linear gate / 학습형 gate는 없습니다.**
 
 `scalar_gaussian`은 Gaussian 기준항의 계수를 줄이는 gate가 아닙니다. 같은 평균 이미지를 유지하면서, 주파수별 분산만 채널별 상수로 바꾸는 대조군입니다.
 
+## 검증 현황 — 2026-09-20
+
+코드 `ea56e75`를 기존 프로젝트 `.venv`에서 다시 검사했습니다.
+
+| 확인 항목 | 결과 |
+|---|---|
+| 전체 테스트 | **143 passed, 2 skipped, 0 failed** — MPS 하드웨어가 없어 2개 건너뜀 |
+| 실행 환경 | Python **3.11.15**, PyTorch **2.14.0+cu130**, TorchVision **0.29.0+cu130** |
+| 실제 장치 검사 | CPU 및 **NVIDIA GeForce RTX 5060 Ti / CUDA 13.0**에서 소형 NCSN++ 검사 통과 |
+| CIFAR-10 구조 검사 | 지원하는 **5개 출력 규약 모두 구조와 초기 backbone 가중치 hash 일치** |
+| lockfile | 추적 중인 `uv.lock`에 대해 `uv lock --check --offline` 통과 |
+
+[검증 문서](docs/VALIDATION.md), [실행 명령과 종료 코드](verification/2026-09-20/commands.json),
+[테스트 원문](verification/2026-09-20/pytest.txt), [환경 및 소스 해시 요약](verification/2026-09-20/summary.json)을 공개합니다.
+소형 모델 동작 검사와 전체 크기 모델의 구조 검사이며, CIFAR-10 장기 학습이나 FID/IS 성능을 입증한 결과는 아닙니다.
+기존 9월 19일 기록은 [기록 목록](verification/README.md)에서 구분해 확인할 수 있습니다.
+
 ## 1. 설치
 
-기준 날짜: **2026-09-19**. 설치 목표는 **PyTorch 2.14.0 + TorchVision 0.29.0**, Python 3.11입니다. 실제 제작 환경의 실행 검증은 **Python 3.13.5 / PyTorch 2.10.0+cpu**에서 수행했습니다. 이 차이를 숨기지 않기 위해 상세 환경과 테스트 결과를 `verification/`에 포함했습니다.
+기본 Python은 **3.11**, `pyproject.toml`의 고정 버전은 **PyTorch 2.14.0 + TorchVision 0.29.0**입니다. 저장소에 포함된 `uv.lock`을 사용합니다.
 
 ```bash
-cd fourier_image_template
+cd fourier-score
 uv python install 3.11
-uv sync --python 3.11
+uv sync --locked --python 3.11
 uv run --locked python -m pytest -q
 ```
 
-**이 ZIP에는 `uv.lock`이 없습니다.** 제작 환경에서 패키지 서버 접근이 실패하여 정상적인 dependency resolution을 수행하지 못했습니다. 첫 `uv sync`로 실제 lockfile을 만든 뒤 커밋하십시오. 처음부터 `--locked`를 붙이지 마십시오. `pyproject.toml`의 torch/torchvision은 정확한 버전으로 고정되어 있지만, 이것이 전체 dependency lock을 대신하지는 않습니다. 실패 원문은 `verification/uv_lock_attempt.txt`입니다.
+이번 검증은 기존 `.venv`와 lockfile 일관성을 확인했습니다. 새 환경에서의 설치를 다시 실행한 기록은 아닙니다. `verification/uv_lock_attempt.txt`는 9월 19일 제작 환경의 과거 실패 기록으로 보존합니다.
 
 기본 설치는 PyPI를 사용합니다. Apple Silicon에서는 macOS wheel을 사용하며, CUDA 머신은 설치된 wheel과 드라이버가 호환되어야 합니다. Windows의 기본 PyPI wheel에서 CUDA가 보이지 않는 경우에는 `docs/INSTALL.md`의 공식 index 설정 방법을 확인하십시오. 가상환경은 `.venv/`이며 TensorFlow를 설치하지 않습니다.
 
@@ -32,7 +49,7 @@ uv run --locked python doctor.py --device mps
 uv run --locked python doctor.py --device cuda
 ```
 
-`doctor.py` 실패를 무시한 채 장기 학습을 시작하지 마십시오. 여기서는 MPS/CUDA 하드웨어가 없어 해당 device 테스트를 실행하지 못했습니다.
+장기 학습 전에 사용할 장치에서 `doctor.py`를 실행하십시오. 이번 CPU/CUDA 결과는 [검증 기록](docs/VALIDATION.md)에 있으며, MPS는 실제 하드웨어에서 추가 확인해야 합니다.
 
 ## 2. 다운로드 없는 동작 검사
 
@@ -56,7 +73,7 @@ MNIST는 28×28을 32×32로 zero-padding하고 [-1,1] 좌표를 사용합니다
 uv run --locked python prepare.py -c configs/mnist.json --download
 
 uv run --locked python train.py -c configs/mnist.json --set loss.type=score
-uv run --locked python train.py -c configs/mnist.json --set loss.type=diffusion
+uv run --locked python train.py -c configs/mnist.json --set loss.type=scalar_gaussian
 uv run --locked python train.py -c configs/mnist.json --set loss.type=fourier_gaussian
 ```
 
@@ -73,28 +90,32 @@ uv run --locked python train.py -c configs/mnist.json \
   --set trainer.microbatch_size=32
 ```
 
-기본 비교 실행기는 네 주 비교군을 순차 실행합니다. `--seeds`로 동일 seed의 실험군을 묶어 반복할 수 있습니다. 실행 전 모든 저장 경로를 확인하며, 이미 존재하는 실험은 덮어쓰지 않습니다.
+기본 비교 실행기는 네 비교군을 순차 실행합니다. 아래처럼 `--objectives`를 지정하면 세 핵심 비교군부터 실행할 수 있습니다. `--seeds`로 동일 seed의 실험군을 묶어 반복하며, 실행 전 모든 저장 경로를 확인해 기존 실험을 덮어쓰지 않습니다.
 
 ```bash
-uv run --locked python scripts/run_comparison.py -c configs/mnist.json --device mps
-
-# CIFAR-10 50k update 탐색 실험의 명령만 확인; 학습은 시작하지 않음
-uv run --locked python scripts/run_comparison.py -c configs/cifar10_ablation.json \
-  --device cuda --seeds 42 43 44 --dry-run
+uv run --locked python scripts/run_comparison.py -c configs/mnist.json --device mps \
+  --objectives score scalar_gaussian fourier_gaussian
 ```
 
 ## 4. CIFAR-10: 실제 NCSN++ 구조 그대로
 
 ```bash
-uv run --locked python prepare.py -c configs/cifar10.json --download
-uv run --locked python inspect_model.py -c configs/cifar10.json
+# 모든 비교군이 같은 통계 cache 상태에서 시작하도록 먼저 준비
+uv run --locked python prepare.py -c configs/cifar10_ablation.json --download
+uv run --locked python inspect_model.py -c configs/cifar10_ablation.json
 
+# 50k update 탐색 실험의 명령만 확인; --dry-run을 빼면 학습 시작
+uv run --locked python scripts/run_comparison.py -c configs/cifar10_ablation.json \
+  --device cuda --objectives score scalar_gaussian fourier_gaussian \
+  --seeds 42 --set trainer.microbatch_size=32 --dry-run
+
+# 기존 단일 실험 프리셋으로 학습할 때
 uv run --locked python train.py -c configs/cifar10.json \
   --device cuda --set loss.type=fourier_gaussian \
   --set trainer.microbatch_size=32
 ```
 
-CIFAR-10 프리셋은 nf=128, ch_mult=[1,2,2,2], level당 residual block 4개, attention resolution 16, BigGAN++ residual block, FIR, progressive input residual 구조입니다. 실제 검사에서 세 loss 모두 다음과 같았습니다.
+CIFAR-10 프리셋은 nf=128, ch_mult=[1,2,2,2], level당 residual block 4개, attention resolution 16, BigGAN++ residual block, FIR, progressive input residual 구조입니다. 9월 20일 전체 크기 모델을 CPU에서 생성한 검사에서 다섯 출력 규약 모두 다음과 같았습니다.
 
 | 항목 | 값 |
 |---|---:|
@@ -103,7 +124,9 @@ CIFAR-10 프리셋은 nf=128, ch_mult=[1,2,2,2], level당 residual block 4개, a
 | Attention block | 6 |
 | BigGAN++ ResNet block | 44 |
 
-`verification/cifar10_architecture.json`에는 loss별 구조 hash와 **초기 가중치 hash가 같은 사실**을 기록했습니다. Gaussian 통계와 DFT 행렬은 학습 파라미터가 아닙니다.
+[CIFAR-10 ablation 구조 검사](verification/2026-09-20/cifar10_ablation_architecture.json)에 출력 규약별 구조 hash와 **초기 backbone 가중치 hash의 일치**를 기록했습니다. 이 검사는 양수인 가상 통계를 사용하며 데이터를 읽거나 전체 모델을 학습하지 않습니다. Gaussian 통계와 DFT 행렬은 학습 파라미터가 아닙니다.
+
+`configs/cifar10_ablation.json`은 50,000 update, 10,000 update마다 EMA snapshot, 주파수 대역 6개를 사용하는 탐색용 설정입니다. 동일 seed의 세 비교군에서 checkpoint별 FID와 학습 예산 곡선을 먼저 확인하고, 반복 seed 및 `fourier_gaussian_unscaled`를 추가할 수 있습니다. 통계 준비 비용은 별도로 기록하고, 비교군 간 microbatch·검증·저장·샘플링 조건을 맞추십시오. 50k 시점의 우열만으로 수렴 성능을 판단하지 않습니다.
 
 `configs/cifar10.json`은 5,000장 holdout을 사용합니다. `configs/cifar10_full.json`은 50,000장 전체 train과 test 진단을 사용하고, `configs/cifar10_paper950k.json`은 이전 fork의 950,000 update 설정입니다. 이름에 paper가 들어가도 논문 FID를 재현했다는 뜻은 아닙니다. test split을 하이퍼파라미터 튜닝에 사용하지 마십시오.
 
@@ -132,7 +155,7 @@ uv run --locked python train.py -c configs/mnist_ddpm.json
 uv run --locked python train.py -c configs/cifar10_ddpm.json
 ```
 
-이 프리셋은 `process.type=ddpm`, 1,000개 linear beta step, ancestral DDPM sampler를 사용합니다. backbone 구조는 각 데이터셋의 NCSN++와 같지만 forward가 달라지므로 **loss-only 비교와 분리**해야 합니다. DDPM forward에서도 세 objective를 선택할 수 있으며 Fourier Gaussian의 `P`는 `alpha² P`, 평균은 `alpha mu`로 일반화됩니다. 이는 원래 VE 제안의 명시적인 확장입니다. 자세한 수식은 `docs/MATH.md`에 있습니다.
+이 프리셋은 `process.type=ddpm`, 1,000개 linear beta step, ancestral DDPM sampler를 사용합니다. backbone 구조는 각 데이터셋의 NCSN++와 같지만 forward가 달라지므로 **출력 재매개화 비교와 분리**해야 합니다. DDPM forward에서도 다섯 출력 규약을 선택할 수 있으며 Fourier Gaussian의 `P`는 `alpha² P`, 평균은 `alpha mu`로 일반화됩니다. 이는 원래 VE 제안의 명시적인 확장입니다. 자세한 수식은 `docs/MATH.md`에 있습니다.
 
 ## 6. EMA 생성·평가·재시작
 
@@ -161,7 +184,7 @@ VE는 `sampling.method=pc` 또는 `heun`을 지원합니다. DDPM ancestral samp
 ## 7. 선택 기능: FID/IS
 
 ```bash
-uv sync --extra metrics
+uv sync --locked --extra metrics
 
 # 학습과 동일한 resize/crop/좌표 변환을 거친 real 이미지
 uv run --locked python export_real.py -c configs/cifar10_full.json \
@@ -175,7 +198,7 @@ uv run --locked python metrics.py --real saved/cifar_real/png \
   --generated saved/cifar_fg_50k/png --device cuda -o saved/cifar_fg_fid.json
 ```
 
-FID는 선택 dependency인 torch-fidelity를 사용하며 최초 Inception weight 다운로드가 필요합니다. TensorFlow는 필요하지 않습니다. **원본 score-SDE의 TF-Hub/TF-GAN 프로토콜과 수치를 직접 동일시하지 마십시오.** real split, 샘플 수, resize, library version, sampler batch, step 수를 모든 비교군에서 통일하십시오. MPS에서 훈련한 결과의 Inception 평가는 `metrics.py --device cpu`로 할 수 있습니다. 제작 환경에서는 Inception 다운로드와 FID 실행을 검증하지 못했습니다.
+FID는 선택 dependency인 torch-fidelity를 사용하며 최초 Inception weight 다운로드가 필요합니다. TensorFlow는 필요하지 않습니다. **원본 score-SDE의 TF-Hub/TF-GAN 프로토콜과 수치를 직접 동일시하지 마십시오.** real split, 샘플 수, resize, library version, sampler batch, 실제 NFE를 모든 비교군에서 통일하십시오. MPS에서 훈련한 결과의 Inception 평가는 `metrics.py --device cpu`로 할 수 있습니다. 이번 검증에는 Inception 다운로드와 FID/IS 실행이 포함되지 않았습니다.
 
 ## 8. 폴더 구조와 추가 프리셋
 

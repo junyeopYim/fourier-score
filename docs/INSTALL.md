@@ -1,27 +1,29 @@
 # Installation and version policy
 
-2026-09-19 checked official release records:
+`pyproject.toml` pins PyTorch 2.14.0 and TorchVision 0.29.0. Python 3.11 is the
+default, and the repository includes a tracked `uv.lock`.
 
-- PyTorch 2.14.0, published 2026-09-02:
-  https://github.com/pytorch/pytorch/releases/tag/v2.14.0
-- TorchVision 0.29.0, published 2026-09-02:
-  https://github.com/pytorch/vision/releases/tag/v0.29.0
-
-`pyproject.toml` pins these versions. This is a target environment, not a claim
-that those wheels were installed in the author's CPU-only build environment.
-That environment already had torch 2.10.0+cpu / torchvision 0.25.0+cpu. External
-DNS/package access failed; see `verification/uv_lock_attempt.txt`.
+The September 20 verification ran in the existing `.venv` with Python 3.11.15,
+torch 2.14.0+cu130 and torchvision 0.29.0+cu130. CPU and CUDA doctor checks
+passed on an NVIDIA GeForce RTX 5060 Ti. `uv lock --check --offline` also passed.
+See [the verification record](VALIDATION.md) for exact environment and scope;
+this was not a clean-install or MPS validation.
 
 ```bash
 uv python install 3.11
-uv sync --python 3.11       # creates .venv and a REAL uv.lock
+uv sync --locked --python 3.11
 uv run --locked python doctor.py
 uv run --locked python -m pytest -q
 ```
 
-Commit uv.lock after successful resolution. Later use `uv sync --locked`.
-Do not create a placeholder lockfile or silently install a different torch.
-Keep all experimental arms on the same wheel/library versions.
+Use `uv sync --locked` for subsequent installs and keep all experimental arms
+on the same wheel/library versions. Regenerate and commit the lockfile only
+when intentionally changing dependency requirements or sources.
+
+`verification/uv_lock_attempt.txt` documents the original September 19 package
+access failure. Its older CPU-only environment and missing-lockfile statements
+are preserved in [the historical record](VALIDATION_2026-09-19.md); they do not
+describe the current checkout.
 
 The default dependency source is PyPI. To choose a specific official CUDA or
 CPU wheel index, configure **both torch and torchvision** with uv sources;
@@ -53,11 +55,12 @@ https://pytorch.org/get-started/locally/
 Optional packages:
 
 ```bash
-uv sync --extra metrics        # torch-fidelity; downloads Inception on use
-uv sync --extra tensorboard    # SummaryWriter
+uv sync --locked --extra metrics        # torch-fidelity; downloads Inception on use
+uv sync --locked --extra tensorboard    # SummaryWriter
 ```
 
 Every time optional dependency selections change, preserve the corresponding
-uv command / environment for all arms. Python 3.11 is the default; the code was
-also exercised on Python 3.13. No `.venv`, wheels, datasets or model weights are
-included in the ZIP. No credentials or repository access are required at runtime.
+uv command / environment for all arms. The historical CPU build also exercised
+Python 3.13 with older torch/torchvision versions. No `.venv`, wheels, datasets
+or model weights are tracked in the repository. No credentials or repository
+access are required at runtime.

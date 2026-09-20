@@ -1,0 +1,67 @@
+{
+  "date": "2026-09-20",
+  "completed_at_utc": "2026-09-20T06:25:56.123046+00:00",
+  "tested_git_commit": "ea56e75e6269a30142e74999053d3f8d66316521",
+  "working_tree_clean_before_verification": true,
+  "source_sha256": "90e4c5839269027c6bddecf3c55ffe8e1d36d404f3f037374f8dfef8409be6dc",
+  "source_hash_definition": "utils.util.source_hash(): parse_config.py plus Python files under base, model, sde, data_loader, trainer, utils and logger",
+  "config": "configs/cifar10_ablation.json",
+  "config_sha256": "c5700515666954c6e00cec9f9f68b4503ab610962c40012bc42b6030614b7d26",
+  "uv_lock_sha256": "4ef0b438f65aaaa123435d0f867e02cb2104177b2970d2f1a9f76cc4fa9174be",
+  "pyproject_sha256": "f0f6db2a1799def7b93889cc2485233356135fc6860c08327d36098b5d1de136",
+  "runtime_file": "verification/2026-09-20/environment.json",
+  "commands_file": "verification/2026-09-20/commands.json",
+  "tests": {
+    "total": 145,
+    "passed": 143,
+    "skipped": 2,
+    "failed": 0,
+    "errors": 0,
+    "skip_details": [
+      {
+        "class": "tests.test_devices",
+        "test": "test_mps[auto]",
+        "reason": "No MPS hardware in this test environment"
+      },
+      {
+        "class": "tests.test_devices",
+        "test": "test_mps[cpu]",
+        "reason": "No MPS hardware in this test environment"
+      }
+    ],
+    "cuda_hardware_test_passed": true,
+    "log": "verification/2026-09-20/pytest.txt",
+    "junit": "verification/2026-09-20/pytest.xml"
+  },
+  "architecture": {
+    "all_five_identical": true,
+    "objectives": [
+      "score",
+      "diffusion",
+      "scalar_gaussian",
+      "fourier_gaussian_unscaled",
+      "fourier_gaussian"
+    ],
+    "reference": {
+      "trainable_parameters": 62758787,
+      "all_parameters": 62758915,
+      "architecture_sha256": "cc8bff01905aaf3664530d9962459586b6061625df7fc70a5a6a5fe6906ec315",
+      "initial_backbone_sha256": "3ba7cb242c00639abafd98fc619305d35e0666a4f59adf46d7c0aa6688e61be3",
+      "attention_blocks": 6,
+      "biggan_resblocks": 44,
+      "ddpm_resblocks": 0
+    },
+    "report": "verification/2026-09-20/cifar10_ablation_architecture.json"
+  },
+  "cpu_doctor_passed": true,
+  "cuda_doctor_passed": true,
+  "lock_check": "passed: uv lock --check --offline",
+  "limitations": [
+    "Used the existing project .venv; no clean installation or dependency sync was performed.",
+    "MPS hardware was unavailable; two MPS tests were skipped.",
+    "CIFAR-10 architecture audit instantiated full models on CPU using placeholder positive statistics; it did not load CIFAR-10 or run full-model CUDA training.",
+    "Doctor checks use the small synthetic NCSN++ configuration, including CUDA forward/backward/Adam/sampling.",
+    "No real-dataset long training, FID/IS benchmark, Inception download or TensorBoard check was run in this verification.",
+    "No cross-device bitwise reproducibility claim."
+  ]
+}
