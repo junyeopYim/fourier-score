@@ -2,6 +2,7 @@ import copy
 from pathlib import Path
 import pytest
 from parse_config import load_config,validate,apply_overrides
+from model.objectives import OBJECTIVES
 
 @pytest.mark.parametrize('path',sorted(Path('configs').glob('*.json')))
 def test_all_presets(path):
@@ -14,12 +15,13 @@ def test_all_presets(path):
  'arch.args.dropout=1.0','loss.reduction=bogus','schema_version=2',
  'process.type=ddpm','fourier.power_floor=0','name=../escape',
  'data_loader.args.channels=2','data_loader.args.batch_size=true',
+ 'evaluation.frequency_bins=-1','evaluation.frequency_bins=true',
 ])
 def test_reject_bad_settings(change):
     with pytest.raises((ValueError,TypeError)): load_config('configs/smoke.json',[change])
 
 def test_only_loss_changes(cfg):
-    for name in ('score','diffusion','fourier_gaussian'):
+    for name in OBJECTIVES:
         c=validate(apply_overrides(cfg,['loss.type='+name]))
         assert c['arch']==cfg['arch'] and c['process']==cfg['process']
         c['loss']=cfg['loss']; assert c==cfg

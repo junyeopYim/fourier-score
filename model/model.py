@@ -12,6 +12,7 @@ import torch
 from base.base_model import BaseModel
 from model.backbones.ncsnpp import NCSNpp
 from model.spectral import FourierGaussian
+from model.objectives import OBJECTIVES,GAUSSIAN_OBJECTIVES
 from sde.process import NoiseProcess
 
 
@@ -45,14 +46,16 @@ class GenerativeModel(BaseModel):
         self.cfg=copy.deepcopy(cfg)
         self.process=NoiseProcess(cfg['process'])
         self.objective=cfg['loss']['type']
+        if self.objective not in OBJECTIVES: raise ValueError(f'Unknown objective: {self.objective}')
         self.embedding=cfg['arch']['args']['embedding_type']
         # Source creates one unused float64 sigma buffer. Convert on CPU FIRST,
         # before transfer to MPS, where float64 is not used by this project.
         self.backbone=NCSNpp(backbone_config(cfg)).float()
         self.reference=None
-        if self.objective=='fourier_gaussian':
-            if stats is None: raise ValueError('fourier_gaussian requires training-only statistics')
-            self.reference=FourierGaussian(stats,cfg['backend']['spectral_transform'])
+        if self.objective in GAUSSIAN_OBJECTIVES:
+            if stats is None: raise ValueError(f'{self.objective} requires training-only statistics')
+            self.reference=FourierGaussian(stats,cfg['backend']['spectral_transform'],
+                                           **GAUSSIAN_OBJECTIVES[self.objective])
 
     def scaled_from_raw(self,raw,y,level):
         if self.objective=='score': return raw

@@ -27,6 +27,7 @@ def main():
     with open(args.resume,'rb') as f:
         for block in iter(lambda:f.read(8*1024*1024),b''): h.update(block)
     settings={'complete':False,'checkpoint_sha256':h.hexdigest(),'checkpoint_step':ckpt['step'],
+              'training_wall_seconds':ckpt.get('training_wall_seconds'),
               'weights':'EMA','config':cfg,'environment':environment(device,cfg),
               'npz_format':'uint8 NHWC, key=samples','png_dir':'png'}
     json_write(settings,out/'settings.json')

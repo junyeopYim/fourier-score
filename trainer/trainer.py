@@ -1,4 +1,4 @@
-"""One step-based trainer for all three objectives; no objective-specific loop."""
+"""One step-based trainer shared by all output parameterizations."""
 import time
 import torch
 from base.base_trainer import BaseTrainer
@@ -12,6 +12,7 @@ from logger.logger import ExperimentLogger
 
 class Trainer(BaseTrainer):
     def __init__(self,cfg,checkpoint=None):
+        session_started=time.perf_counter()
         device=configure_runtime(cfg)
         self.bundle=build_data(cfg)
         # All arms use the same split/cache identity. Computing statistics does
@@ -21,7 +22,7 @@ class Trainer(BaseTrainer):
         model=build_model(cfg,stats,device)
         a=cfg['data_loader']['args']
         stream=BaseDataLoader(self.bundle.train,a['batch_size'],cfg['seed']+1000,a['num_workers'],device.type=='cuda')
-        super().__init__(cfg,model,stats,stream,device,checkpoint)
+        super().__init__(cfg,model,stats,stream,device,checkpoint,session_started)
         self.log=ExperimentLogger(self.out,cfg['trainer']['tensorboard'])
 
     def train_step(self,clean):
@@ -46,7 +47,8 @@ class Trainer(BaseTrainer):
     def evaluate(self):
         with self.ema.average_parameters(self.model):
             result=evaluate_dsm(self.model,self.cfg,self.bundle.validation,self.device)
-        result.update(step=self.step,split=self.bundle.metadata['eval_split'],weights='EMA')
+        result.update(step=self.step,split=self.bundle.metadata['eval_split'],weights='EMA',
+                      training_wall_seconds=self.training_wall_seconds())
         self.log.write(result)
         return result
 
@@ -62,7 +64,8 @@ class Trainer(BaseTrainer):
                 if final or self.step%t['log_every']==0:
                     self.log.write({'step':self.step,'split':'train','loss':loss,'reduction':self.cfg['loss']['reduction'],
                                     'grad_norm_before_clip':norm,'lr':self.optimizer.param_groups[0]['lr'],
-                                    'session_wall_seconds':time.perf_counter()-begin})
+                                    'session_wall_seconds':time.perf_counter()-begin,
+                                    'training_wall_seconds':self.training_wall_seconds()})
                 if final or self.step%t['eval_every']==0: self.evaluate()
                 snapshot=final or self.step%t['snapshot_every']==0
                 if snapshot or self.step%t['save_every']==0: self.save(snapshot)

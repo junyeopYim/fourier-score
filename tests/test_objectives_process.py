@@ -5,6 +5,7 @@ from model.model import build_model
 from model.loss import training_loss
 from sde.process import NoiseProcess
 from sde.sampling import sample_batch
+from model.objectives import OBJECTIVES
 
 
 def test_score_epsilon_algebraic_equivalence(cfg,stats):
@@ -23,7 +24,7 @@ def test_ddpm_forward_coefficients(cfg):
     torch.testing.assert_close(lev.alpha.square(),expected)
     torch.testing.assert_close(lev.alpha.square()+lev.sigma.square(),torch.ones(2))
 
-@pytest.mark.parametrize('name',['score','diffusion','fourier_gaussian'])
+@pytest.mark.parametrize('name',OBJECTIVES)
 @pytest.mark.parametrize('process',['ve','ddpm'])
 def test_loss_backward_and_sampling(cfg,stats,name,process):
     cfg=copy.deepcopy(cfg); cfg['loss']['type']=name; cfg['process']['type']=process

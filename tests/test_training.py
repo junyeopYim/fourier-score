@@ -8,9 +8,12 @@ from model.metric import evaluate_dsm
 from utils.util import load_checkpoint,capture_rng
 from utils.inference import load_inference
 from parse_config import experiment_name
+from model.objectives import GAUSSIAN_OBJECTIVES
 
 
-def test_resume_matches_uninterrupted(cfg):
+@pytest.mark.parametrize('objective',GAUSSIAN_OBJECTIVES)
+def test_resume_matches_uninterrupted(cfg,objective):
+    cfg['loss']['type']=objective
     a=copy.deepcopy(cfg); a['name']='full'; a['trainer']['iterations']=4
     first=Trainer(a); first.train()
     b=copy.deepcopy(cfg); b['name']='split'; b['trainer']['iterations']=2
@@ -24,7 +27,9 @@ def test_resume_matches_uninterrupted(cfg):
     for n,v in first.ema.shadow.items(): torch.testing.assert_close(v,third.ema.shadow[n],atol=0,rtol=0)
 
 
-def test_ema_snapshot_matches_last(cfg):
+@pytest.mark.parametrize('objective',GAUSSIAN_OBJECTIVES)
+def test_ema_snapshot_matches_last(cfg,objective):
+    cfg['loss']['type']=objective
     t=Trainer(cfg); t.train()
     a,_,_,_=load_inference(t.out/'last.pt'); b,_,_,_=load_inference(t.out/f'ema_{t.step:09d}.pt')
     for n,p in a.state_dict().items(): torch.testing.assert_close(p,b.state_dict()[n],atol=0,rtol=0)
@@ -37,7 +42,9 @@ def test_eval_isolated_and_repeatable(cfg):
     assert a==b and torch.equal(before['torch'],after['torch'])
     assert before['python']==after['python']; t.log.close()
 
-@pytest.mark.parametrize('change',[('loss','type','score'),('arch','args',None),('process','sigma_max',3.0)])
+@pytest.mark.parametrize('change',[('loss','type','score'),('loss','type','scalar_gaussian'),
+                                  ('loss','type','fourier_gaussian_unscaled'),
+                                  ('arch','args',None),('process','sigma_max',3.0)])
 def test_resume_rejects_changes(cfg,change):
     t=Trainer(cfg); t.train(); state=load_checkpoint(t.out/'last.pt')
     c=copy.deepcopy(cfg); c['trainer']['iterations']=4
@@ -74,3 +81,29 @@ def test_prefetch_cursor_resume(cfg,workers):
 def test_inference_rejects_loss_change(cfg):
     t=Trainer(cfg); t.train()
     with pytest.raises(ValueError,match='Inference cannot alter'): load_inference(t.out/'last.pt',['loss.type=score'])
+
+
+def test_cumulative_time_excludes_resume_downtime(cfg,monkeypatch):
+    clock={'now':10.}
+    monkeypatch.setattr('base.base_trainer.time.perf_counter',lambda:clock['now'])
+    first=Trainer(cfg)
+    clock['now']=17.
+    first.save(snapshot=True); first.log.close()
+    checkpoint=load_checkpoint(first.out/'last.pt')
+    snapshot=load_checkpoint(first.out/'ema_000000000.pt')
+    assert checkpoint['training_wall_seconds']==snapshot['training_wall_seconds']==7.
+    clock['now']=1000.
+    resumed=Trainer(cfg,checkpoint)
+    assert resumed.training_wall_seconds()==7.
+    clock['now']=1004.
+    resumed.save(); resumed.log.close()
+    assert load_checkpoint(resumed.out/'last.pt')['training_wall_seconds']==11.
+
+
+def test_old_snapshot_accepts_new_diagnostic_override(cfg,tmp_path):
+    t=Trainer(cfg); t.train()
+    state=load_checkpoint(t.out/'last.pt')
+    del state['config']['evaluation']['frequency_bins']
+    legacy=tmp_path/'old.pt'; torch.save(state,legacy)
+    _,resolved,_,_=load_inference(legacy,['evaluation.frequency_bins=6'])
+    assert resolved['evaluation']['frequency_bins']==6

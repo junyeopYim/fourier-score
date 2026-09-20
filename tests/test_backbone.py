@@ -6,6 +6,7 @@ import torch
 from model.model import build_model,architecture_report,weight_hash,backbone_config
 from model.backbones.ncsnpp import NCSNpp
 from model.loss import training_loss
+from model.objectives import OBJECTIVES
 
 @pytest.mark.parametrize('filename,sha',[
  ('ncsnpp.py','ea16eb35b5e6f2fa92db10be2552b3acdfe8fa7b'),
@@ -18,12 +19,12 @@ def test_source_files_exact(filename,sha):
 
 def test_identical_architecture_and_initialization(cfg,stats):
     reports=[]; hashes=[]
-    for name in ('score','diffusion','fourier_gaussian'):
+    for name in OBJECTIVES:
         c=copy.deepcopy(cfg); c['loss']['type']=name; torch.manual_seed(42)
         model=build_model(c,stats)
         reports.append(architecture_report(model.backbone)); hashes.append(weight_hash(model.backbone))
         assert sum(p.numel() for p in model.parameters() if p.requires_grad)==reports[-1]['trainable_parameters']
-    assert reports[0]==reports[1]==reports[2]
+    assert all(report==reports[0] for report in reports)
     assert len(set(hashes))==1
     assert 'AttnBlockpp' in reports[0]['modules'].values()
     assert 'ResnetBlockBigGANpp' in reports[0]['modules'].values()

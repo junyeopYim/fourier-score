@@ -2,6 +2,8 @@
 
 score: raw = sigma*s; diffusion: raw = epsilon_hat; Fourier Gaussian:
 sigma*s = sigma*s_G + F^-1[b*F(raw)]. Loss changes NO backbone parameters.
+scalar_gaussian replaces P_k by its per-channel frequency mean;
+fourier_gaussian_unscaled retains s_G and uses the raw residual (b=1).
 """
 import torch
 

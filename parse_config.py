@@ -10,6 +10,7 @@ import copy
 import json
 import math
 from pathlib import Path
+from model.objectives import OBJECTIVES
 
 ROOT = Path(__file__).resolve().parent
 
@@ -89,7 +90,7 @@ def validate(cfg: dict) -> dict:
         x=cfg
         for p in path.split('.'): x=x[p]
         if x not in options: raise ValueError(f'{path} must be one of {options}; got {x!r}')
-    choice('loss.type', ('fourier_gaussian','score','diffusion'))
+    choice('loss.type', OBJECTIVES)
     choice('loss.reduction', ('mean','half_sum'))
     choice('arch.type', ('NCSNpp',))
     choice('data_loader.type', ('ImageDataLoader',))
@@ -133,6 +134,7 @@ def validate(cfg: dict) -> dict:
     if o['lr']<=0 or o['eps']<=0 or o['weight_decay']<0 or len(o['betas'])!=2 or any(type(x) not in (int,float) or not 0<=x<1 for x in o['betas']): raise ValueError('Invalid Adam settings')
     if cfg['fourier']['power_floor']<=0 or cfg['fourier']['stats_batch_size']<1 or cfg['backend']['cpu_threads']<1: raise ValueError('Invalid Fourier/backend settings')
     if any(cfg['evaluation'][k]<1 for k in ('batch_size','max_images','noise_bins')): raise ValueError('Invalid evaluation settings')
+    if cfg['evaluation']['frequency_bins']<0: raise ValueError('evaluation.frequency_bins must be nonnegative')
     if cfg['name']!='auto' and (not cfg['name'] or any(c not in 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-' for c in cfg['name'])): raise ValueError('name must be a simple experiment slug')
     return cfg
 

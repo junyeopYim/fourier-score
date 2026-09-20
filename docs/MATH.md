@@ -17,6 +17,13 @@ Let h_theta(y,t) be the raw output and y=alpha_t x + sigma_t epsilon.
   sigma_t s_theta = sigma_t s_G + F^{-1}[b_t F h_theta],
   s_G = -F^{-1}[F(y-alpha_t mu)/(alpha_t^2 P + sigma_t^2)],
   b_t = sqrt(alpha_t^2 P/(alpha_t^2 P+sigma_t^2)).
+- Scalar Gaussian: the same full mean mu, with P replaced by its spatial-frequency
+  average v_c = mean_k P_{c,k} within each channel, in BOTH s_G and b_t.
+  The resulting multipliers are spatially constant, so pixelwise arithmetic
+  implements the same operator without FFT. This is not a scalar gate or the
+  full EDM input/noise/loss/sampling recipe.
+- Fourier Gaussian unscaled: sigma_t s_theta = sigma_t s_G + h_theta,
+  using the original P and mu, and replacing ONLY b_t by 1.
 
 The primary proposal is VE (alpha=1). DDPM support is an explicitly documented
 extension of the same Gaussian conditional algebra, not a claim that the
@@ -27,10 +34,12 @@ conjugate-symmetric orthonormal-FFT spectrum. Cross-channel and cross-frequency
 covariance are NOT learned or estimated here. P is floored for stability.
 Its buffers contain no learned parameters. The full FFT automatically accounts
 for real-valued conjugate pairs; there is no factor 1/2 in P+sigma^2.
+All Gaussian arms derive their buffers from the same training-statistics cache.
+The scalar arm transforms a private copy; it does not overwrite that cache.
 
 ## Why the frequencywise residual scale appears
 
-For a centered Fourier coordinate U=alpha X with variance V=alpha^2 P and
+For the full Fourier method, consider a centered coordinate U=alpha X with variance V=alpha^2 P and
 Y=U+sigma epsilon, the scaled residual target after subtracting the Gaussian
 score is
 
@@ -90,6 +99,24 @@ estimate, with optional x0 clipping. It requires all trained discrete steps.
 Every sampler obtains the SAME converted total score used in training.
 The terminal prior remains the same across objectives; no learned or
 Fourier-specific terminal distribution is silently substituted.
+
+## Ablation diagnostics
+
+The primary comparison is score / scalar_gaussian / fourier_gaussian_unscaled /
+fourier_gaussian. Score versus diffusion remains an optional sign-convention
+check. Scalar versus Fourier tests frequency-dependent covariance; unscaled
+versus scaled Fourier tests residual scaling at a fixed Gaussian reference.
+
+Optional `evaluation.frequency_bins` partitions the FULL orthonormal FFT of
+the common DSM residual r = sigma*s_theta + epsilon into equal radial bands
+from 0 to sqrt(1/2) cycles/pixel, including DC and conjugate partners. Each
+reported value is mean |F(r)|^2 over images, channels and modes in that band.
+The mode-count-weighted band means reproduce pixel-mean DSM by Parseval, both
+globally and within each noise bin. Empty bands/bins are null, not zero.
+These diagnostics use CPU float64 FFT (including when evaluating on MPS).
+They describe the noisy DSM residual, not a direct measurement of true-score
+error or image quality. Observation-level `standard_error` is not variability
+across independent training seeds.
 
 Gaussian statistics are estimated from training images only. If random_flip is
 enabled, both each image and its mirror contribute, which exactly matches the

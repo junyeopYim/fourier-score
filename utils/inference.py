@@ -17,7 +17,8 @@ def load_inference(path,overrides=(),device=None):
         key=change.split('=',1)[0]
         if not (key=='device' or key.startswith(('sampling.','evaluation.','backend.')) or key in ('data_loader.args.root','data_loader.args.download','data_loader.args.num_workers')):
             raise ValueError(f'Inference cannot alter the trained model/process/loss/statistics: {key}')
-    cfg=validate(apply_overrides(copy.deepcopy(ckpt['config']),changes))
+    # Supply new optional evaluation defaults before applying overrides to old snapshots.
+    cfg=validate(apply_overrides(validate(copy.deepcopy(ckpt['config'])),changes))
     dev=configure_runtime(cfg)
     model=build_model(cfg,ckpt['stats'],dev)
     model.load_state_dict(ckpt['model'],strict=True)

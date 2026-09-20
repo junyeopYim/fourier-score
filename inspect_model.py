@@ -1,10 +1,11 @@
-"""Audit identical architecture AND initial values across all three losses."""
+"""Audit identical architecture AND initial values across output parameterizations."""
 import argparse
 import copy
 import json
 import torch
 from parse_config import add_config_args,from_args
 from model.model import build_model,architecture_report,weight_hash
+from model.objectives import OBJECTIVES
 from utils.util import seed_all,json_write
 
 def main():
@@ -12,7 +13,7 @@ def main():
     args=parser.parse_args(); cfg=from_args(args); d=cfg['data_loader']['args']; shape=(d['channels'],d['image_size'],d['image_size'])
     stats={'mean':torch.zeros(shape),'power':torch.ones(shape)}; result={}
     # No data loading; fake positive statistics are ONLY for architecture audit.
-    for objective in ('score','diffusion','fourier_gaussian'):
+    for objective in OBJECTIVES:
         c=copy.deepcopy(cfg); c['loss']['type']=objective; seed_all(c['seed'])
         model=build_model(c,stats,'cpu'); report=architecture_report(model.backbone)
         result[objective]={k:report[k] for k in ('trainable_parameters','all_parameters','architecture_sha256')}

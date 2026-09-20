@@ -4,6 +4,7 @@ import copy
 import torch
 from parse_config import load_config
 from model.model import build_model
+from model.objectives import OBJECTIVES
 from model.loss import training_loss
 from model.spectral import SpectralFilter,conjugate_symmetrize
 from sde.sampling import sample_batch
@@ -12,7 +13,7 @@ from utils.util import configure_runtime,seed_all,environment,capture_rng,restor
 def run(device='auto',spectral='auto'):
     cfg=load_config('configs/smoke.json',[f'device={device}',f'backend.spectral_transform={spectral}'])
     dev=configure_runtime(cfg); result=environment(dev,cfg); result['tests']=[]
-    for lossname in ('score','diffusion','fourier_gaussian'):
+    for lossname in OBJECTIVES:
         c=copy.deepcopy(cfg); c['loss']['type']=lossname; seed_all(123,dev)
         model=build_model(c,{'mean':torch.zeros(1,8,8),'power':torch.ones(1,8,8)},dev)
         gen=torch.Generator().manual_seed(123); x=torch.randn(2,1,8,8,generator=gen).to(dev)

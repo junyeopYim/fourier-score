@@ -120,6 +120,7 @@
     "batch_size": 128,
     "max_images": 1024,
     "seed": 17001,
-    "noise_bins": 10
+    "noise_bins": 10,
+    "frequency_bins": 0
   }
 }

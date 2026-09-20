@@ -16,7 +16,7 @@ def main():
     if args.resume:
         if args.config is not None: parser.error('Resume uses checkpoint config; use --set for allowed changes')
         checkpoint=load_checkpoint(args.resume)
-        cfg=validate(apply_overrides(checkpoint['config'],changes))
+        cfg=validate(apply_overrides(validate(checkpoint['config']),changes))
     else: cfg=load_config(args.config or 'config.json',changes)
     if args.dry_run:
         print(json.dumps(cfg,indent=2,ensure_ascii=False)); return

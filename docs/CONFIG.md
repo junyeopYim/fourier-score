@@ -21,14 +21,14 @@ uv run --locked python train.py -c configs/cifar10.json --dry-run \
 | 데이터·image shape·전체 배치·worker | `data_loader.args.*` |
 | NCSN++ 학습 레이어 구조 | `arch.args.*` |
 | sigma/beta schedule·forward process | `process.*` |
-| objective·loss reduction | `loss.*` |
+| 출력 재매개화·공통 DSM reduction | `loss.*` |
 | Gaussian 통계 floor/cache | `fourier.*` |
 | Adam | `optimizer.args.*` |
 | update 수·warmup·clip·EMA·microbatch | `trainer.*` |
 | device | `device` 또는 동일 필드를 설정하는 `--device` |
 | FP32/TF32·MPS Fourier implementation | `backend.*` |
 | sample grid·batch·seed·sampler | `sampling.*` |
-| 검증 batch·seed·noise bins | `evaluation.*` |
+| 검증 batch·seed·noise bins·frequency bins | `evaluation.*` |
 
 image_size, channels, sigma schedule을 model과 dataset 양쪽에 중복해서 지정하지
 않습니다. legacy NCSN++가 요구하는 configuration object는 `backbone_config()`가
@@ -37,14 +37,27 @@ image_size, channels, sigma schedule을 model과 dataset 양쪽에 중복해서 
 
 `loss.type` 변경은 arch / process / sampler를 변경하지 않습니다. DDPM으로
 forward를 바꾸려면 process와 sampler가 일치하는 `_ddpm.json`을 선택합니다.
-진짜 loss-only 비교에서는 같은 데이터셋 JSON에서 `loss.type`만 바꾸십시오.
+출력 재매개화 비교에서는 같은 데이터셋 JSON에서 `loss.type`만 바꾸십시오.
+
+`loss.type`: `score`, `diffusion`, `scalar_gaussian`, `fourier_gaussian_unscaled`,
+`fourier_gaussian`. 모두 같은 DSM 목적함수를 사용합니다. Gaussian 대조군은
+`fourier`의 동일 통계 cache와 평균 이미지를 공유합니다.
+
+`evaluation.frequency_bins`는 기본값 0으로 진단을 끕니다. 양수로 지정하면
+노이즈×방사형 주파수 대역 DSM과 대역 경계를 기록합니다. 추론 시에도
+`test.py --set evaluation.frequency_bins=6`으로 켤 수 있습니다.
+`configs/cifar10_ablation.json`은 50,000 update와 6개 주파수 대역을 사용하는
+탐색용 프리셋이며, 수렴 또는 논문 품질을 보장하는 설정이 아닙니다.
 
 ## Output naming
 
 `name=auto`이면 `{dataset}_{process}_{loss}_s{seed}`를 사용합니다. 고정 이름을
 설정했다면 loss를 바꿀 때 이름도 직접 구분해야 합니다. 동일 directory는
 덮어쓰지 않고 실패합니다. image_folder를 여러 데이터셋에 쓸 때는 이름을
-명시적으로 구분하십시오. Compare script는 custom name 뒤에 loss 이름을 붙입니다.
+명시적으로 구분하십시오. Compare script는 custom name 뒤에 `{loss}_s{seed}`를 붙입니다.
+기본 네 비교군은 `--objectives`로 선택할 수 있으며 `--seeds 42 43 44`는
+각 seed에 대해 동일 설정의 모든 비교군을 실행합니다. `--dry-run`은 명령만
+출력하며 데이터 로딩·통계 추정·학습·디렉터리 생성을 하지 않습니다.
 
 ## Resume
 

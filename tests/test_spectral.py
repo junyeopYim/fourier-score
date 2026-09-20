@@ -54,3 +54,42 @@ def test_residual_target_second_moment_non_gaussian():
 
 def test_invalid_statistics():
     with pytest.raises(ValueError): FourierGaussian({'mean':torch.zeros(1,8,8),'power':torch.zeros(1,8,8)})
+
+
+@pytest.mark.parametrize('alpha',[1.0,0.3])
+def test_scalar_matches_flat_spectrum_without_fft(alpha,monkeypatch):
+    # Nonuniform spectra and nonconstant means catch accidental mean removal,
+    # channel pooling, or modification of the shared cached statistics.
+    mean=torch.randn(3,7,9)
+    power=conjugate_symmetrize(torch.rand_like(mean)+0.1)*torch.tensor([1.,2.,4.])[:,None,None]
+    stored={'mean':mean.clone(),'power':power.clone()}
+    scalar=FourierGaussian(stored,covariance='scalar')
+    flat=power.mean((-2,-1),keepdim=True).expand_as(power).clone()
+    reference=FourierGaussian({'mean':mean,'power':flat})
+    y=torch.randn(3,3,7,9); raw=torch.randn_like(y,requires_grad=True)
+    sigma=torch.tensor([0.1,1.,10.]); a=torch.full_like(sigma,alpha)
+    expected=reference.scaled_score(raw,y,a,sigma)
+    def fail_fft(*args,**kwargs): raise AssertionError('Scalar Gaussian should use pointwise operations')
+    monkeypatch.setattr(scalar.filter,'forward',fail_fft)
+    got=scalar.scaled_score(raw,y,a,sigma)
+    torch.testing.assert_close(got,expected)
+    probe=torch.randn_like(got)
+    grad=torch.autograd.grad((got*probe).sum(),raw,retain_graph=True)[0]
+    expected_grad=torch.autograd.grad((expected*probe).sum(),raw)[0]
+    torch.testing.assert_close(grad,expected_grad)
+    torch.testing.assert_close(scalar.mean,mean,atol=0,rtol=0)
+    torch.testing.assert_close(stored['power'],power,atol=0,rtol=0)
+    torch.testing.assert_close(stored['mean'],mean,atol=0,rtol=0)
+
+
+@pytest.mark.parametrize('backend',['fft','matmul'])
+def test_unscaled_keeps_reference_and_identity_residual(backend):
+    stats={'mean':torch.randn(2,8,8),'power':conjugate_symmetrize(torch.rand(2,8,8)+0.1)}
+    scaled=FourierGaussian(stats,backend)
+    unscaled=FourierGaussian(stats,backend,scale_residual=False)
+    y=torch.randn(3,2,8,8); raw=torch.randn_like(y,requires_grad=True)
+    sigma=torch.tensor([0.1,1.,10.]); alpha=torch.tensor([1.,0.8,0.3])
+    baseline=scaled.scaled_score(torch.zeros_like(raw),y,alpha,sigma)
+    got=unscaled.scaled_score(raw,y,alpha,sigma)
+    torch.testing.assert_close(got,baseline+raw,atol=0,rtol=0)
+    torch.testing.assert_close(torch.autograd.grad(got.sum(),raw)[0],torch.ones_like(raw),atol=0,rtol=0)

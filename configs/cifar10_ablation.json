@@ -1,0 +1,11 @@
+{
+  "extends": "cifar10.json",
+  "name": "cifar10_ablation",
+  "trainer": {
+    "iterations": 50000,
+    "snapshot_every": 10000
+  },
+  "evaluation": {
+    "frequency_bins": 6
+  }
+}

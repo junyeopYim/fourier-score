@@ -85,16 +85,26 @@ class SpectralFilter(nn.Module):
 
 
 class FourierGaussian(nn.Module):
-    def __init__(self,stats:dict,backend='auto'):
+    def __init__(self,stats:dict,backend='auto',*,covariance='fourier',scale_residual=True):
         super().__init__()
+        if covariance not in ('fourier','scalar'): raise ValueError('Invalid Gaussian covariance')
+        if type(scale_residual) is not bool: raise ValueError('scale_residual must be boolean')
         mean=stats['mean'].detach().cpu().float().clone()
         power=stats['power'].detach().cpu().float().clone()
         if mean.ndim!=3 or power.shape!=mean.shape: raise ValueError('Statistics must be [C,H,W]')
         if not torch.isfinite(mean).all() or not torch.isfinite(power).all() or (power<=0).any(): raise ValueError('Invalid Fourier statistics')
         if not torch.allclose(power,conjugate_symmetrize(power),atol=1e-6,rtol=1e-5): raise ValueError('Power is not conjugate symmetric')
+        self.covariance=covariance
+        self.scale_residual=scale_residual
+        # Average the SAME floored training spectrum, retaining the full mean.
+        # The shared statistics cache must never be flattened in place.
+        if covariance=='scalar': power=power.mean(dim=(-2,-1),keepdim=True)
         self.register_buffer('mean',mean)
         self.register_buffer('power',power)
-        self.filter=SpectralFilter(*power.shape[-2:],backend)
+        self.filter=SpectralFilter(*mean.shape[-2:],backend)
+
+    def resolved_backend(self,device):
+        return 'elementwise' if self.covariance=='scalar' else self.filter.resolved_backend(device)
 
     def scaled_score(self,raw,y,alpha,sigma):
         """Return sigma * score, not score. raw is the unscaled NCSN++ output.
@@ -105,6 +115,11 @@ class FourierGaussian(nn.Module):
         a=alpha[:,None,None,None]; s=sigma[:,None,None,None]
         prior=a.square()*self.power[None]
         denom=prior+s.square()
+        if self.covariance=='scalar':
+            # A spatially constant spectral multiplier is pointwise in pixels.
+            gaussian=-s*(y-a*self.mean[None])/denom
+            residual=(prior/denom).sqrt()*raw if self.scale_residual else raw
+            return gaussian+residual
         gaussian=-s*self.filter(y-a*self.mean[None],denom.reciprocal())
-        b=(prior/denom).sqrt()
-        return gaussian+self.filter(raw,b)
+        residual=self.filter(raw,(prior/denom).sqrt()) if self.scale_residual else raw
+        return gaussian+residual

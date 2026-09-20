@@ -14,7 +14,8 @@ def main():
     model,cfg,device,ckpt=load_inference(args.resume,args.set,args.device)
     bundle=build_data(cfg); prepare_stats(cfg,bundle,ckpt['stats'])
     result=evaluate_dsm(model,cfg,bundle.validation,device)
-    result.update(step=ckpt['step'],split=bundle.metadata['eval_split'],weights='EMA',environment=environment(device,cfg))
+    result.update(step=ckpt['step'],split=bundle.metadata['eval_split'],weights='EMA',
+                  training_wall_seconds=ckpt.get('training_wall_seconds'),environment=environment(device,cfg))
     json_write(result,args.output); print(json.dumps(result,indent=2))
 
 if __name__=='__main__': main()
