@@ -1,0 +1,40 @@
+{
+  "complete": true,
+  "completed_runs": 16,
+  "optimizer_updates_audited": 1600,
+  "benchmark_script_sha256": "9a7abc67fe631f7437f60bac1af2828ad344e3dc23d0921885005709e0317112",
+  "checks": [
+    "100 consecutive actual updates and 10 timing warmup flags per arm",
+    "Original effective batch in every update and native total update budget",
+    "Finite loss, gradient norm, LR and positive elapsed time",
+    "Recomputed sum, steady mean and full-budget ETA match recorded values",
+    "Paired initial U-Net, frozen first-stage identity and latent-cache identity",
+    "Consistent package/script hashes, seed, FP32 precision and common L2 loss"
+  ],
+  "runs": {
+    "celebahq": [
+      "epsilon",
+      "fourier_gaussian",
+      "fourier_gaussian_unscaled",
+      "scalar_gaussian"
+    ],
+    "lsun_churches": [
+      "epsilon",
+      "fourier_gaussian",
+      "fourier_gaussian_unscaled",
+      "scalar_gaussian"
+    ],
+    "ffhq": [
+      "epsilon",
+      "fourier_gaussian",
+      "fourier_gaussian_unscaled",
+      "scalar_gaussian"
+    ],
+    "lsun_bedrooms": [
+      "epsilon",
+      "fourier_gaussian",
+      "fourier_gaussian_unscaled",
+      "scalar_gaussian"
+    ]
+  }
+}

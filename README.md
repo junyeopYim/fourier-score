@@ -271,6 +271,7 @@ sampler and preserve their official-source identity in output metadata. Original
 | Shared score adapter and DSM | [model.py](fourier_score/model.py), [loss.py](fourier_score/loss.py) |
 | Pixel training / inference / metrics | [train.py](train.py), [sample.py](sample.py), [evaluate.py](evaluate.py) |
 | Native latent experiment pipeline | [ldm.py](ldm.py), [fourier_score/ldm/](fourier_score/ldm/) |
+| LDM throughput / full-budget ETA | [benchmark runner](scripts/benchmark_ldm.py), [16 measured dataset/arm runs](verification/2026-09-21-ldm-timing/README.md) |
 | Reproducibility checks | [tests/](tests/), [verification records](verification/README.md) |
 
 The repository includes numerical, checkpoint-resume and end-to-end execution

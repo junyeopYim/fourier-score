@@ -1,0 +1,33 @@
+{
+  "format": "compvis-ldm-download-v1",
+  "model": "lsun_bedrooms",
+  "description": "LSUN-Bedrooms 256, LDM-VQ-4, latent 3x64x64",
+  "downloaded_at": "2026-09-21T08:59:52.558707+00:00",
+  "model_zoo": "https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/README.md#pretrained-ldms",
+  "upstream_revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+  "archive": {
+    "url": "https://ommer-lab.com/files/latent-diffusion/lsun_bedrooms.zip",
+    "resolved_url": "https://ommer-lab.com/files/latent-diffusion/lsun_bedrooms.zip",
+    "bytes": 2246975121,
+    "sha256": "a3bc15805b7f0b31d9938b51c71be01681ce6542b042e91f3adce7e9923f34e8",
+    "etag": "\"85ee1e91-5d8858894633a\""
+  },
+  "config": {
+    "url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/lsun_beds256/config.yaml",
+    "resolved_url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/lsun_beds256/config.yaml",
+    "bytes": 1601,
+    "sha256": "ccc0035c715a7b8dd98ee2787fe30cf30a7e4f2350b03dc2558d7c1534c109f7",
+    "etag": "\"0e379b8c87e8b5aa385de5750e208321dcb06962faa46b26c2f19fa4df07b90e\""
+  },
+  "expected_archive_sha256": null,
+  "files": {
+    "model.ckpt": {
+      "bytes": 2414158083,
+      "sha256": "f2893f8000f40b0123304561ba297a90937419d432c389f5d52d4e49a72a1626"
+    },
+    "config.yaml": {
+      "bytes": 1601,
+      "sha256": "ccc0035c715a7b8dd98ee2787fe30cf30a7e4f2350b03dc2558d7c1534c109f7"
+    }
+  }
+}

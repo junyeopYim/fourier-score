@@ -1,0 +1,13 @@
+{
+  "initial_unet_sha256": "8068b76607405c5cc883d1882b6b4b8c827e5380c1aa172721c16ed638debdbb",
+  "trainable_parameters": 294966916,
+  "first_stage": {
+    "checkpoint": "/home/junyeop/projects/fourier-score/pretrained/ldm/lsun_churches/model.ckpt",
+    "checkpoint_sha256": "cd54bb024b5e83d5bab8625e52ceb8dd98e77a329094a30aa045881287eaac55",
+    "scale_factor": 0.24578019976615906,
+    "kind": "AutoencoderKL",
+    "ignored_training_keys": [],
+    "posterior": "resample_diagonal_gaussian"
+  },
+  "cache_identity": "5603ed94ceb06e1578f1cd57fa732185e7cd79d1ba790642a916c30a915523db"
+}

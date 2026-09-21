@@ -1,0 +1,16 @@
+{
+  "extends": "../../../configs/ldm/lsun_bedrooms.json",
+  "device": "cuda",
+  "data": {
+    "root": "data/ldm_benchmark100/lsun_bedrooms/images",
+    "train_list": "data/ldm_benchmark100/lsun_bedrooms/train.txt",
+    "validation_list": "data/ldm_benchmark100/lsun_bedrooms/validation.txt"
+  },
+  "cache": {
+    "dir": "data/ldm_benchmark100/lsun_bedrooms/cache",
+    "batch_size": 1
+  },
+  "training": {
+    "microbatch_size": 4
+  }
+}

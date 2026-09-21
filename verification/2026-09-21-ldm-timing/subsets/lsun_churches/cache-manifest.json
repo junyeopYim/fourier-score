@@ -1,0 +1,117 @@
+{
+  "format": "fourier-ldm-cache-v1",
+  "representation": {
+    "first_stage": {
+      "kind": "AutoencoderKL",
+      "params": {
+        "embed_dim": 4,
+        "monitor": "val/rec_loss",
+        "ckpt_path": "models/first_stage_models/kl-f8/model.ckpt",
+        "ddconfig": {
+          "double_z": true,
+          "z_channels": 4,
+          "resolution": 256,
+          "in_channels": 3,
+          "out_ch": 3,
+          "ch": 128,
+          "ch_mult": [
+            1,
+            2,
+            4,
+            4
+          ],
+          "num_res_blocks": 2,
+          "attn_resolutions": [],
+          "dropout": 0.0
+        },
+        "lossconfig": {
+          "target": "torch.nn.Identity"
+        }
+      }
+    },
+    "image_size": 256,
+    "latent_shape": [
+      4,
+      32,
+      32
+    ],
+    "scale_factor": 1.0,
+    "scale_by_std": true
+  },
+  "settings": {
+    "data": {
+      "root": "data/ldm_benchmark100/lsun_churches/images",
+      "train_list": "data/ldm_benchmark100/lsun_churches/train.txt",
+      "validation_list": "data/ldm_benchmark100/lsun_churches/validation.txt",
+      "preprocessing": "lsun_bicubic",
+      "random_flip": true
+    },
+    "power_floor": 0.0001
+  },
+  "sources": {
+    "train": {
+      "list_sha256": "a7060b71d37f8552bb3749a9a12ebb771820db028e0865db2e7155001e936486",
+      "file_metadata_sha256": "9fc167579ae25f1bb9fdb747355e3fe535491d133ca7bd488f1da069326b4a96",
+      "count": 192
+    },
+    "validation": {
+      "list_sha256": "593f5caf6298dd1dbc36f70ce9a7beb809bfd0c3adb31ab1a52a0fec1f64ff53",
+      "file_metadata_sha256": "4faf2d3d9acb2e849df18f728ca33c463dd4a9aa353a880753492d0dce0ff4e2",
+      "count": 4
+    }
+  },
+  "first_stage_sha256": "cd54bb024b5e83d5bab8625e52ceb8dd98e77a329094a30aa045881287eaac55",
+  "encoding": {
+    "kind": "AutoencoderKL",
+    "scale_factor": 0.24578019976615906,
+    "posterior": "resample_diagonal_gaussian"
+  },
+  "identity": "5603ed94ceb06e1578f1cd57fa732185e7cd79d1ba790642a916c30a915523db",
+  "complete": true,
+  "first_stage": {
+    "checkpoint": "/home/junyeop/projects/fourier-score/pretrained/ldm/lsun_churches/model.ckpt",
+    "checkpoint_sha256": "cd54bb024b5e83d5bab8625e52ceb8dd98e77a329094a30aa045881287eaac55",
+    "scale_factor": 0.24578019976615906,
+    "kind": "AutoencoderKL",
+    "ignored_training_keys": [],
+    "posterior": "resample_diagonal_gaussian"
+  },
+  "arrays": {
+    "train": {
+      "file": "train.npy",
+      "shape": [
+        192,
+        2,
+        8,
+        32,
+        32
+      ]
+    },
+    "validation": {
+      "file": "validation.npy",
+      "shape": [
+        4,
+        1,
+        8,
+        32,
+        32
+      ]
+    }
+  },
+  "files": {
+    "train.npy": {
+      "sha256": "8fc3a9d7240c6dc1101f8fb5cc5aedc32934c2e38289558679dc420dd77612f4",
+      "bytes": 12583040
+    },
+    "validation.npy": {
+      "sha256": "2003ea395946469b32d87e72671275284e7d46e9aa094357b8b599fa7a324fda",
+      "bytes": 131200
+    },
+    "stats.pt": {
+      "sha256": "dd992586be35748b83f8e982a5110a10e4e10c342b5d58331969e8ba4eb57bbb",
+      "bytes": 34869
+    }
+  },
+  "preparation_wall_seconds": 25.532593642012216,
+  "storage": "float32 unscaled posterior parameters; no fixed KL draw"
+}

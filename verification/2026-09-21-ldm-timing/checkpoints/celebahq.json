@@ -1,0 +1,33 @@
+{
+  "format": "compvis-ldm-download-v1",
+  "model": "celebahq",
+  "description": "CelebA-HQ 256, LDM-VQ-4, latent 3x64x64",
+  "downloaded_at": "2026-09-21T08:40:06.988100+00:00",
+  "model_zoo": "https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/README.md#pretrained-ldms",
+  "upstream_revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+  "archive": {
+    "url": "https://ommer-lab.com/files/latent-diffusion/celeba.zip",
+    "resolved_url": "https://ommer-lab.com/files/latent-diffusion/celeba.zip",
+    "bytes": 2239361584,
+    "sha256": "f22e6c3f70d396722be11e71d3b626bf0a269d98332ebe10695de90201185d29",
+    "etag": "\"8579f230-5d885778f1f9d\""
+  },
+  "config": {
+    "url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/celeba256/config.yaml",
+    "resolved_url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/celeba256/config.yaml",
+    "bytes": 1599,
+    "sha256": "c7be35391ac86a5f632decd91012297aefefde365795ed10cabe54a5fdbdb6d5",
+    "etag": "\"7595df983b79ac1784c754c7c8583cf3cd07949f7c219b1c1b7298c782de9464\""
+  },
+  "expected_archive_sha256": null,
+  "files": {
+    "model.ckpt": {
+      "bytes": 2414158083,
+      "sha256": "aa782e2c4f9b49e70be153add726450f4165ed157690fda8258aaaef782b8002"
+    },
+    "config.yaml": {
+      "bytes": 1599,
+      "sha256": "c7be35391ac86a5f632decd91012297aefefde365795ed10cabe54a5fdbdb6d5"
+    }
+  }
+}

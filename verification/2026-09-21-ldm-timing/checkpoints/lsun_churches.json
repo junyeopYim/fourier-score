@@ -1,0 +1,33 @@
+{
+  "format": "compvis-ldm-download-v1",
+  "model": "lsun_churches",
+  "description": "LSUN-Churches 256, LDM-KL-8, latent 4x32x32",
+  "downloaded_at": "2026-09-21T05:59:40.499431+00:00",
+  "model_zoo": "https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/README.md#pretrained-ldms",
+  "upstream_revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+  "archive": {
+    "url": "https://ommer-lab.com/files/latent-diffusion/lsun_churches.zip",
+    "resolved_url": "https://ommer-lab.com/files/latent-diffusion/lsun_churches.zip",
+    "bytes": 2499767804,
+    "sha256": "757743285e5d573b8367b779a1043efeb83655c9a9cf36e2fef847c83fb789fb",
+    "etag": "\"94ff6dfc-5d8858a86cdb6\""
+  },
+  "config": {
+    "url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/lsun_churches256/config.yaml",
+    "resolved_url": "https://raw.githubusercontent.com/CompVis/latent-diffusion/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/lsun_churches256/config.yaml",
+    "bytes": 2018,
+    "sha256": "6581963a451597fee88c97bb14820634bd1238d57753957975e282cdb73d9415",
+    "etag": "\"7ed76506e42211c9ece2d908f48d29301922bdf56f09c83b2a93e0162d2c78e4\""
+  },
+  "expected_archive_sha256": null,
+  "files": {
+    "model.ckpt": {
+      "bytes": 2694904894,
+      "sha256": "cd54bb024b5e83d5bab8625e52ceb8dd98e77a329094a30aa045881287eaac55"
+    },
+    "config.yaml": {
+      "bytes": 2018,
+      "sha256": "6581963a451597fee88c97bb14820634bd1238d57753957975e282cdb73d9415"
+    }
+  }
+}

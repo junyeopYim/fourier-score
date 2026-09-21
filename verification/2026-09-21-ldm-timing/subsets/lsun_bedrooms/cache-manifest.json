@@ -1,0 +1,116 @@
+{
+  "format": "fourier-ldm-cache-v1",
+  "representation": {
+    "first_stage": {
+      "kind": "VQModelInterface",
+      "params": {
+        "ckpt_path": "configs/first_stage_models/vq-f4/model.yaml",
+        "embed_dim": 3,
+        "n_embed": 8192,
+        "ddconfig": {
+          "double_z": false,
+          "z_channels": 3,
+          "resolution": 256,
+          "in_channels": 3,
+          "out_ch": 3,
+          "ch": 128,
+          "ch_mult": [
+            1,
+            2,
+            4
+          ],
+          "num_res_blocks": 2,
+          "attn_resolutions": [],
+          "dropout": 0.0
+        },
+        "lossconfig": {
+          "target": "torch.nn.Identity"
+        }
+      }
+    },
+    "image_size": 256,
+    "latent_shape": [
+      3,
+      64,
+      64
+    ],
+    "scale_factor": 1.0,
+    "scale_by_std": false
+  },
+  "settings": {
+    "data": {
+      "root": "data/ldm_benchmark100/lsun_bedrooms/images",
+      "train_list": "data/ldm_benchmark100/lsun_bedrooms/train.txt",
+      "validation_list": "data/ldm_benchmark100/lsun_bedrooms/validation.txt",
+      "preprocessing": "lsun_bicubic",
+      "random_flip": true
+    },
+    "power_floor": 0.0001
+  },
+  "sources": {
+    "train": {
+      "list_sha256": "06e02eaf688c61049364bf1625289399398a33eef2f7f3fa2f857605cd47916b",
+      "file_metadata_sha256": "3b2a4de72c35e9547e7b9ef31fad33d71591d39a3ad409658d4b757d3dd48413",
+      "count": 96
+    },
+    "validation": {
+      "list_sha256": "3631aea065df50019e5413363f4792fff7c9a6577ac04076c08ad3f6fcba4075",
+      "file_metadata_sha256": "37354bd80cfdfe2534eaa59ddff6d5951f0e76848da50fbdca4c381bfe2ebc71",
+      "count": 4
+    }
+  },
+  "first_stage_sha256": "f2893f8000f40b0123304561ba297a90937419d432c389f5d52d4e49a72a1626",
+  "encoding": {
+    "kind": "VQModelInterface",
+    "scale_factor": 1.0,
+    "posterior": "continuous_prequantization"
+  },
+  "identity": "1d3b34ea9b22c4014a8f39f04aea07d07dc52924bed26d6d3b5ba1b2e6a98abc",
+  "complete": true,
+  "first_stage": {
+    "checkpoint": "/home/junyeop/projects/fourier-score/pretrained/ldm/lsun_bedrooms/model.ckpt",
+    "checkpoint_sha256": "f2893f8000f40b0123304561ba297a90937419d432c389f5d52d4e49a72a1626",
+    "scale_factor": 1.0,
+    "kind": "VQModelInterface",
+    "ignored_training_keys": [],
+    "posterior": "continuous_prequantization"
+  },
+  "arrays": {
+    "train": {
+      "file": "train.npy",
+      "shape": [
+        96,
+        2,
+        3,
+        64,
+        64
+      ]
+    },
+    "validation": {
+      "file": "validation.npy",
+      "shape": [
+        4,
+        1,
+        3,
+        64,
+        64
+      ]
+    }
+  },
+  "files": {
+    "train.npy": {
+      "sha256": "e930d2c060c7d566ca35820d5f481d69d209a6425ed5e648b6e847fb08c24ba9",
+      "bytes": 9437312
+    },
+    "validation.npy": {
+      "sha256": "000ce8e61763ee5268cb9506dd9b6295326f0f379aaca003e9fcaadbcb008ca6",
+      "bytes": 196736
+    },
+    "stats.pt": {
+      "sha256": "078ea4f42d35a432841de6a1a413474d6544682802c17ec5277a4f79ffcdc589",
+      "bytes": 100405
+    }
+  },
+  "preparation_wall_seconds": 19.689126248995308,
+  "storage": "float32 unscaled posterior parameters; no fixed KL draw"
+}

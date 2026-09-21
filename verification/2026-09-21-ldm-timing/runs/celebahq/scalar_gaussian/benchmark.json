@@ -1,0 +1,194 @@
+{
+  "model": "celebahq",
+  "parameterization": "scalar_gaussian",
+  "optimizer_updates": 100,
+  "warmup_updates_excluded": 10,
+  "effective_batch": 48,
+  "microbatch": 4,
+  "paper_effective_batch": 48,
+  "paper_optimizer_updates": 410000,
+  "paper_batch_matched": true,
+  "optimizer_seconds_all_updates": 428.69318827697134,
+  "steady_mean_seconds_per_update": 4.28970922253308,
+  "steady_median_seconds_per_update": 4.242586576496251,
+  "steady_stdev_seconds_per_update": 0.1123924982219842,
+  "steady_images_per_second": 11.189569621144607,
+  "projected_training_seconds": 1758780.781238563,
+  "cuda_peak_allocated_bytes": 7630255616,
+  "cuda_peak_reserved_bytes": 8396996608,
+  "initial_unet_sha256": "deb8d7d3afeb4271010c8a84236f19664a97c8e2b7e6f8c869cf36da1aa66c9c",
+  "first_stage": {
+    "checkpoint": "/home/junyeop/projects/fourier-score/pretrained/ldm/celebahq/model.ckpt",
+    "checkpoint_sha256": "aa782e2c4f9b49e70be153add726450f4165ed157690fda8258aaaef782b8002",
+    "scale_factor": 1.0,
+    "kind": "VQModelInterface",
+    "ignored_training_keys": [],
+    "posterior": "continuous_prequantization"
+  },
+  "cache_identity": "5a261c1369a8bbaec6bde4d24adc3d4a88a6842db6736f0159413319d6228bde",
+  "training_images": 96,
+  "cache_preparation_seconds": 19.89739116501005,
+  "config": {
+    "schema_version": "fourier-ldm-v1",
+    "model": "celebahq",
+    "name": "scalar_gaussian",
+    "protocol": "upstream",
+    "parameterization": "scalar_gaussian",
+    "seed": 42,
+    "device": "cuda",
+    "upstream_config": null,
+    "first_stage": {
+      "checkpoint": "pretrained/ldm/celebahq/model.ckpt"
+    },
+    "data": {
+      "root": "data/ldm_benchmark100/celebahq/images",
+      "train_list": "data/ldm_benchmark100/celebahq/train.txt",
+      "validation_list": "data/ldm_benchmark100/celebahq/validation.txt",
+      "preprocessing": "faces_cv2",
+      "random_flip": false
+    },
+    "cache": {
+      "dir": "data/ldm_benchmark100/celebahq/cache",
+      "batch_size": 1,
+      "num_workers": 0,
+      "power_floor": 0.0001
+    },
+    "training": {
+      "iterations": 100,
+      "batch_size": 48,
+      "microbatch_size": 4,
+      "lr": 9.6e-05,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "weight_decay": 0.01,
+      "ema_decay": 0.9999,
+      "grad_clip": null,
+      "gradient_checkpointing": false,
+      "save_dir": "saved/ldm_benchmark100/celebahq_micro4/runs",
+      "save_every": 10000,
+      "snapshot_every": 50000,
+      "eval_every": 10000,
+      "log_every": 50,
+      "console": "quiet"
+    },
+    "backend": {
+      "precision": "fp32",
+      "tf32": false,
+      "cpu_threads": 4,
+      "spectral_transform": "auto"
+    },
+    "sampling": {
+      "method": "ddim",
+      "steps": 500,
+      "eta": 1.0,
+      "batch_size": 4,
+      "decode_batch_size": 1,
+      "num_samples": 50000,
+      "seed": 17002
+    },
+    "evaluation": {
+      "batch_size": 4,
+      "max_images": 1024,
+      "seed": 17001,
+      "noise_bins": 10,
+      "frequency_bins": 6
+    }
+  },
+  "spec": {
+    "model": "celebahq",
+    "upstream_revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+    "upstream_config_sha256": "c6b29227879c821a124dca814164b95df2fd1586ae7ac548f17e2bd2f68062d3",
+    "custom_upstream_config": false,
+    "unet": {
+      "image_size": 64,
+      "in_channels": 3,
+      "out_channels": 3,
+      "model_channels": 224,
+      "attention_resolutions": [
+        8,
+        4,
+        2
+      ],
+      "num_res_blocks": 2,
+      "channel_mult": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "num_head_channels": 32
+    },
+    "first_stage": {
+      "kind": "VQModelInterface",
+      "params": {
+        "embed_dim": 3,
+        "n_embed": 8192,
+        "ckpt_path": "models/first_stage_models/vq-f4/model.ckpt",
+        "ddconfig": {
+          "double_z": false,
+          "z_channels": 3,
+          "resolution": 256,
+          "in_channels": 3,
+          "out_ch": 3,
+          "ch": 128,
+          "ch_mult": [
+            1,
+            2,
+            4
+          ],
+          "num_res_blocks": 2,
+          "attn_resolutions": [],
+          "dropout": 0.0
+        },
+        "lossconfig": {
+          "target": "torch.nn.Identity"
+        }
+      }
+    },
+    "image_size": 256,
+    "latent_shape": [
+      3,
+      64,
+      64
+    ],
+    "timesteps": 1000,
+    "linear_start": 0.0015,
+    "linear_end": 0.0195,
+    "scale_by_std": false,
+    "scale_factor": 1.0,
+    "upstream_loss": "l2",
+    "loss_type": "l2",
+    "logvar_init": 0.0,
+    "l_simple_weight": 1.0,
+    "original_elbo_weight": 0.0,
+    "v_posterior": 0.0,
+    "scheduler": null,
+    "paper_training": {
+      "batch_size": 48,
+      "lr": 9.6e-05,
+      "iterations": 410000
+    }
+  },
+  "environment": {
+    "python": "3.11.15",
+    "platform": "Linux-6.18.33.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "torch": "2.14.0+cu130",
+    "device": "cuda",
+    "cuda_runtime": "13.0",
+    "mps_available": false,
+    "tf32": false,
+    "precision": "fp32",
+    "amp": false,
+    "spectral_transform_config": "auto",
+    "mps_fallback_environment": "unset",
+    "source_sha256": "af75ddfa916e5e6a4e909f3b15ac20da85317f30c08f46f76f8972c930fcc969",
+    "device_name": "NVIDIA GeForce RTX 5060 Ti"
+  },
+  "source_sha256": "af75ddfa916e5e6a4e909f3b15ac20da85317f30c08f46f76f8972c930fcc969",
+  "benchmark_script_sha256": "9a7abc67fe631f7437f60bac1af2828ad344e3dc23d0921885005709e0317112",
+  "timing_scope": "Synchronized optimizer updates including cached data access, forward/backward, AdamW and LitEma. No evaluation, checkpoint writes, downloads or encoding included. Finite repeated subset; not a convergence experiment.",
+  "checkpoint_saved": false
+}

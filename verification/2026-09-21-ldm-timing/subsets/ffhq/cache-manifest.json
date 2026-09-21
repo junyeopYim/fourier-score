@@ -1,0 +1,116 @@
+{
+  "format": "fourier-ldm-cache-v1",
+  "representation": {
+    "first_stage": {
+      "kind": "VQModelInterface",
+      "params": {
+        "embed_dim": 3,
+        "n_embed": 8192,
+        "ckpt_path": "configs/first_stage_models/vq-f4/model.yaml",
+        "ddconfig": {
+          "double_z": false,
+          "z_channels": 3,
+          "resolution": 256,
+          "in_channels": 3,
+          "out_ch": 3,
+          "ch": 128,
+          "ch_mult": [
+            1,
+            2,
+            4
+          ],
+          "num_res_blocks": 2,
+          "attn_resolutions": [],
+          "dropout": 0.0
+        },
+        "lossconfig": {
+          "target": "torch.nn.Identity"
+        }
+      }
+    },
+    "image_size": 256,
+    "latent_shape": [
+      3,
+      64,
+      64
+    ],
+    "scale_factor": 1.0,
+    "scale_by_std": false
+  },
+  "settings": {
+    "data": {
+      "root": "data/ldm_benchmark100/ffhq/images",
+      "train_list": "data/ldm_benchmark100/ffhq/train.txt",
+      "validation_list": "data/ldm_benchmark100/ffhq/validation.txt",
+      "preprocessing": "faces_cv2",
+      "random_flip": false
+    },
+    "power_floor": 0.0001
+  },
+  "sources": {
+    "train": {
+      "list_sha256": "027d7070cf114cd5fefcb051204766fd6de8116bc26c368bb8577e5c466ea41e",
+      "file_metadata_sha256": "d380c3aef15c17d8dea347bb820fbda7f89b2ab76e8528d843fd6a349d50e2bb",
+      "count": 84
+    },
+    "validation": {
+      "list_sha256": "f9113ec474360c93cbaf3d75318f685d7c0f2e7a980cadb5b4d050e679b8bde5",
+      "file_metadata_sha256": "d9dce7e3f3df75aca8982bccc863acd9476f021c8b1ba61eecdfe9ed18a67a15",
+      "count": 4
+    }
+  },
+  "first_stage_sha256": "912b96e5e3f47854ac901b0ac85247ae530d407be319c25880495e2fb113abc1",
+  "encoding": {
+    "kind": "VQModelInterface",
+    "scale_factor": 1.0,
+    "posterior": "continuous_prequantization"
+  },
+  "identity": "c84b10c60edd54d6ebfbfce707246a8ebc87b8d2b7c6f117fa34dd3574e5c02c",
+  "complete": true,
+  "first_stage": {
+    "checkpoint": "/home/junyeop/projects/fourier-score/pretrained/ldm/ffhq/model.ckpt",
+    "checkpoint_sha256": "912b96e5e3f47854ac901b0ac85247ae530d407be319c25880495e2fb113abc1",
+    "scale_factor": 1.0,
+    "kind": "VQModelInterface",
+    "ignored_training_keys": [],
+    "posterior": "continuous_prequantization"
+  },
+  "arrays": {
+    "train": {
+      "file": "train.npy",
+      "shape": [
+        84,
+        1,
+        3,
+        64,
+        64
+      ]
+    },
+    "validation": {
+      "file": "validation.npy",
+      "shape": [
+        4,
+        1,
+        3,
+        64,
+        64
+      ]
+    }
+  },
+  "files": {
+    "train.npy": {
+      "sha256": "6b305e1d8c12f330108c71737b6af6d7c57b2a7bb6f2faba0828ad3fa1cacca4",
+      "bytes": 4128896
+    },
+    "validation.npy": {
+      "sha256": "152254ecdf8fec35ea420f57526ae1bdb0ae30855bef4cd3e158bff78014608a",
+      "bytes": 196736
+    },
+    "stats.pt": {
+      "sha256": "b37d0f1fa4cb260ee1e8c01ae0bcb7d4855de885bacc2e1906e4563d8114f3d3",
+      "bytes": 100405
+    }
+  },
+  "preparation_wall_seconds": 11.519507139993948,
+  "storage": "float32 unscaled posterior parameters; no fixed KL draw"
+}

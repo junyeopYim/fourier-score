@@ -43,6 +43,19 @@ DataLoader. All arms must use the same microbatch. FP32 and TF32 disabled are
 explicit. Optional `training.gradient_checkpointing=true` uses the native U-Net
 checkpointing flag. Runtime and maximum memory still depend on hardware.
 
+For a new run, change the number of examples processed at once with
+`--set training.microbatch_size=8`, or set `training.microbatch_size` in the JSON:
+
+```bash
+uv run --locked --extra ldm python ldm.py train \
+  -c configs/ldm/ffhq.json --device cuda --set training.microbatch_size=8
+```
+
+`training.batch_size` remains the effective batch per optimizer update. For FFHQ,
+microbatch 8 processes `8+8+8+8+8+2` examples before one update at batch 42. Use the
+same microbatch for all compared arms and record it with the timing. Exact resume
+checks include this setting, so a resumed run must retain its original microbatch.
+
 ## Install and download
 
 ```bash
@@ -238,6 +251,41 @@ frequency diagnostics, learning rate, gradient norm and update throughput.
 `optimizer_wall_seconds` measures synchronized updates including data access;
 `training_wall_seconds` additionally includes setup, evaluation and checkpointing.
 Cache preparation has its own time. Compare both matched updates and matched time.
+
+### Measure a 100-update training ETA
+
+After preparing the latent cache, the timing runner uses the same `Trainer.train_step`
+as regular training, including accumulation to the configured effective batch,
+AdamW and LitEma. It times 100 actual optimizer updates and excludes the first 10
+from the steady-state average used to project the paper's full update budget.
+This timing exclusion does not change the model's learning-rate schedule; the
+native Churches LR warmup still applies to the measured updates.
+
+```bash
+uv run --locked --extra ldm python scripts/benchmark_ldm.py \
+  -c configs/ldm/ffhq.json -o saved/ffhq_timing100 \
+  --steps 100 --warmup 10 --set training.microbatch_size=4
+```
+
+The four default arms are epsilon, scalar Gaussian, Fourier Gaussian without
+residual scaling, and Fourier Gaussian. Keep the same microbatch and precision
+within each comparison; choose a microbatch that fits the device. Use
+`lsun_churches_l2.json` for the shared L2 comparison. Each arm records per-update
+loss/time, memory, initial U-Net hash, first-stage identity and the resolved
+protocol in `runs/<arm>/`; `summary.json` collects the completed arms. Repeated
+invocations queue through a process lock on Linux/macOS to prevent concurrent
+benchmark jobs from distorting measurements.
+
+An explicit image subset may be encoded using custom `data.*` lists and a
+separate `cache.dir`; `--prepare` runs the normal frozen encoder first. Use enough
+images for full effective batches. A repeated subset measures throughput and
+does not measure convergence. Record any mirror, preprocessing or split changes.
+Downloads, cache preparation, evaluation and checkpoint writes are excluded from
+the projected training time. Benchmark runs do not save large model checkpoints.
+
+The [RTX 5060 Ti measurement record](../verification/2026-09-21-ldm-timing/README.md)
+contains all 16 dataset/arm runs at microbatch 4, their raw 100-update logs,
+full-budget ETAs, image sources and subset limitations.
 
 ## Native pretrained reference and trained samples
 
