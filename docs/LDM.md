@@ -49,6 +49,10 @@ checkpointing flag. Runtime and maximum memory still depend on hardware.
 uv sync --locked --extra ldm --extra metrics
 python scripts/download_ldm.py --model lsun_churches
 uv run --locked --extra ldm python ldm.py inspect -c configs/ldm/lsun_churches.json
+
+# Weights + original dataset + official split lists, in the preset paths:
+uv run --locked --extra datasets python scripts/download_ldm.py \
+  --model lsun_churches --with-data
 ```
 
 The downloader supports all four models above. It writes `model.ckpt`, matching
@@ -64,8 +68,9 @@ received bytes. `--sha256` can enforce an independently trusted archive digest.
 
 ## Dataset and split lists
 
-Datasets are supplied separately; `prepare` does not download them. Presets
-expect the upstream relative-path lists and image layout:
+`scripts/download_ldm_data.py` downloads or imports images and installs the exact
+upstream splits into the preset paths below. `ldm.py prepare` then builds the
+latent cache. Neither command changes the train/validation partition.
 
 | Model | Image root | Training list | Validation list |
 |---|---|---|---|
@@ -73,6 +78,65 @@ expect the upstream relative-path lists and image layout:
 | CelebA-HQ | `data/celebahq` | `data/celebahqtrain.txt` | `data/celebahqvalidation.txt` |
 | Churches | `data/lsun/churches` | `data/lsun/church_outdoor_train.txt` | `data/lsun/church_outdoor_val.txt` |
 | Bedrooms | `data/lsun/bedrooms` | `data/lsun/bedrooms_train.txt` | `data/lsun/bedrooms_val.txt` |
+
+```bash
+# Show paths/sources without creating files or using the network.
+python scripts/download_ldm_data.py --model ffhq --dry-run
+
+# Dataset only; previously downloaded weights are reused separately.
+uv run --locked --extra datasets python scripts/download_ldm_data.py --model ffhq
+uv run --locked --extra datasets python scripts/download_ldm_data.py --model lsun_churches
+uv run --locked --extra datasets python scripts/download_ldm_data.py --model lsun_bedrooms
+
+# Reuse an existing download: original image directory, ZIP, or LSUN training LMDB.
+uv run --locked --extra datasets python scripts/download_ldm_data.py \
+  --model lsun_churches --source /datasets/church_outdoor_train_lmdb
+python scripts/download_ldm_data.py --model ffhq --source /datasets/images1024x1024
+
+# CelebA-HQ: the original .npy files from the upstream reconstruction procedure.
+python scripts/download_ldm_data.py --model celebahq --source /datasets/celebahq
+# A user-supplied ZIP URL containing those same .npy files is also supported:
+# python scripts/download_ldm_data.py --model celebahq --url "$CELEBAHQ_NPY_ZIP_URL"
+
+# Only install the official train/validation lists; do not fetch images.
+python scripts/download_ldm_data.py --model celebahq --splits-only
+```
+
+FFHQ downloads the publisher's 1024×1024 PNGs using its metadata and checks each
+image's MD5. It flattens the directory layout to the original CompVis filenames,
+without resizing or changing image IDs. Publisher metadata and license files are
+kept under `data/.downloads/ldm/ffhq/`. The CompVis split is 60,000/10,000; its
+membership comes from the pinned lists, not from NVIDIA's sequential split.
+
+LSUN downloads the publisher's **training** LMDB ZIP and exports its encoded
+image bytes directly as `<key>.webp`, as the official exporter does. Both CompVis
+train and validation come from this database: Churches has 121,227/5,000 images,
+Bedrooms 3,028,042/5,000. The publisher's separate LSUN validation LMDB is not used.
+The default is the publisher's HTTP URL from `fyu/lsun/download.py`; HTTPS at that
+host currently has an invalid certificate. `--url` can select an alternate source
+for the same archive and `--sha256` can enforce a trusted archive digest.
+
+CelebA-HQ does not have a complete image archive linked by the original official
+instructions: they describe reconstruction from CelebA and correction files.
+Supply the resulting `imgHQXXXXX.npy` directory/ZIP with `--source`, or a URL to
+that ZIP with `--url`. This installs all 30,000 arrays and the official 25,000/5,000
+split. A differently numbered or JPEG-converted mirror is not silently substituted.
+With `download_ldm.py --with-data`, pass this path as `--data-source`.
+
+Downloads use `data/.downloads/ldm/`; HTTP range requests and Google Drive resume
+support retain partial transfers. Existing completed download files are hash-checked.
+Dataset import refuses conflicting existing images/splits, and writes
+`data/<dataset>/download.json` only when all required files are installed. Completed
+datasets are reused after checking official split hashes and nonempty image paths;
+this fast reuse check does not hash the entire image collection. Local imports use
+hard links when possible, otherwise copies, without moving the originals.
+Google Drive quota or access failures remain explicit download errors.
+
+Keep space for both the downloaded ZIP/LMDB and exported images. FFHQ images alone
+are about 89 GB; LSUN Bedrooms is a much larger preparation than Churches. The
+downloader does not remove its source cache automatically. `--data-dir` changes
+the data prefix; when using it, also set the experiment's `data.root`,
+`data.train_list`, and `data.validation_list` accordingly.
 
 See the [upstream dataset preparation](https://github.com/CompVis/latent-diffusion/tree/a506df5756472e2ebaf9078affdde2c4f1502cd4#data-preparation)
 and [taming face datasets](https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/data/faceshq.py).

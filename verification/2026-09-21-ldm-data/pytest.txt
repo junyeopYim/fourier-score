@@ -1,0 +1,2 @@
+uv run --locked --extra ldm --extra metrics --extra datasets python -m pytest -q
+44 passed in 8.55s

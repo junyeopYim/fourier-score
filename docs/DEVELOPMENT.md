@@ -20,16 +20,24 @@ uv run --locked python -m pytest -q
 uv run --locked python scripts/doctor.py --device cpu
 uv run --locked python scripts/inspect_model.py -c configs/cifar10_ablation.json
 bash scripts/reproduce_cifar10.sh 950k --seeds 42 43 --dry-run
-# Include the optional native LDM integration tests:
-uv run --locked --extra ldm --extra metrics python -m pytest -q
+# Include the optional native LDM and dataset integration tests:
+uv run --locked --extra ldm --extra metrics --extra datasets python -m pytest -q
 # Optional CUDA parity audit; downloads small, pinned original source files.
 uv run --locked --extra ldm --extra metrics python scripts/verify_ldm_upstream.py --output saved/ldm_upstream_parity.json
 ```
 
-The tests cover reference algebra, matching backbone initialization, EMA loading,
-consumed-batch/RNG resume, frequency diagnostics, config validation, and CLI
-protocols. CUDA/MPS checks depend on available hardware. A smoke test or structural
-audit is not evidence of long-training convergence or generative quality.
+The focused suite has **44 cases** with all extras installed. It retains Gaussian
+reference/filter algebra and gradients, matched backbone initialization, finite
+loss/sampling for the main processes, training-only statistics, exact consumed-batch
+resume, EMA, checkpoint source provenance, timing and frequency diagnostics, and
+the public download/evaluation paths. Dataset tests use tiny local HTTP/ZIP/LMDB
+fixtures; pytest does not download public datasets.
+
+The former Cartesian backbone grid, repeated preset/type-validation cases and
+terminal presentation checks were removed. Representative numerical and complete
+workflow checks cover the supported experiment paths. Device smoke checks are
+explicit `scripts/doctor.py --device cuda` / `--device mps` commands. A smoke test
+or structural audit is not evidence of long-training convergence or image quality.
 
 The LDM path lives in `fourier_score/ldm/` and uses `ldm.py` as its CLI. Pinned
 computational modules under `ldm/upstream/` retain upstream arithmetic and keys;

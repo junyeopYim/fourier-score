@@ -10,6 +10,8 @@ from fourier_score.config import deep_merge
 from fourier_score.method import GAUSSIAN_OBJECTIVES
 from fourier_score.utils import ROOT
 
+from .dataset_sources import DATASETS
+
 REVISION = "a506df5756472e2ebaf9078affdde2c4f1502cd4"
 PAPER = "https://arxiv.org/html/2112.10752#A5.T12"
 PARAMETERIZATIONS = ("epsilon", *GAUSSIAN_OBJECTIVES)
@@ -27,21 +29,9 @@ def defaults(model):
         raise ValueError(f"Unknown LDM model: {model}")
     batch, lr, steps = PAPER_TRAINING[model]
     lsun = model.startswith("lsun_")
-    data_root = {
-        "ffhq": "data/ffhq",
-        "celebahq": "data/celebahq",
-        "lsun_churches": "data/lsun/churches",
-        "lsun_bedrooms": "data/lsun/bedrooms",
-    }[model]
-    lists = {
-        "ffhq": ("data/ffhqtrain.txt", "data/ffhqvalidation.txt"),
-        "celebahq": ("data/celebahqtrain.txt", "data/celebahqvalidation.txt"),
-        "lsun_churches": (
-            "data/lsun/church_outdoor_train.txt",
-            "data/lsun/church_outdoor_val.txt",
-        ),
-        "lsun_bedrooms": ("data/lsun/bedrooms_train.txt", "data/lsun/bedrooms_val.txt"),
-    }[model]
+    dataset = DATASETS[model]
+    data_root = "data/" + dataset["root"]
+    lists = ["data/" + entry[0] for entry in dataset["splits"]]
     return {
         "schema_version": "fourier-ldm-v1",
         "model": model,

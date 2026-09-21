@@ -119,3 +119,20 @@ architecture records are indexed in [verification/README.md](../verification/REA
 Those records apply to the source revisions they identify; they do not establish
 long-training FID/IS reproduction. Current commands and checkpoint migration
 boundaries are in [DEVELOPMENT.md](DEVELOPMENT.md).
+## Dataset download sources
+
+`fourier_score/ldm/dataset_sources.py` records the original CompVis train/validation
+lists and SHA-256 values. Face lists are pinned to taming-transformers revision
+`3ba01b241669f5ade541ce990f7650a3b8f65318`; LSUN lists come from the authors'
+`https://ommer-lab.com/files/lsun.zip`. The downloader preserves image identities
+and never generates a replacement holdout split.
+
+FFHQ image URLs, sizes and MD5 values come from NVIDIA's
+[official metadata](https://github.com/NVlabs/ffhq-dataset). The metadata/license
+remain in the ignored local source cache. LSUN image bytes come from the training
+LMDB URLs in the [official downloader](https://github.com/fyu/lsun/blob/master/download.py)
+and use its original key-based `.webp` export convention. For CelebA-HQ, users supply
+the original `.npy` files described by
+[CompVis](https://github.com/CompVis/taming-transformers#celeba-hq) and the
+[PGGAN reconstruction instructions](https://github.com/tkarras/progressive_growing_of_gans#preparing-datasets-for-training).
+The repository does not redistribute any dataset or downloaded weights.

@@ -17,6 +17,8 @@ import time
 import urllib.request
 import zipfile
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
 
 UPSTREAM_REVISION = "a506df5756472e2ebaf9078affdde2c4f1502cd4"
 UPSTREAM_REPOSITORY = "https://github.com/CompVis/latent-diffusion"
@@ -230,6 +232,9 @@ def main(argv=None):
     )
     selection.add_argument("--model", choices=MODELS)
     parser.add_argument("--output-dir", type=Path, default=Path("pretrained/ldm"))
+    parser.add_argument("--with-data", action="store_true", help="Also prepare the dataset and official splits")
+    parser.add_argument("--data-dir", type=Path, default=Path("data"))
+    parser.add_argument("--data-source", type=Path, help="Existing original image folder/ZIP or LSUN LMDB")
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -246,17 +251,33 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
+    if args.data_source and not args.with_data:
+        parser.error("--data-source requires --with-data")
     if args.list:
         for name, (_, _, description) in MODELS.items():
             print(f"{name:16} {description}")
         return
     if args.dry_run:
-        print(json.dumps(download_plan(args.model, args.output_dir), indent=2))
+        plan = download_plan(args.model, args.output_dir)
+        if args.with_data:
+            from scripts.download_ldm_data import dataset_plan
+
+            plan["dataset"] = dataset_plan(args.model, args.data_dir, args.data_source)
+        print(json.dumps(plan, indent=2))
         return
+    if args.with_data and args.model == "celebahq" and args.data_source is None:
+        parser.error("CelebA-HQ needs --data-source with the original imgHQXXXXX.npy folder/ZIP; see docs/LDM.md")
+    if args.data_source and not args.data_source.exists():
+        parser.error(f"Dataset source does not exist: {args.data_source}")
     destination = download_model(args.model, args.output_dir, args.sha256, args.timeout)
     print(f"Ready: {destination / 'model.ckpt'}")
     print(f"Config: {destination / 'config.yaml'}")
     print(f"Download record: {destination / 'download.json'}")
+    if args.with_data:
+        from scripts.download_ldm_data import prepare_dataset
+
+        result = prepare_dataset(args.model, args.data_dir, source=args.data_source, timeout=args.timeout)
+        print(f"Dataset ready: {result['plan']['destination']}")
 
 
 if __name__ == "__main__":

@@ -77,22 +77,28 @@ The public entry points are **train.py**, **sample.py**, and **evaluate.py**.
 Supporting preparation and diagnostic tools live in `scripts/`. EMA, RNG state,
 consumed-batch resume, and the original backbone parameter names are preserved.
 
-## Official LDM weights
+## Official LDM weights and datasets
 
 ```bash
 python scripts/download_ldm.py --list
 python scripts/download_ldm.py --model ffhq --dry-run
 python scripts/download_ldm.py --model ffhq
+# Also download the original dataset and install CompVis train/validation lists:
+uv run --locked --extra datasets python scripts/download_ldm.py --model lsun_churches --with-data
 ```
 
 This saves the checkpoint, matching upstream config, and download hashes under
 `pretrained/ldm/ffhq/`. [The LDM guide](docs/LDM.md) covers frozen-first-stage
 loading, KL/VQ latent caches, native U-Net training, EMA/DDIM sampling and RGB FID.
+Dataset preparation uses the existing `data/ffhq`, `data/celebahq`, and
+`data/lsun/{churches,bedrooms}` paths. FFHQ/LSUN have direct download paths;
+CelebA-HQ accepts an original `.npy` folder/ZIP or its download URL. See the guide
+for `scripts/download_ldm_data.py`, source reuse, and `--splits-only`.
 
 ```bash
 uv sync --locked --extra ldm --extra metrics
 uv run --locked --extra ldm python ldm.py inspect -c configs/ldm/lsun_churches.json
-# Requires the official weights and dataset/split lists described in docs/LDM.md.
+# After downloading weights and preparing the dataset above:
 uv run --locked --extra ldm python ldm.py prepare -c configs/ldm/lsun_churches.json --device cuda
 uv run --locked --extra ldm python ldm.py compare -c configs/ldm/lsun_churches_l2.json --seeds 42 --dry-run
 ```

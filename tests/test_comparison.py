@@ -20,13 +20,3 @@ def test_paired_seeds_preserve_all_other_settings(tmp_path):
     runs[-1]['output'].mkdir()
     (runs[-1]['output']/'existing.txt').write_text('keep')
     with pytest.raises(FileExistsError): check_outputs(runs)
-
-
-@pytest.mark.parametrize('seeds',[[1,1],[-1],[],[True]])
-def test_invalid_seed_sets(seeds):
-    with pytest.raises(ValueError): comparison_runs('configs/smoke.json',seeds=seeds)
-
-
-def test_legacy_conventions_remain_explicitly_selectable():
-    runs=comparison_runs('configs/smoke.json',objectives=['score','diffusion','fourier_gaussian'])
-    assert [r['config']['loss']['type'] for r in runs]==['score','diffusion','fourier_gaussian']

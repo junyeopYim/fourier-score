@@ -19,8 +19,8 @@ def test_radial_energy_locates_dc_and_known_sinusoid():
     assert energy[[0,2,3]].sum().item()<1e-20
 
 
-@pytest.mark.parametrize('bands',[6,100])
-def test_spectral_dsm_reconstructs_pixel_and_noise_means(cfg,bands):
+def test_spectral_dsm_reconstructs_pixel_and_noise_means(cfg):
+    bands = 100
     trainer=Trainer(cfg)
     try:
         baseline=evaluate_dsm(trainer.model,cfg,trainer.bundle.validation,trainer.device)

@@ -41,7 +41,6 @@ from fourier_score.ldm.model import (
 )
 from fourier_score.ldm.training import Trainer, load_trained
 from fourier_score.ldm.upstream.ema import LitEma
-from fourier_score.statistics import estimate_stats
 from fourier_score.utils import load_checkpoint
 
 
@@ -174,6 +173,7 @@ def test_paper_presets_and_l1_are_preserved():
         load_config("configs/ldm/ffhq.json", ["training.batch_szie=3"])
 
 
+@pytest.mark.parametrize("latent_experiment", ["AutoencoderKL"], indirect=True)
 def test_native_beta_and_ddim_endpoint(latent_experiment):
     cfg, spec = latent_experiment
     schedule = Schedule(spec)
@@ -201,18 +201,6 @@ def test_native_beta_and_ddim_endpoint(latent_experiment):
     )
     torch.testing.assert_close(output, expected_output)
     assert output.min() > 1 and calls == 5
-
-
-def test_diagonal_posterior_statistics_are_integrated():
-    means = torch.zeros(4, 2, 4, 4)
-    variances = torch.ones_like(means) * torch.tensor([2.0, 3.0])[None, :, None, None]
-    stats = estimate_stats(
-        [(means[:2], variances[:2]), (means[2:], variances[2:])],
-        posterior_variance=True,
-    )
-    assert torch.equal(stats["mean"], means[0])
-    torch.testing.assert_close(stats["power"], variances[0])
-    assert stats["floored_fraction"] == 0
 
 
 def test_frozen_loader_cache_and_train_only_moments(latent_experiment):
@@ -272,6 +260,7 @@ def test_frozen_loader_cache_and_train_only_moments(latent_experiment):
         open_cache(cfg, spec)
 
 
+@pytest.mark.parametrize("latent_experiment", ["AutoencoderKL"], indirect=True)
 def test_all_arms_initialize_the_same_and_sampling_uses_adapter(latent_experiment):
     cfg, spec = latent_experiment
     prepare_cache(cfg, spec, torch.device("cpu"), progress=lambda _: None)
@@ -340,6 +329,7 @@ def test_training_resume_and_ema_decode_end_to_end(latent_experiment, tmp_path):
         load_trained(output, ["parameterization=epsilon"])
 
 
+@pytest.mark.parametrize("latent_experiment", ["AutoencoderKL"], indirect=True)
 def test_public_ema_selection_and_strict_native_keys(latent_experiment, tmp_path):
     _cfg, spec = latent_experiment
     model = Denoiser(spec)

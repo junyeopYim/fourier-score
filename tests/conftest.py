@@ -1,4 +1,3 @@
-import copy
 import pytest
 import torch
 from fourier_score.config import load_config

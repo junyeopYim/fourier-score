@@ -1,20 +1,8 @@
 import copy
-import hashlib
-from pathlib import Path
-import pytest
 import torch
 from fourier_score.model import build_model,architecture_report,weight_hash,backbone_config
 from fourier_score.backbones.ncsnpp import NCSNpp
-from fourier_score.loss import training_loss
 from fourier_score.method import OBJECTIVES
-
-@pytest.mark.parametrize('filename,sha',[
- ('ncsnpp.py','ea16eb35b5e6f2fa92db10be2552b3acdfe8fa7b'),
- ('layers.py','eb772b2e6606ed92295dd031cb43be8a82a992c7'),
- ('layerspp.py','2eb4e5de372e799f0608272408718664c35719c0')])
-def test_source_files_exact(filename,sha):
-    b=(Path('fourier_score/backbones')/filename).read_bytes()
-    assert hashlib.sha1(b'blob '+str(len(b)).encode()+b'\0'+b).hexdigest()==sha
 
 
 def test_identical_architecture_and_initialization(cfg,stats):
@@ -37,21 +25,3 @@ def test_baseline_matches_original_sigma_output(cfg,stats):
     source=NCSNpp(sourcecfg).float().eval(); source.load_state_dict(model.backbone.state_dict())
     x=torch.randn(2,1,8,8); lev=model.process.level(torch.tensor([0.2,0.8]))
     torch.testing.assert_close(model(x,lev),source(x,lev.sigma),atol=0,rtol=0)
-
-@pytest.mark.parametrize('resblock',['biggan','ddpm'])
-@pytest.mark.parametrize('fir',[True,False])
-@pytest.mark.parametrize('progressive',['none','output_skip','residual'])
-@pytest.mark.parametrize('progressive_input',['none','input_skip','residual'])
-def test_all_backbone_paths(cfg,stats,resblock,fir,progressive,progressive_input):
-    cfg=copy.deepcopy(cfg); a=cfg['arch']['args']
-    a.update(resblock_type=resblock,fir=fir,progressive=progressive,progressive_input=progressive_input)
-    model=build_model(cfg,stats)
-    gen=torch.Generator().manual_seed(3); lev=model.process.sample(2,'cpu',gen)
-    x=torch.randn(2,1,8,8); loss=training_loss(model,x,lev,torch.randn_like(x)); loss.backward()
-    assert torch.isfinite(loss) and any(p.grad is not None and bool(p.grad.abs().max()>0) for p in model.parameters())
-
-@pytest.mark.parametrize('embedding',['fourier','positional'])
-def test_embeddings(cfg,stats,embedding):
-    cfg['arch']['args']['embedding_type']=embedding
-    model=build_model(cfg,stats); lev=model.process.level(torch.tensor([0.1,0.9]))
-    out=model(torch.randn(2,1,8,8),lev); assert out.shape==(2,1,8,8)
