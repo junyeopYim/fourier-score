@@ -20,12 +20,23 @@ uv run --locked python -m pytest -q
 uv run --locked python scripts/doctor.py --device cpu
 uv run --locked python scripts/inspect_model.py -c configs/cifar10_ablation.json
 bash scripts/reproduce_cifar10.sh 950k --seeds 42 43 --dry-run
+# Include the optional native LDM integration tests:
+uv run --locked --extra ldm --extra metrics python -m pytest -q
+# Optional CUDA parity audit; downloads small, pinned original source files.
+uv run --locked --extra ldm --extra metrics python scripts/verify_ldm_upstream.py --output saved/ldm_upstream_parity.json
 ```
 
 The tests cover reference algebra, matching backbone initialization, EMA loading,
 consumed-batch/RNG resume, frequency diagnostics, config validation, and CLI
 protocols. CUDA/MPS checks depend on available hardware. A smoke test or structural
 audit is not evidence of long-training convergence or generative quality.
+
+The LDM path lives in `fourier_score/ldm/` and uses `ldm.py` as its CLI. Pinned
+computational modules under `ldm/upstream/` retain upstream arithmetic and keys;
+do not reformat them. Local LDM checkpoints have a separate format. Its tests
+exercise both KL and VQ stages, analytic posterior statistics, encoded pixel
+flips, training-only splits, paired initialization, exact CPU resume, public EMA
+selection, native DDIM endpoints, and decoded image artifacts.
 
 Dated records under `verification/` and `docs/VALIDATION*` describe the source
 revisions they name. Old paths and commands in those records are historical.

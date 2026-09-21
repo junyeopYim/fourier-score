@@ -1,0 +1,68 @@
+{
+  "repository": "https://github.com/CompVis/latent-diffusion",
+  "revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+  "changes": "Only imports redirected into this package. Unused dynamic factories fail explicitly.",
+  "files": {
+    "openaimodel.py": {
+      "source": "ldm/modules/diffusionmodules/openaimodel.py",
+      "upstream_sha256": "92e0c23ada849f532be12d9be2ebcddd98d3b040aa366981ac5f06c96d53b6af",
+      "local_sha256": "1b58e01acb64d1fee369d79f9948a802988f88d4a8c80645d90c2a71446d4b1b"
+    },
+    "model.py": {
+      "source": "ldm/modules/diffusionmodules/model.py",
+      "upstream_sha256": "043ff43c4d4304f7259419d1bd4529445da71661b5362653ecd174bd4342c413",
+      "local_sha256": "0fde6d3febf4eb54c8bbe3ea7102176d650f26614c9b024c27a0804294f19d87"
+    },
+    "util.py": {
+      "source": "ldm/modules/diffusionmodules/util.py",
+      "upstream_sha256": "5dd19ed7536cc9095ab5d3ca4c09bde5283c0779207a1aa019c05565a2502dca",
+      "local_sha256": "a3be77746ea2c25fd650f581532ee5c2d22f739aa0089686ac0cfa1ccbe2db82"
+    },
+    "attention.py": {
+      "source": "ldm/modules/attention.py",
+      "upstream_sha256": "012198f441427ef892da0b6efc5ea9fae8e414aefcc65504577b41c2afd3526e",
+      "local_sha256": "0d703f33b02f561d848a1ab891588f083b6fcbbc3bf2cbbbfb088da93c8877ee"
+    },
+    "ema.py": {
+      "source": "ldm/modules/ema.py",
+      "upstream_sha256": "96cf170a9d7b49c846990694a0abef039e2046d934d37f7a219015ccc0da4e1b",
+      "local_sha256": "96cf170a9d7b49c846990694a0abef039e2046d934d37f7a219015ccc0da4e1b"
+    }
+  },
+  "configs": {
+    "configs/ldm/upstream/ffhq.yaml": {
+      "source": "configs/latent-diffusion/ffhq-ldm-vq-4.yaml",
+      "sha256": "8ef723f6e71be5abc666500aa0cdd7ad35985d3d08efa2ada4d4ba4cfccf18ca"
+    },
+    "configs/ldm/upstream/celebahq.yaml": {
+      "source": "configs/latent-diffusion/celebahq-ldm-vq-4.yaml",
+      "sha256": "c6b29227879c821a124dca814164b95df2fd1586ae7ac548f17e2bd2f68062d3"
+    },
+    "configs/ldm/upstream/lsun_churches.yaml": {
+      "source": "configs/latent-diffusion/lsun_churches-ldm-kl-8.yaml",
+      "sha256": "6e0144e2e62ec39069da926fedbc4abdb80d508bccb6c64756bcbe8cc42f0f5e"
+    },
+    "configs/ldm/upstream/lsun_bedrooms.yaml": {
+      "source": "configs/latent-diffusion/lsun_bedrooms-ldm-vq-4.yaml",
+      "sha256": "da81fbf9eda2426d7116c6be54050b4f063b04d58a712e6ccdd27d94251b9fae"
+    }
+  },
+  "verification_sources": {
+    "ldm/models/autoencoder.py": {
+      "sha256": "8ba30483454b431e0642c229f286fe387c60130c26516cd392594186f9b4a4e5",
+      "revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4"
+    },
+    "ldm/models/diffusion/ddim.py": {
+      "sha256": "3086330c774355809af6c4ce02220a01811187a01a7d0be5cc914c4ac07e4a48",
+      "revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4"
+    },
+    "ldm/modules/distributions/distributions.py": {
+      "sha256": "a304b343529b915c8d7191f696adcb7bbdd539ea9b9eed30ef0bad6d9565ee28",
+      "revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4"
+    },
+    "taming/modules/vqvae/quantize.py": {
+      "sha256": "413240a68fba887f05098012a72f9edf5d38ff645f6cab61efd70ef2a9f69d45",
+      "revision": "3ba01b241669f5ade541ce990f7650a3b8f65318"
+    }
+  }
+}

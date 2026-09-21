@@ -1,0 +1,25 @@
+{
+  "source_revision": "a506df5756472e2ebaf9078affdde2c4f1502cd4",
+  "implementation_source_sha256": "a4906e3f91dff9da0b6e4f69c32ada6951927999abc816379dc7715ee88fdc54",
+  "methodology": "Original autoencoder.py and ddim.py loaded with Lightning replaced only by nn.Module; computational layers use the import-only vendored modules. RNG noise_like is aligned to the explicit CPU generator for stochastic DDIM. Tiny native architectures and identical weights/inputs.",
+  "AutoencoderKL": {
+    "encode_max_abs": 0.0,
+    "decode_max_abs": 0.0
+  },
+  "VQModelInterface": {
+    "encode_max_abs": 0.0,
+    "decode_max_abs": 0.0
+  },
+  "ddim_epsilon_eta0.0": {
+    "max_abs": 0.0
+  },
+  "ddim_epsilon_eta1.0": {
+    "max_abs": 0.0
+  },
+  "ddim_fourier_gaussian_eta0.0": {
+    "max_abs": 0.0
+  },
+  "ddim_fourier_gaussian_eta1.0": {
+    "max_abs": 0.0
+  }
+}

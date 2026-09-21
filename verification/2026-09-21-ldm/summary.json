@@ -1,0 +1,168 @@
+{
+  "date": "2026-09-21",
+  "git_base": "267d8e697fc77096a1bdfad78d820709bbee8672",
+  "working_tree_changes": true,
+  "source_sha256": "a4906e3f91dff9da0b6e4f69c32ada6951927999abc816379dc7715ee88fdc54",
+  "tests": {
+    "command": "uv run --locked --extra ldm --extra metrics python -m pytest -q",
+    "passed": 197,
+    "skipped": 2,
+    "skip_reason": "MPS hardware unavailable",
+    "wall_seconds": 18.47
+  },
+  "checks": {
+    "uv_lock_check_offline": "passed",
+    "git_diff_check": "passed",
+    "ruff_new_code": "passed"
+  },
+  "architectures": {
+    "ffhq": {
+      "unet_parameters": 274056163,
+      "upstream_config_sha256": "8ef723f6e71be5abc666500aa0cdd7ad35985d3d08efa2ada4d4ba4cfccf18ca",
+      "paper_training": {
+        "batch_size": 42,
+        "lr": 8.4e-05,
+        "iterations": 635000
+      },
+      "native_loss": "l2"
+    },
+    "celebahq": {
+      "unet_parameters": 274056163,
+      "upstream_config_sha256": "c6b29227879c821a124dca814164b95df2fd1586ae7ac548f17e2bd2f68062d3",
+      "paper_training": {
+        "batch_size": 48,
+        "lr": 9.6e-05,
+        "iterations": 410000
+      },
+      "native_loss": "l2"
+    },
+    "lsun_churches": {
+      "unet_parameters": 294966916,
+      "upstream_config_sha256": "6e0144e2e62ec39069da926fedbc4abdb80d508bccb6c64756bcbe8cc42f0f5e",
+      "paper_training": {
+        "batch_size": 96,
+        "lr": 5e-05,
+        "iterations": 500000
+      },
+      "native_loss": "l1"
+    },
+    "lsun_bedrooms": {
+      "unet_parameters": 274056163,
+      "upstream_config_sha256": "da81fbf9eda2426d7116c6be54050b4f063b04d58a712e6ccdd27d94251b9fae",
+      "paper_training": {
+        "batch_size": 48,
+        "lr": 9.6e-05,
+        "iterations": 1900000
+      },
+      "native_loss": "l2"
+    }
+  },
+  "public_checkpoint": {
+    "model": "lsun_churches",
+    "checkpoint_sha256": "cd54bb024b5e83d5bab8625e52ceb8dd98e77a329094a30aa045881287eaac55",
+    "scale_factor": 0.24578019976615906,
+    "weights": "EMA",
+    "ddim_steps": 200,
+    "eta": 1.0,
+    "images": 1,
+    "wall_seconds": 10.249082731010276,
+    "preview": "public_churches_preview.png"
+  },
+  "native_training_smoke": {
+    "data": "Synthetic uniform RGB noise: two training images and two validation images; not LSUN data",
+    "frozen_pretrained_first_stage": true,
+    "unet_parameters": 294966916,
+    "parameterization": "fourier_gaussian",
+    "protocol": "l2",
+    "optimizer_updates": 1,
+    "effective_batch": 2,
+    "microbatch": 1,
+    "native_schedule_timesteps": 1000,
+    "train": {
+      "split": "train",
+      "loss": 0.026070437859743834,
+      "lr": 5e-11,
+      "grad_norm": 0.029589273035526276,
+      "images": 2,
+      "loss_avg": 0.026070437859743834,
+      "steps_per_second": 0.8654802357196005,
+      "window_steps": 1,
+      "step": 1,
+      "training_wall_seconds": 7.0804252050002106,
+      "optimizer_wall_seconds": 1.1554278870025882
+    },
+    "evaluation": {
+      "epsilon_mse": 0.09930440783500671,
+      "standard_error": 0.02249521017074585,
+      "native_simple_loss": 0.09930440783500671,
+      "native_loss_type": "l2",
+      "n_images": 2,
+      "split": "validation",
+      "seed": 17001,
+      "noise_bins": [
+        {
+          "count": 2,
+          "mse": 0.09930440783500671
+        },
+        {
+          "count": 0,
+          "mse": null
+        }
+      ],
+      "frequency": {
+        "units": "radial cycles/latent-pixel",
+        "edges": [
+          0.0,
+          0.3535533905932738,
+          0.7071067811865476
+        ],
+        "modes": [
+          401,
+          623
+        ],
+        "mse": [
+          0.07039614161783883,
+          0.11791150034584419
+        ],
+        "noise_frequency_mse": [
+          [
+            0.07039614161783883,
+            0.11791150034584419
+          ],
+          [
+            null,
+            null
+          ]
+        ]
+      },
+      "step": 1,
+      "weights": "EMA",
+      "cache_identity": "f8d03ce15015668eccbd6dc158f0b16e2e8bf53e050e5c395b0eab9a6ba9adf0",
+      "training_wall_seconds": 7.2506010020006215,
+      "optimizer_wall_seconds": 1.1554278870025882
+    },
+    "sample_count": 1,
+    "sampling_nfe": 10,
+    "decoded_shape": [
+      1,
+      256,
+      256,
+      3
+    ],
+    "checkpoint": "saved/ldm_native_churches_verified_fg/last.pt",
+    "source_sha256": "a4906e3f91dff9da0b6e4f69c32ada6951927999abc816379dc7715ee88fdc54"
+  },
+  "reconstruction_fid_smoke": {
+    "completed": true,
+    "images": 2,
+    "metric_package": "torch-fidelity",
+    "metric_version": "0.3.0",
+    "scope": "Execution only. Two-image covariance is singular and gives no usable quality estimate."
+  },
+  "limitations": [
+    "No long training or 50K-sample FID performed.",
+    "Only Churches public pretrained weights were exercised; VQ uses native small-model source parity and state-contract tests.",
+    "Text/class conditioning and pretrained denoiser fine-tuning are not supported.",
+    "Single-device FP32; CUDA smoke used an RTX 5060 Ti 16 GB."
+  ]
+}

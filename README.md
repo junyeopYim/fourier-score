@@ -86,15 +86,28 @@ python scripts/download_ldm.py --model ffhq
 ```
 
 This saves the checkpoint, matching upstream config, and download hashes under
-`pretrained/ldm/ffhq/`. See [the LDM guide](docs/LDM.md) for supported models and
-the frozen-autoencoder comparison protocol. LDM training/sampling integration is
-still required before these weights can be used by the local entry points.
+`pretrained/ldm/ffhq/`. [The LDM guide](docs/LDM.md) covers frozen-first-stage
+loading, KL/VQ latent caches, native U-Net training, EMA/DDIM sampling and RGB FID.
+
+```bash
+uv sync --locked --extra ldm --extra metrics
+uv run --locked --extra ldm python ldm.py inspect -c configs/ldm/lsun_churches.json
+# Requires the official weights and dataset/split lists described in docs/LDM.md.
+uv run --locked --extra ldm python ldm.py prepare -c configs/ldm/lsun_churches.json --device cuda
+uv run --locked --extra ldm python ldm.py compare -c configs/ldm/lsun_churches_l2.json --seeds 42 --dry-run
+```
+
+The separate `ldm.py` CLI preserves the pixel-space checkpoint format. LDM
+presets use the paper's effective batch/LR/update budgets and pinned native
+architectures. Churches' upstream L1 loss is retained; the `_l2` preset explicitly
+changes the common loss for all compared parameterizations.
 
 ## Scope and reproducibility
 
 This repository supports pixel-space MNIST, CIFAR-10, and image-folder experiments
-on one CPU, CUDA GPU, or MPS device. Official LDM downloads are supported;
-**Score-SDE pretrained import/download and LDM execution are not implemented yet.**
+on one CPU, CUDA GPU, or MPS device. Unconditional CompVis LDM experiments are
+available through the optional `ldm` dependencies; text/class conditioning is
+outside this implementation. **Score-SDE pretrained import/download is not implemented yet.**
 See [planned extensions](docs/EXPERIMENTS.md#planned-extensions).
 No long-training FID/IS result is claimed by the smoke tests or architecture audits.
 

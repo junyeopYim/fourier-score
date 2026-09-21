@@ -4,6 +4,30 @@ Originally prepared: 2026-09-19; updated for the companion layout on 2026-09-20.
 This project does not claim full upstream runner equivalence or reproduced FID.
 No pretrained models or datasets are bundled.
 
+## Native unconditional LDM modules
+
+`fourier_score/ldm/upstream/` vendors `openaimodel.py`, `model.py`, `attention.py`,
+`util.py` and `ema.py` from CompVis latent-diffusion revision
+`a506df5756472e2ebaf9078affdde2c4f1502cd4`. Only package imports are changed;
+the upstream/local SHA-256 pairs are recorded in `upstream/PROVENANCE.json`.
+The MIT license is included. Native training YAML snapshots under
+`configs/ldm/upstream/` come from that revision's `configs/latent-diffusion/`.
+
+The frozen KL/VQ wrapper, cache, native epsilon adapter, training loop and sampler
+integration are new implementations. KL/VQ module names and computational state
+shapes match the original first-stage classes. VQ lookup follows
+`taming-transformers@3ba01b241669f5ade541ce990f7650a3b8f65318`, with only query
+chunking to bound memory; its MIT license is also included. Face preprocessing
+follows that source's ImagePaths/NumpyPaths, and LSUN preprocessing follows the
+pinned CompVis source. Current OpenCV/Pillow/PyTorch versions are recorded by the
+lockfile; historical-library bitwise equivalence is not claimed.
+
+Paper Tables 1/12 supply sampling NFE, effective batches, target learning rates
+and update budgets. The native L1 Churches loss is preserved; an explicitly
+labeled L2 protocol changes that common loss. See [LDM.md](LDM.md) for scope,
+exact choices and the distinction between architecture/configuration fidelity
+and long-training quality reproduction.
+
 ## Project organization
 
 The initial template-style layout, JSON configuration, and checkpoint lifecycle

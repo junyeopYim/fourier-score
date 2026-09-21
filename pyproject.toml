@@ -13,6 +13,7 @@ dependencies = [
 [project.optional-dependencies]
 metrics = ["torch-fidelity>=0.3.0,<0.4"]
 tensorboard = ["tensorboard>=2.18,<3"]
+ldm = ["einops>=0.8.1,<0.9", "pyyaml>=6.0.2,<7", "opencv-python-headless>=4.10,<5"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]

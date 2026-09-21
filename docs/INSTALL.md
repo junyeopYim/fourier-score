@@ -57,6 +57,7 @@ Optional packages:
 ```bash
 uv sync --locked --extra metrics        # torch-fidelity; downloads Inception on use
 uv sync --locked --extra tensorboard    # SummaryWriter
+uv sync --locked --extra ldm --extra metrics  # native LDM + decoded-image FID
 ```
 
 Every time optional dependency selections change, preserve the corresponding

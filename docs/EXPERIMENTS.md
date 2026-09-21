@@ -77,8 +77,9 @@ Use Runpod on-demand Pods for these long jobs. Check current
 [storage billing](https://docs.runpod.io/pods/pricing) separately. Keep `saved/`
 on persistent storage and preserve the Git revision / locked environment for
 resume. A 48 GB card (RTX 6000 Ada / L40S) is a reasonable starting point for
-the future LDM adapter with a frozen autoencoder; its required memory and runtime
-still need measurement after that training pipeline exists.
+the native LDM runs with a frozen autoencoder. The runner supports smaller cards
+through microbatching; benchmark the selected architecture and effective batch
+before budgeting full training.
 
 ## Sample and evaluate a checkpoint
 
@@ -149,16 +150,12 @@ The repository has no 95,000-update preset.
 
 ## Planned extensions
 
-Official unconditional LDM checkpoint/config downloads are available through
-`scripts/download_ldm.py`. See [LDM.md](LDM.md) for commands, exact latent/output
-conventions, and the experiments needed to measure the proposal's effect.
+Unconditional CompVis LDM first-stage loading, latent statistics, training from
+scratch, native DDIM/DDPM sampling and decoded RGB evaluation are implemented in
+`ldm.py`. See [LDM.md](LDM.md) for native paper presets and paired comparisons.
+All arms share a frozen first stage; the public pretrained denoiser is a separate
+reference. The optional dependencies keep pixel experiments independently runnable.
 
-Official Score-SDE checkpoint download/import, upstream output-equivalence checks,
-LDM inference/training, latent statistics, and automated FID report generation
-remain future work. They are not represented by placeholder configs or commands.
-
-For LDM, keep the autoencoder and conditioning fixed and compare the public model,
-the original denoiser with extra training, and the proposed parameterization with
-the same extra training budget. Validate initialization/conversion before treating
-pretrained epsilon-prediction weights as Gaussian residual weights. Keep future
-LDM dependencies optional so CIFAR-10 experiments remain independently runnable.
+Official Score-SDE checkpoint download/import, conditioned LDMs, pretrained LDM
+fine-tuning/conversion, and automatic aggregate FID learning-curve reports remain
+future extensions.

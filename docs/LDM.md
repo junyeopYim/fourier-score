@@ -1,156 +1,237 @@
-# LDM weights and comparison protocol
+# Frozen-first-stage LDM experiments
 
-## Download an official model
+`ldm.py` connects official checkpoint loading, latent caches/statistics, from-scratch
+native U-Net training, EMA DDIM/DDPM sampling, frozen decoding, and image metrics.
+It is separate from the pixel-space `train.py` / `sample.py` checkpoint format.
 
-The downloader uses only Python's standard library. It fetches one official
-CompVis ZIP and the matching **inference config** from a pinned upstream commit.
-The ZIP contains `model.ckpt`; it does not contain the config.
+## Native presets and fidelity to the paper
+
+The U-Net, first-stage encoder/decoder, diffusion schedule utilities and LitEma
+come from [CompVis latent-diffusion](https://github.com/CompVis/latent-diffusion/tree/a506df5756472e2ebaf9078affdde2c4f1502cd4),
+pinned at `a506df5756472e2ebaf9078affdde2c4f1502cd4`. Computational modules retain
+upstream code with package imports redirected. No modern Diffusers architecture
+is substituted. The released training YAML files are preserved under
+`configs/ldm/upstream/` and their hashes are stored in each experiment.
+
+Training defaults use the **effective batch, actual learning rate and iterations
+from Table 12**, and sampling defaults use Table 1 of the
+[LDM paper](https://arxiv.org/html/2112.10752). `base_learning_rate` in the face/VQ
+YAMLs is multiplied by the effective batch in the original runner; it is not the
+actual optimizer learning rate. Churches explicitly disables this LR scaling.
+
+| Config | Frozen first stage | Latent C×H×W | Batch | Actual LR | Updates | Loss | DDIM steps |
+|---|---|---|---:|---:|---:|---|---:|
+| `configs/ldm/ffhq.json` | VQ-f4 | 3×64×64 | 42 | 8.4e-5 | 635,000 | L2 | 200 |
+| `configs/ldm/celebahq.json` | VQ-f4 | 3×64×64 | 48 | 9.6e-5 | 410,000 | L2 | 500 |
+| `configs/ldm/lsun_churches.json` | KL-f8 | 4×32×32 | 96 | 5e-5 | 500,000 | **L1** | 200 |
+| `configs/ldm/lsun_bedrooms.json` | VQ-f4 | 3×64×64 | 48 | 9.6e-5 | 1,900,000 | L2 | 200 |
+
+All native models use 1,000 diffusion steps, AdamW (betas 0.9/0.999, epsilon 1e-8,
+weight decay 0.01), and native LitEma (maximum decay 0.9999, warm-start updates).
+Churches retains its 10,000-update LR warmup starting at 1e-6 of the target LR.
+The upstream schedule named `linear` interpolates **sqrt(beta)** and squares it;
+it is not the pixel runner's linearly spaced beta schedule.
+
+`configs/ldm/lsun_churches_l2.json` changes only the common loss to L2 and labels
+the run `l2`. Use this for the proposal's DSM comparison. `upstream` keeps L1 for
+all Churches arms; that is a separate L1 experiment, not DSM. Never compare an
+L1 epsilon arm against an L2 Fourier arm as a parameterization-only experiment.
+
+Microbatch size defaults to 1; gradients are accumulated to the full effective
+batch above. The final batch of an epoch may be shorter, as in the upstream
+DataLoader. All arms must use the same microbatch. FP32 and TF32 disabled are
+explicit. Optional `training.gradient_checkpointing=true` uses the native U-Net
+checkpointing flag. Runtime and maximum memory still depend on hardware.
+
+## Install and download
 
 ```bash
-python scripts/download_ldm.py --list
-python scripts/download_ldm.py --model ffhq --dry-run
-python scripts/download_ldm.py --model ffhq
+uv sync --locked --extra ldm --extra metrics
+python scripts/download_ldm.py --model lsun_churches
+uv run --locked --extra ldm python ldm.py inspect -c configs/ldm/lsun_churches.json
 ```
 
-Choose `ffhq`, `celebahq`, `lsun_churches`, or `lsun_bedrooms`. All four are
-unconditional 256-pixel models from the [official model zoo](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/README.md#pretrained-ldms).
-Use `--output-dir /path/to/weights` to change the default root.
+The downloader supports all four models above. It writes `model.ckpt`, matching
+inference `config.yaml`, and `download.json` under `pretrained/ldm/MODEL/`.
+The manifest records pinned URLs, hashes and download time; repeat downloads
+verify and reuse the files. The loader uses tensor-only `torch.load` and strict
+computational state keys. Native pretrained denoiser import explicitly selects
+raw or EMA tensors; training starts with a **new randomly initialized U-Net**.
+
+Allow about 5.3 GB temporary disk space per full checkpoint download. No publisher
+checksum is listed in the upstream model zoo; the recorded SHA-256 identifies
+received bytes. `--sha256` can enforce an independently trusted archive digest.
+
+## Dataset and split lists
+
+Datasets are supplied separately; `prepare` does not download them. Presets
+expect the upstream relative-path lists and image layout:
+
+| Model | Image root | Training list | Validation list |
+|---|---|---|---|
+| FFHQ | `data/ffhq` | `data/ffhqtrain.txt` | `data/ffhqvalidation.txt` |
+| CelebA-HQ | `data/celebahq` | `data/celebahqtrain.txt` | `data/celebahqvalidation.txt` |
+| Churches | `data/lsun/churches` | `data/lsun/church_outdoor_train.txt` | `data/lsun/church_outdoor_val.txt` |
+| Bedrooms | `data/lsun/bedrooms` | `data/lsun/bedrooms_train.txt` | `data/lsun/bedrooms_val.txt` |
+
+See the [upstream dataset preparation](https://github.com/CompVis/latent-diffusion/tree/a506df5756472e2ebaf9078affdde2c4f1502cd4#data-preparation)
+and [taming face datasets](https://github.com/CompVis/taming-transformers/blob/3ba01b241669f5ade541ce990f7650a3b8f65318/taming/data/faceshq.py).
+Every list contains one path relative to its image root. Duplicate entries and
+overlapping train/validation paths are rejected. Custom lists are supported via
+`--set data.train_list=... --set data.validation_list=...`; report them as a
+modified data protocol. No random holdout is silently substituted.
+
+Faces follow shortest-side OpenCV bilinear resizing then center cropping,
+without random flips, matching taming ImagePaths on the original square images.
+CelebA-HQ also accepts the upstream uint8 `[1,3,H,W]` NumPy files. LSUN follows
+center-square cropping, PIL bicubic resizing and training-only horizontal flips.
+Images are converted to RGB in [-1,1]. The frozen first stage stays in eval mode.
+
+## Cache and training-only statistics
+
+```bash
+uv run --locked --extra ldm python ldm.py prepare \
+  -c configs/ldm/lsun_churches.json --device cuda
+```
+
+`data/ldm_cache/MODEL/` contains float32 memory-mapped `train.npy` and
+`validation.npy`, `stats.pt`, and a completed manifest with file hashes. Cache
+preparation is staged in a temporary directory and published only on success.
+An existing incompatible/corrupted cache is rejected; use a new `cache.dir`.
+
+* KL caches posterior **mean and clamped log variance**, not one latent draw.
+  Each training/evaluation visit resamples the native diagonal Gaussian.
+* VQ caches continuous **pre-quantization** features. Decode includes the native
+  nearest-codebook lookup followed by post-quantization convolution and decoder.
+* Training flips are encoded as separate pixel-space views. Flipping a cached
+  latent is not assumed to equal encoding the flipped image.
+* The checkpoint's latent scale is reused exactly. For `scale_by_std` models,
+  a checkpoint without `scale_factor` is rejected; it is never re-estimated.
+* Mean and Fourier power are calculated only on training latents **after scaling**.
+  For KL, posterior noise variance is integrated analytically into the spectrum:
+  each channel's spatial-average conditional variance contributes to every FFT
+  mode. Statistics therefore match posterior sampling without Monte Carlo noise.
+* Scalar and Fourier controls share the same mean and statistics cache. Covariance
+  remains diagonal across latent channels; no whitening is silently introduced.
+
+The identity includes checkpoint/configuration, scale convention, split-list
+hashes, source file size/mtime fingerprints, preprocessing, augmentation and power
+floor. Cached arrays/statistics also have full content hashes. Source-image
+fingerprints are fast metadata identities, not adversarial content checksums.
+Cache preparation time is recorded separately for end-to-end cost accounting.
+KL has roughly twice as many stored channels as a fixed draw; flips double train
+storage again. Inspect available disk space before preparing a large LSUN set.
+
+## Paired training and resume
+
+```bash
+# Inspect the 3 arms × 3 seeds before starting full paper-length runs.
+uv run --locked --extra ldm python ldm.py compare \
+  -c configs/ldm/lsun_churches_l2.json --seeds 42 43 44 --dry-run
+
+# Explicit 10K-update pilot (not a paper-convergence claim).
+uv run --locked --extra ldm python ldm.py compare \
+  -c configs/ldm/lsun_churches_l2.json --device cuda --seeds 42 \
+  --set training.iterations=10000 \
+  --set 'name=churches_l2_pilot10k_{parameterization}_s{seed}'
+
+# One arm, with the native full budget unless overridden.
+uv run --locked --extra ldm python ldm.py train \
+  -c configs/ldm/ffhq.json --device cuda --parameterization fourier_gaussian
+
+uv run --locked --extra ldm python ldm.py train \
+  -r saved/ldm_ffhq_upstream_fourier_gaussian_s42/last.pt
+```
+
+`compare` prepares/verifies the common cache once and runs each arm in a separate
+process. Defaults are `epsilon`, `scalar_gaussian`, and `fourier_gaussian`;
+`--parameterizations` can add `fourier_gaussian_unscaled`. Single-arm `train`
+requires a completed cache. `--dry-run` reads configs only.
+
+All paired runs start with the same raw U-Net weights, data order, posterior
+samples, timesteps and noise. Native integer timesteps and the unchanged loss
+weighting are retained. The adapter returns **total epsilon** in both training
+and sampling:
 
 ```text
-pretrained/ldm/ffhq/
-├── model.ckpt
-├── config.yaml
-└── download.json
+z_t = alpha_t z + sigma_t epsilon
+scaled_score = sigma_t s_G + F^-1[b_t F(h_theta)]
+epsilon_hat = -scaled_score
 ```
 
-`download.json` records the source URLs, upstream config revision, download time,
-archive hash, and both output-file hashes. A repeated invocation verifies the
-existing files and reuses them without contacting the server. An incomplete or
-modified destination is rejected rather than overwritten.
+Only the denoiser is optimized; the first stage is not even resident during
+cached training. `last.pt` saves optimizer, LitEma, consumed-batch cursor, RNGs,
+statistics and immutable first-stage identity. `ema_STEP.pt` is inference-only.
+Resume verifies source, config, cache identity, PyTorch version and device.
+An interrupted partial optimizer step is never saved. Existing run directories
+are not overwritten. Checkpoints reference the frozen weights instead of copying
+them into every training snapshot; retain the original checkpoint for decoding.
+Use `--set first_stage.checkpoint=/new/path/model.ckpt` for inference relocation;
+the stored hash must still match.
 
-The inspected archives are about 2.2–2.5 GB; extraction temporarily needs space
-for both the ZIP and the 2.4–2.7 GB checkpoint. Allow roughly 5.3 GB of free disk.
-The temporary ZIP is removed after installation. Interrupted downloads are
-cleaned up; rerunning starts the transfer again. Progress is printed during transfer.
+`metrics.jsonl` records native training loss, validation epsilon MSE, noise ×
+frequency diagnostics, learning rate, gradient norm and update throughput.
+`optimizer_wall_seconds` measures synchronized updates including data access;
+`training_wall_seconds` additionally includes setup, evaluation and checkpointing.
+Cache preparation has its own time. Compare both matched updates and matched time.
 
-No publisher SHA-256 is supplied in the model-zoo listing. Recorded hashes identify
-the bytes received; they are not an independent publisher checksum. If you have a
-trusted archive digest, pass `--sha256 <64-hex-characters>` to require a match.
-The script also checks transfer length and ZIP CRC. It never unpickles the weights.
+## Native pretrained reference and trained samples
 
-**Implemented here:** download, provenance, and local file verification.
-**Still required:** a CompVis checkpoint loader, latent data/statistics path, and
-LDM training/sampling integration. These weights cannot yet be passed directly to
-this repository's `train.py` or `sample.py`, which load the local v1 NCSN++ format.
-The upstream config is preserved exactly; no incompatible local JSON preset is created.
+```bash
+# Check the released baseline with the same sampler/decoder/metrics.
+uv run --locked --extra ldm python ldm.py sample \
+  -c configs/ldm/lsun_churches.json --pretrained --weights ema --device cuda \
+  --num-samples 64 --batch-size 1 -o saved/churches_public_reference
 
-## First experiment: freeze the autoencoder and train the latent denoiser
+uv run --locked --extra ldm python ldm.py sample \
+  -r saved/ldm_ffhq_upstream_fourier_gaussian_s42/last.pt --device cuda \
+  --num-samples 50000 -o saved/ffhq_fourier_50k
 
-If FFHQ data is available, start with **FFHQ LDM-VQ-4**. Its unconditional model
-avoids prompt/guidance confounders and its default L2 noise-prediction loss fits
-the present DSM comparison. LSUN-Churches uses `loss_type: l1`: changing that to
-L2 only for the proposed arm would confound the comparison.
-See the [FFHQ config](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/ffhq256/config.yaml),
-[Churches config](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/models/ldm/lsun_churches256/config.yaml),
-and [LDM loss implementation](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/ldm/models/diffusion/ddpm.py).
-
-1. Load the official model and reproduce its sampling behavior before modifying it.
-   Record checkpoint hash, EMA choice, preprocessing, sampler, steps, eta, batch
-   size, seed, sample count, and FID implementation. Re-evaluate the public model
-   with the same FID pipeline used for the proposed model.
-2. Freeze the pretrained first-stage encoder/decoder. Preserve the original U-Net
-   architecture, timestep conditioning, noise schedule, and loss weighting.
-3. Produce training latents using the exact first-stage path and checkpoint scale:
-   `z = ldm.get_first_stage_encoding(ldm.encode_first_stage(images))`.
-   Estimate `mu` and Fourier `P` on these **training** latents, not RGB images.
-4. Train the arms below from the same randomly initialized U-Net weights, holding
-   the autoencoder fixed. Pair training seeds, data order, optimizer, EMA, effective
-   batch, and evaluation settings. Report the full pretrained LDM separately as
-   a reference; its unknown/much larger training budget is not a matched-budget arm.
-
-| Arm | Denoiser output interpretation | Purpose |
-|---|---|---|
-| Original epsilon prediction | `epsilon_hat = h_theta` | Native LDM baseline |
-| Scalar Gaussian | Channelwise constant covariance | Gaussian reference without frequency-specific covariance |
-| Fourier Gaussian, unscaled | Fourier reference plus unscaled residual | Isolate the reference term |
-| Fourier Gaussian | Fourier reference plus frequency-scaled residual | Full proposal |
-
-For a first implementation, baseline / scalar / full Fourier are the three main
-arms. Add the unscaled control to isolate residual scaling. Use the same L2 loss
-for these experiments; a matched L1 comparison can be a separately labeled extension.
-
-## Where the proposed method enters LDM
-
-Keep the native LDM epsilon-prediction interface. For
-`z_t = alpha_t * z + sigma_t * epsilon`, turn the U-Net's raw output into
-
-```text
-scaled_score = sigma_t * s_G(z_t, t) + F^-1[b_t * F(h_theta(z_t, t))]
-epsilon_hat  = -scaled_score
-loss         = mean((epsilon_hat - epsilon)^2)
+uv run --locked --extra ldm python ldm.py evaluate \
+  -r saved/ldm_ffhq_upstream_fourier_gaussian_s42/last.pt \
+  -o saved/ffhq_fourier_validation.json --device cuda
 ```
 
-The existing [FourierGaussian](../fourier_score/method.py) implements the first
-line. In a future adapter, use the pretrained LDM's `sqrt_alphas_cumprod[t]` and
-`sqrt_one_minus_alphas_cumprod[t]` for alpha and sigma. Preserve its actual schedule
-and integer timestep inputs; the local VE/NCSN++ process is not a substitute.
-The adapted total epsilon must be returned in **both training and sampling**
-(including DDIM), while the upstream `parameterization` remains `eps`.
+Sampling defaults to native uniform DDIM, eta=1.0, with 200 steps (500 for
+CelebA-HQ). Native timestep offset `+1` and the first previous alpha are retained.
+To avoid silently changing the number of evaluations, DDIM step counts must divide
+1,000 and be smaller than 1,000 (e.g. 50/100/200/250/500). Full ancestral DDPM uses
+`--set sampling.method=ddpm --steps 1000`. Latents are never clamped to RGB bounds.
+All latent steps use the same epsilon adapter. Only decoded RGB is clamped and
+converted to uint8, as in the original sample exporter.
 
-The VQ first stage used by FFHQ returns continuous, pre-quantization features
-from `VQModelInterface.encode`; estimate statistics on that exact representation,
-not codebook indices. KL models sample their encoder posterior in the native
-first-stage path. Replacing samples with posterior means or caching one draw
-changes the latent data distribution; choose and document a common protocol for
-all arms. Preserve the checkpoint's latent scaling rather than re-estimating it.
-Sources: [first-stage encoding](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/ldm/models/diffusion/ddpm.py),
-[VQ interface](https://github.com/CompVis/latent-diffusion/blob/a506df5756472e2ebaf9078affdde2c4f1502cd4/ldm/models/autoencoder.py).
+Outputs include PNGs, uint8 NHWC NPZ shards, a preview and protocol metadata with
+checkpoint hashes, EMA selection, actual sample count, NFE and elapsed time.
+The public pretrained denoiser's training budget is not a matched experimental arm.
 
-Cache identities should include the encoder/checkpoint hash, latent scaling,
-posterior convention, data split, preprocessing/augmentation, and statistics floor.
-Before training, inspect whether latent power varies across spatial frequencies;
-this measures how much frequency information distinguishes the scalar and Fourier controls.
+## Reconstruction and RGB FID
 
-## A separate question: can a completed LDM improve with extra training?
+```bash
+uv run --locked --extra ldm python ldm.py reconstruct \
+  -c configs/ldm/lsun_churches.json --device cuda \
+  --set evaluation.max_images=128 -o saved/churches_reconstruction
 
-Use three arms with the same frozen autoencoder and data:
+# Paper E.3.1 uses 50K generated images and the entire TRAINING split for FID.
+uv run --locked --extra ldm python ldm.py export-real \
+  -c configs/ldm/lsun_churches.json --split train -o saved/churches_real_train
 
-| Arm | Role |
-|---|---|
-| Public pretrained LDM, no extra training | Starting quality |
-| Original LDM continued for a fixed budget | Effect of extra training |
-| Proposed parameterization adapted and trained for the same total budget | Additional effect of the proposal |
+uv run --locked --extra ldm --extra metrics python ldm.py fid \
+  --real saved/churches_real_train/png --generated saved/churches_public_reference/png \
+  --device cuda -o saved/churches_fid.json
+```
 
-**Copying pretrained epsilon-prediction weights does not initialize a Gaussian
-residual predictor with the same predictions.** Evaluate the model immediately
-after any conversion and record its quality before further training.
+Use 50K generated samples for final comparisons; the 64-image reference command
+above only checks execution. Reconstruction exports original/reconstructed pairs
+and PSNR; the `fid` command can also compare those folders to compute rFID.
+Reconstruction FID is diagnostic, not a mathematical lower bound on generation FID.
 
-A practical option is a short teacher-matching warm start: initialize a student
-from the public U-Net and fit its **converted total epsilon prediction** to the
-frozen public model's epsilon prediction. Then train on the original noise target.
-This is an approximate initialization, not an exact weight conversion. Count its
-compute in the proposed arm's budget and give the original baseline the same total
-budget. Compare both update counts and elapsed GPU time; teacher inference has a cost.
+The paper also uses **torch-fidelity**. This implementation records its installed
+version and the evaluated image hashes/counts. Versions, preprocessing, real splits,
+sampling settings and sample counts still must match across compared models.
+Do not report smoke-test FID or a newly trained short pilot as reproduced paper FID.
 
-An exactly prediction-preserving algebraic wrapper produces the same samples
-before training under the same sampler/RNG. If its inverse transformations simply
-cancel on every forward pass, it is still the original function and does not test
-the proposed parameterization. Prefer the frozen-autoencoder, from-scratch
-denoiser experiment above for the primary learning-efficiency claim.
-
-## What to measure and how to interpret it
-
-| Measurement | Interpretation |
-|---|---|
-| FID at matched updates and at matched training time | Quality and learning efficiency, including Fourier/statistics overhead |
-| Updates/time to a fixed FID target | Whether the method reaches useful quality sooner |
-| FID versus sampler NFE and generation time | Sampling quality/cost tradeoff after training |
-| Noise × frequency DSM and generated-image spectra | Where errors change; diagnostic evidence, not a substitute for image quality |
-| Repeated training seeds and fixed-seed sample grids | Variability and visible artifacts |
-
-Use cheap pilot evaluations before final 50K-sample FID comparisons, with identical
-sample counts within each comparison. Report the distinction between early learning
-improvements and final quality. Improved high-noise or frequency-band DSM, faster
-learning, and better FID are hypotheses to test; none follows automatically from
-adding the Gaussian reference. If latent spectra are already close to flat, the
-Fourier arm may provide little benefit over the scalar control.
+Supported scope: the four unconditional released models above, on one device,
+with a frozen pretrained first stage and denoiser training from scratch. Text/class
+conditioning, pretrained-denoiser fine-tuning and automatic aggregate FID curves
+are not implemented. The paper's long-training quality is an experimental result
+to establish, not a consequence of matching configuration values.

@@ -1,0 +1,15 @@
+{
+  "python": "3.11.15",
+  "platform": "Linux-6.18.33.1-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "torch": "2.14.0+cu130",
+  "device": "cuda",
+  "cuda_runtime": "13.0",
+  "mps_available": false,
+  "tf32": false,
+  "precision": "fp32",
+  "amp": false,
+  "spectral_transform_config": "auto",
+  "mps_fallback_environment": "unset",
+  "source_sha256": "a4906e3f91dff9da0b6e4f69c32ada6951927999abc816379dc7715ee88fdc54",
+  "device_name": "NVIDIA GeForce RTX 5060 Ti"
+}

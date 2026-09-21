@@ -50,7 +50,7 @@ def folder_manifest(path):
     }
 
 
-def evaluate_images(real, generated, output, device="cpu", batch_size=64):
+def evaluate_images(real, generated, output, device="cpu", batch_size=64, *, inception_score=True):
     """Compute FID/IS; the optional Inception dependency is loaded only here."""
     import importlib.metadata
     from fourier_score.utils import json_write, resolve_device
@@ -75,7 +75,7 @@ def evaluate_images(real, generated, output, device="cpu", batch_size=64):
         input2=real_manifest["path"],
         cuda=device.type == "cuda",
         fid=True,
-        isc=True,
+        isc=inception_score,
         kid=False,
         prc=False,
         batch_size=batch_size,
