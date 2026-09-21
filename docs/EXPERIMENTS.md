@@ -156,6 +156,9 @@ scratch, native DDIM/DDPM sampling and decoded RGB evaluation are implemented in
 All arms share a frozen first stage; the public pretrained denoiser is a separate
 reference. The optional dependencies keep pixel experiments independently runnable.
 
-Official Score-SDE checkpoint download/import, conditioned LDMs, pretrained LDM
-fine-tuning/conversion, and automatic aggregate FID learning-curve reports remain
-future extensions.
+Official continuous-VE NCSN++ checkpoint download and EMA inference import are
+available through [SCORE_SDE.md](SCORE_SDE.md). These public references are separate
+from the matched, from-scratch arms.
+
+Conditioned LDMs, pretrained LDM fine-tuning/conversion, and automatic aggregate
+FID learning-curve reports remain future extensions.

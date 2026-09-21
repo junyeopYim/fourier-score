@@ -1,0 +1,6 @@
+{
+  "extends": "cifar10_ncsnpp_continuous.json",
+  "name": "official_cifar10_ncsnpp_deep_continuous",
+  "arch": {"args": {"num_res_blocks": 8}},
+  "trainer": {"iterations": 950001}
+}

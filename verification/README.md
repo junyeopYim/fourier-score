@@ -2,6 +2,7 @@
 
 | Record | Tested scope | Entry point |
 |---|---|---|
+| **2026-09-21 — research README and Score-SDE references** | 45 focused tests passed; three official checkpoints downloaded and EMA-imported; native-shape CUDA forward checks; CIFAR-10 1,000-step PC sampling; README smoke workflow | [Details](2026-09-21-score-sde/README.md), [download and execution records](2026-09-21-score-sde/summary.json), [test output](2026-09-21-score-sde/pytest.txt) |
 | **2026-09-21 — dataset preparation and focused tests** | 44 required tests passed; all official split lists downloaded; one original FFHQ image downloaded and MD5-verified; local HTTP/ZIP/LMDB integration | [Details](2026-09-21-ldm-data/README.md), [test output](2026-09-21-ldm-data/pytest.txt), [download guide](../docs/LDM.md#dataset-and-split-lists) |
 | **2026-09-21 — frozen-first-stage LDM** | 197 passed, 2 MPS tests skipped; KL/VQ original-source arithmetic parity; full Churches CUDA training/sample/decode smoke and FID execution | [Summary](2026-09-21-ldm/summary.json), [details](2026-09-21-ldm/README.md), [LDM guide](../docs/LDM.md) |
 | **2026-09-20 — companion layout** | Working-tree refactor based on `865e84e`; 170 passed, 2 MPS tests skipped; pre-refactor checkpoint/training equality and public CLI checks | [Summary](2026-09-20-companion/summary.json), [development guide](../docs/DEVELOPMENT.md) |

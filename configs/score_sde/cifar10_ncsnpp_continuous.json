@@ -1,0 +1,6 @@
+{
+  "extends": "../cifar10_1m3.json",
+  "name": "official_cifar10_ncsnpp_continuous",
+  "parameterization": "score",
+  "trainer": {"iterations": 1300001}
+}

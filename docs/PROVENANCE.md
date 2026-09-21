@@ -50,7 +50,8 @@ which in turn derives from https://github.com/yang-song/score_sde_pytorch .
 Copyright 2020 The Google Research Authors; Apache-2.0 attribution is retained.
 
 The following files are byte-for-byte identical to the pinned immediate source.
-`tests/test_backbone.py` independently computes the Git blob hash of their bytes.
+Their Git blob identities are recorded below; the focused backbone tests check
+paired initialization and the original score-output convention.
 
 | Packaged file | Original Git blob SHA-1 |
 |---|---|
@@ -119,6 +120,23 @@ architecture records are indexed in [verification/README.md](../verification/REA
 Those records apply to the source revisions they identify; they do not establish
 long-training FID/IS reproduction. Current commands and checkpoint migration
 boundaries are in [DEVELOPMENT.md](DEVELOPMENT.md).
+
+## Official Score-SDE downloads
+
+The reference catalog in `scripts/download_score_sde.py` uses the original
+Google Drive folders linked by `yang-song/score_sde_pytorch` at revision
+`cb1f359f4aadf0ff9a5e122fe8fffc9451fd6e44`. Downloaded source configs and license
+are saved verbatim with the original checkpoint, outside Git. Their local
+manifests retain URLs, hashes and sizes. No downloaded Python is executed.
+
+`scripts/import_score_sde.py` strictly maps model keys and the ordered EMA tensors
+to the existing backbone and exports only an inference snapshot. A missing,
+deterministic `sigmas` buffer can be rebuilt from config; this buffer is unused
+by the supported continuous Fourier embedding. All learned weights must exist.
+The local score adapter performs the original sigma division exactly once.
+The exported metadata and generated-sample metadata retain the original source
+identity. See [SCORE_SDE.md](SCORE_SDE.md) for scope and evaluation differences.
+
 ## Dataset download sources
 
 `fourier_score/ldm/dataset_sources.py` records the original CompVis train/validation

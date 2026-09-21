@@ -57,11 +57,33 @@ Inception 가중치 다운로드가 필요합니다. 정확한 실행 예시는
 추론은 지원하지만, 학습 재개는 기존 source hash 검사 때문에 해당 원래 revision에서
 해야 합니다.** 상세 내용은 [개발·이전 안내](DEVELOPMENT.md)를 참고하십시오.
 
-공식 LDM 가중치는 `python scripts/download_ldm.py --model ffhq`로 받을 수 있습니다.
-가중치·대응 config·해시가 함께 저장되며, 기존 결과는 파일 검증 후 재사용합니다.
-[LDM 실험 안내](LDM.md)에 autoencoder를 고정한 대조 실험과 pretrained 추가 학습
-비교 절차를 정리했습니다. LDM 실행 파이프라인과 Score-SDE pretrained import는
-아직 구현되지 않았습니다.
+## Frozen LDM과 공식 pretrained 참조
+
+LDM은 공식 KL/VQ first stage를 고정하고 denoiser를 처음부터 학습합니다.
+가중치와 데이터 준비, latent 캐시·통계, 비교 학습, latent sampling과 RGB decode,
+FID까지 [LDM 실험 안내](LDM.md)에 정리했습니다.
+
+```bash
+# pretrained/ldm/와 data/의 기존 경로에 가중치·데이터·공식 split을 준비합니다.
+uv run --locked --extra datasets python scripts/download_ldm.py \
+  --model lsun_churches --with-data
+uv run --locked --extra ldm python ldm.py prepare \
+  -c configs/ldm/lsun_churches_l2.json --device cuda
+uv run --locked --extra ldm python ldm.py compare \
+  -c configs/ldm/lsun_churches_l2.json --device cuda --seeds 42 43 44
+
+# 공식 Score-SDE 참조: CIFAR-10 기본형·deep형과 FFHQ-256.
+uv run --locked --extra datasets python scripts/download_score_sde.py --all
+uv run --locked python scripts/import_score_sde.py --model cifar10_ncsnpp_continuous
+uv run --locked python sample.py \
+  -r pretrained/score_sde/cifar10_ncsnpp_continuous/ema.pt \
+  -o saved/official_cifar10_reference --device cuda --num-samples 64 --batch-size 64
+```
+
+Score-SDE 원본 가중치·config·해시는 `pretrained/score_sde/<model>/`에 저장됩니다.
+다운로드를 반복하면 파일 검증 후 재사용하며, EMA 변환 결과는 추론 전용입니다.
+이 공개 pretrained 모델들은 학습 이력이 다르므로 처음부터 학습하는 paired
+비교군과 구분합니다. [다운로드·변환 상세](SCORE_SDE.md)를 참고하십시오.
 기존 장치·구조 검증 기록도 장기 학습이나 FID 성능 검증을 뜻하지 않습니다.
 
 설치: [INSTALL.md](INSTALL.md) · 설정: [CONFIG.md](CONFIG.md) ·

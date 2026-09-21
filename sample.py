@@ -46,6 +46,8 @@ def main():
         "npz_format": "uint8 NHWC, key=samples",
         "png_dir": "png",
     }
+    if "pretrained_source" in ckpt:
+        settings["pretrained_source"] = ckpt["pretrained_source"]
     json_write(settings, out / "settings.json")
     g = torch.Generator().manual_seed(cfg["sampling"]["seed"])
     n = cfg["sampling"]["num_samples"]

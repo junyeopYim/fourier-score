@@ -26,12 +26,14 @@ uv run --locked --extra ldm --extra metrics --extra datasets python -m pytest -q
 uv run --locked --extra ldm --extra metrics python scripts/verify_ldm_upstream.py --output saved/ldm_upstream_parity.json
 ```
 
-The focused suite has **44 cases** with all extras installed. It retains Gaussian
+The focused suite has **45 cases** with all extras installed. It retains Gaussian
 reference/filter algebra and gradients, matched backbone initialization, finite
 loss/sampling for the main processes, training-only statistics, exact consumed-batch
 resume, EMA, checkpoint source provenance, timing and frequency diagnostics, and
 the public download/evaluation paths. Dataset tests use tiny local HTTP/ZIP/LMDB
-fixtures; pytest does not download public datasets.
+fixtures; pytest does not download public datasets or model weights. A single
+Score-SDE workflow test covers verified download/reuse, strict EMA conversion,
+frozen embeddings, inference and source attribution.
 
 The former Cartesian backbone grid, repeated preset/type-validation cases and
 terminal presentation checks were removed. Representative numerical and complete

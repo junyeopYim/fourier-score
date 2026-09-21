@@ -1,0 +1,5 @@
+{
+  "extends": "../ffhq256_folder.json",
+  "name": "official_ffhq_256_ncsnpp_continuous",
+  "parameterization": "score"
+}

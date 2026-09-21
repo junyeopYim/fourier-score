@@ -15,7 +15,8 @@ def evaluate_checkpoint(checkpoint, output, overrides=(), device=None):
 
     model, cfg, device, state = load_inference(checkpoint, overrides, device)
     bundle = build_data(cfg)
-    prepare_stats(cfg, bundle, state["stats"])
+    if state["stats"] is not None:
+        prepare_stats(cfg, bundle, state["stats"])
     result = evaluate_dsm(model, cfg, bundle.validation, device)
     result.update(
         step=state["step"],
@@ -24,6 +25,8 @@ def evaluate_checkpoint(checkpoint, output, overrides=(), device=None):
         training_wall_seconds=state.get("training_wall_seconds"),
         environment=environment(device, cfg),
     )
+    if "pretrained_source" in state:
+        result["pretrained_source"] = state["pretrained_source"]
     json_write(result, output)
     return result
 

@@ -59,6 +59,7 @@ uv sync --locked --extra metrics        # torch-fidelity; downloads Inception on
 uv sync --locked --extra tensorboard    # SummaryWriter
 uv sync --locked --extra ldm --extra metrics  # native LDM + decoded-image FID
 uv sync --locked --extra ldm --extra metrics --extra datasets  # Google Drive + LSUN LMDB preparation
+uv run --locked --extra figures python scripts/plot_method.py  # regenerate README SVG/PNG
 ```
 
 Every time optional dependency selections change, preserve the corresponding
