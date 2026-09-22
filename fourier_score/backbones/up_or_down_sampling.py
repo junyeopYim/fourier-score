@@ -2,7 +2,7 @@
 
 Modified 2026-09-19: zero insertion uses only 4D padding for MPS.
 Same filters, padding, convolutions and trainable parameters as the source.
-No CUDA extension, no silent CPU fallback. See docs/PROVENANCE.md.
+No CUDA extension, no silent CPU fallback. See NOTICE for source attribution and local adaptations.
 """
 import numpy as np
 import torch

@@ -1,7 +1,7 @@
 """Original, deterministic oracle illustrations; no training or dataset download.
 
-Run ``python scripts/plot_diagnostics.py`` from any directory. See docs/FIGURES.md
-for the mathematical scope and how these figures differ from empirical results.
+Run ``python scripts/plot_diagnostics.py`` from any directory. See README.md#figures for the mathematical scope and the distinction
+between these illustrations and empirical results.
 """
 
 from __future__ import annotations
@@ -251,7 +251,7 @@ def make_frequency_figure(output: Path, rng, data: dict, checks: dict, n_samples
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", "--output", type=Path, default=ROOT / "docs/assets")
+    parser.add_argument("--out", "--output", type=Path, default=ROOT / "assets")
     parser.add_argument("--seed", type=int, default=20260922)
     parser.add_argument("--samples", type=int, default=32768,
                         help="Monte Carlo observations per synthetic distribution (minimum 8192)")

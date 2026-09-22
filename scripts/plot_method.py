@@ -14,7 +14,7 @@ import numpy as np
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", "--output", type=Path,
-                        default=Path(__file__).resolve().parents[1] / "docs/assets")
+                        default=Path(__file__).resolve().parents[1] / "assets")
     args = parser.parse_args()
     plt.rcParams.update({
         "font.family": "DejaVu Sans", "mathtext.fontset": "stix",

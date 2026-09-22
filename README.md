@@ -14,13 +14,13 @@ frequency-dependent covariance helps relative to a channelwise scalar covariance
 in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 
 [Quick start](#quick-start) · [Method](#method) · [Experiments](#reproduce-the-experiments) ·
-[GMM notebook](#understand-the-mechanism) · [Figures](docs/FIGURES.md) ·
-[Debugging](docs/DEVELOPMENT.md) · [Documentation](docs/USAGE.md)
+[GMM notebook](#understand-the-mechanism) · [Figures](#figures) ·
+[Development](#development)
 
-![An analytic Gaussian score plus a frequency-scaled neural residual, trained with the same DSM objective.](docs/assets/loss_comparison.svg)
+![An analytic Gaussian score plus a frequency-scaled neural residual, trained with the same DSM objective.](assets/loss_comparison.svg)
 
 *Analytic illustration, not a measured learning curve.
-[Figure source](scripts/plot_method.py) · [PNG](docs/assets/loss_comparison.png)*
+[Figure source](scripts/plot_method.py) · [PNG](assets/loss_comparison.png)*
 
 ## Research status
 
@@ -34,7 +34,9 @@ in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 Public pretrained models and published FID values are external references, with
 different training histories and potentially different metric protocols. They
 are not paired baseline retraining runs. No image-quality improvement is claimed
-before the controlled experiments are complete. [Comparison boundaries](docs/ABLATIONS.md).
+before the controlled experiments are complete. The scalar–Fourier comparison
+changes covariance in both the reference score and residual scale; it does not
+separately identify the contribution of scaling alone.
 
 ## Quick start
 
@@ -57,7 +59,8 @@ uv run --locked python evaluate.py dsm -r saved/readme_smoke/last.pt \
 Use a new run name and output path when repeating the commands. Existing runs
 are not overwritten. This verifies the pipeline, not generation quality.
 For CUDA, run `scripts/doctor.py --device cuda` in the same environment before
-training. See [installation](docs/INSTALL.md) and [device checks](docs/MPS.md).
+training. On a supported Mac, use `--device mps`. Optional extras include
+`ldm`, `datasets`, `metrics`, `notebooks`, `figures`, and `tensorboard`.
 
 ## Method
 
@@ -103,7 +106,9 @@ coordinates; unweighted MSE on $T/b_t$ would be a different objective.
 `diffusion` is an additional epsilon-prediction sign convention. In the latent
 path, $y=\alpha_t z+\sigma_t\epsilon$ replaces $\mu$ by $\alpha_t\mu$ and $P_k$
 by $\alpha_t^2P_k$; the common adapter returns total epsilon. The first stage
-stays frozen. [Derivation and assumptions](docs/MATH.md) · [Native LDM protocol](docs/LDM.md).
+stays frozen. The [method implementation](fourier_score/method.py) and
+[GMM notebook](notebooks/gmm_fourier_residual.ipynb) give the corresponding
+reference and residual calculations.
 
 ## Reproduce the experiments
 
@@ -128,8 +133,9 @@ The default runner also includes `score`; the explicit two-arm selection above
 omits baseline retraining. Independent devices can run separate jobs. Training
 uses single-device FP32 with microbatch accumulation. Keep the source revision,
 locked environment, effective batch and microbatch identical across paired arms.
-A 50K holdout pilot and 1.3M full-data preset are also available.
-[Complete recipes, evaluation and reporting](docs/EXPERIMENTS.md).
+Replace `950k` with `50k` for the 45K/5K train/holdout pilot or `1m3` for
+1.3M updates on the full training set. Keep their different FID reference splits
+separate. Inspect config overrides with `train.py -c <config> --dry-run`.
 
 ### LSUN Churches: frozen first stage
 
@@ -148,7 +154,10 @@ Remove `--dry-run` to train after preparation. The target budget is 500K updates
 The `_l2` preset uses common L2/DSM; the original CompVis Churches preset uses
 **L1**, so this is not an exact reproduction of its published training objective.
 If a run stops early, report its actual update count and compare matched budgets.
-[Other datasets, latent caches, sampling and RGB FID](docs/LDM.md).
+Weights are stored under `pretrained/ldm/`, with latent caches under
+`data/ldm_cache/`. Preserve the frozen first-stage weights for decoding.
+`python ldm.py --help` lists preparation, training, sampling, evaluation and FID
+commands; each subcommand has its own `--help`.
 
 ### Sampling and FID
 
@@ -168,14 +177,17 @@ Inference uses EMA. Keep real split, preprocessing, sample count, sampler,
 actual NFE, seed, batch size and metric backend fixed. The local
 `torch-fidelity` protocol differs from Score-SDE's original TensorFlow metrics.
 Report variation across independent training seeds, and curves against both
-updates and training time. [Official checkpoint download/import](docs/SCORE_SDE.md).
+updates and training time. To inspect available pretrained references, run
+`python scripts/download_score_sde.py --list` or
+`python scripts/download_ldm.py --list`. Score-SDE weights are converted with
+`scripts/import_score_sde.py`; its `--help` describes inference-only import.
 
 ## Understand the mechanism
 
-![Forward noising and reverse denoising of an analytic Gaussian mixture, with stochastic and probability-flow trajectories.](docs/assets/stochastic_process.svg)
+![Forward noising and reverse denoising of an analytic Gaussian mixture, with stochastic and probability-flow trajectories.](assets/stochastic_process.svg)
 
 *Original analytic illustration using the exact mixture score; no learned model
-is used. [PNG](docs/assets/stochastic_process.png) · [PDF](docs/assets/stochastic_process.pdf).*
+is used. [PNG](assets/stochastic_process.png) · [PDF](assets/stochastic_process.pdf).*
 
 The [GMM notebook](notebooks/gmm_fourier_residual.ipynb) compares a Gaussian and
 a non-Gaussian mixture with identical **population** mean and covariance on an
@@ -192,7 +204,40 @@ The default smoke preset checks the complete experiment on CPU. Use the full
 preset for a substantive mechanism study and report its actual settings; smoke
 curves are not evidence of image-model performance. The figure scripts generate
 original analytic illustrations independently of model training.
-[Figure sources and export commands](docs/FIGURES.md).
+[Generate the figures](#figures).
+
+## Figures
+
+```bash
+uv run --locked --extra figures python scripts/plot_method.py
+uv run --locked --extra figures python scripts/plot_diagnostics.py
+```
+
+Both scripts run on CPU without datasets and write PNG, SVG and PDF to `assets/`.
+Use `--output saved/figures` for a separate export. The diagnostic script also
+writes synthetic source arrays and numerical checks; its default seed is
+20260922 with 32,768 observations per distribution for the moment diagnostic.
+
+| Figure | Interpretation | Export |
+|---|---|---|
+| Method | Shared DSM objective and Gaussian residual parameterization | [PNG](assets/loss_comparison.png) · [PDF](assets/loss_comparison.pdf) |
+| Stochastic process | Exact evolving mixture density with numerical SDE/ODE paths | [PNG](assets/stochastic_process.png) · [PDF](assets/stochastic_process.pdf) |
+| Gaussian / GMM residual | Same population moments, different exact scores | [PNG](assets/gaussian_residual.png) · [PDF](assets/gaussian_residual.pdf) |
+| Frequency scaling | Analytic residual-target moments checked by Monte Carlo | [PNG](assets/frequency_scaling.png) · [PDF](assets/frequency_scaling.pdf) |
+
+These illustrations use known distributions rather than learned models. The
+one-dimensional process figure uses $\sigma_t^2=4t$ and starts the reverse SDE
+from the exact finite-time noisy mixture; the dashed ODE curves are deterministic
+trajectories viewed in both directions. The frequency figure uses an 8 × 8 grid
+with matched population covariance. Its error bars are two Monte Carlo standard
+errors, not variation across training seeds. Target second moments are distinct
+from the optimal conditional residual's variance.
+
+[Source settings and checks](assets/diagnostics.json) accompany the
+[synthetic arrays](assets/diagnostics_data.npz), which can be read using
+`numpy.load(path, allow_pickle=False)`. The GMM notebook separately exports
+measured learning curves. Keep smoke outputs distinct from completed experiments;
+image-model result figures require completed checkpoint evaluations.
 
 ## Repository layout
 
@@ -206,12 +251,13 @@ fourier_score/                     Method, statistics, trainers and samplers
 notebooks/                         Runnable mechanism experiments
 scripts/                           Preparation, diagnostics and figure generation
 tests/                             Numerical and end-to-end regression checks
-docs/                              Derivations, protocols and generated figures
+assets/                            Public figures and synthetic source arrays
 ```
 
 Runs save resolved config, environment/source fingerprint, initial backbone
 fingerprint, metrics, optimizer/RNG/data-cursor checkpoints, and EMA snapshots.
 Sampling saves checkpoint identity and settings alongside images.
+`docs/` is reserved for private local research notes and is ignored by Git.
 `data/`, `saved/`, `pretrained/`, `verification/`, `local/` and `notes/` are local,
 ignored artifact locations. Share curated results with their manifests, rather
 than raw machine-specific orchestration logs.
@@ -221,8 +267,29 @@ uv run --locked --all-extras python -m pytest -q
 uv run --locked --extra notebooks python scripts/check_notebooks.py
 ```
 
-The CI workflow checks numerical behavior and notebook execution on CPU. For
-source navigation, resume failures and debugging, see [DEVELOPMENT.md](docs/DEVELOPMENT.md).
+The CI workflow checks numerical behavior and notebook execution on CPU. See
+the [development notes below](#development) for source navigation and debugging.
+
+## Development
+
+Start with `fourier_score/method.py` for the Gaussian adapter,
+`statistics.py` for training-only moments, and `model.py` / `loss.py` for the
+shared DSM path. Pixel training and samplers are in `training.py` and
+`diffusion.py`; native latent equivalents live under `fourier_score/ldm/`.
+
+```bash
+uv sync --locked --all-extras
+uv run --no-sync python scripts/doctor.py --device cpu
+uv run --no-sync python scripts/check_notebooks.py --execute
+```
+
+Use `--dry-run` to inspect resolved configs before allocating a long experiment.
+For memory issues, measure a separate short run with smaller microbatches and
+keep that setting fixed across paired arms. Resume with the saved config and
+matching source/runtime; an existing run directory is not a destination for a
+new protocol. Keep active training checkouts at their original revision while
+editing in another checkout. Public notebooks, figure scripts and tests run
+without the private notes directory.
 
 ## References and attribution
 
@@ -231,5 +298,6 @@ source navigation, resume failures and debugging, see [DEVELOPMENT.md](docs/DEVE
 - Karras et al., [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364), NeurIPS 2022. [Official code](https://github.com/NVlabs/edm).
 - [PyTorch Template](https://github.com/victoresque/pytorch-template) inspired the config-driven entry points, checkpointing and separation of concerns. The project uses a single trainer per domain rather than copying classifier abstractions.
 
-See [LICENSE](LICENSE), [NOTICE](NOTICE) and [source provenance](docs/PROVENANCE.md).
+See [LICENSE](LICENSE), [NOTICE](NOTICE) and the
+[native LDM source manifest](fourier_score/ldm/upstream/PROVENANCE.json).
 Downloaded third-party weights and datasets retain their respective terms.

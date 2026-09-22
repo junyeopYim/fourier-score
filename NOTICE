@@ -6,7 +6,7 @@ Those sources were adapted from junyeopYim/score_sde_pytorch @
 https://github.com/yang-song/score_sde_pytorch
 Copyright 2020 The Google Research Authors.
 The source repository distributes this code under Apache License 2.0.
-A copy is included in LICENSE. See docs/PROVENANCE.md for changes.
+A copy is included in LICENSE. Local adaptations are summarized below.
 
 The original resampling layers attribute StyleGAN2 and op/upfirdn2d.py:
 https://github.com/NVlabs/stylegan2
@@ -40,3 +40,19 @@ https://github.com/CompVis/taming-transformers
 Revision 3ba01b241669f5ade541ce990f7650a3b8f65318.
 Copyright (c) 2020 Patrick Esser and Robin Rombach and Björn Ommer.
 MIT License, copied in fourier_score/ldm/upstream/LICENSE.taming.
+
+Local adaptations around the NCSN++ backbone:
+- The shared output adapter applies sigma division once for every method;
+  learned layers and parameter shapes are unchanged across experiment arms.
+- The sigma buffer is converted to float32 before device transfer.
+- Native FIR zero-insertion padding uses equivalent 4D operations for MPS.
+- Gaussian references add fixed buffers and spectral filters, not learned layers.
+The three modules ncsnpp.py, layers.py and layerspp.py retain the immediate
+source's implementation; adaptations to the upstream package layout and native
+FIR predate this repository's experiment infrastructure.
+
+CompVis computational modules retain their original arithmetic with local
+package imports. Upstream/local file identities are recorded in
+fourier_score/ldm/upstream/PROVENANCE.json. The frozen first-stage wrapper,
+latent cache, output adapter and training/evaluation integration are local.
+Original training YAML snapshots are in configs/ldm/upstream/.

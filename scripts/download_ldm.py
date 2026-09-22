@@ -266,7 +266,7 @@ def main(argv=None):
         print(json.dumps(plan, indent=2))
         return
     if args.with_data and args.model == "celebahq" and args.data_source is None:
-        parser.error("CelebA-HQ needs --data-source with the original imgHQXXXXX.npy folder/ZIP; see docs/LDM.md")
+        parser.error("CelebA-HQ needs --data-source with the original imgHQXXXXX.npy folder/ZIP")
     if args.data_source and not args.data_source.exists():
         parser.error(f"Dataset source does not exist: {args.data_source}")
     destination = download_model(args.model, args.output_dir, args.sha256, args.timeout)

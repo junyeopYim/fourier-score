@@ -1,6 +1,6 @@
 """Gaussian reference scores and frequencywise residual parameterizations.
 
-Read this file with docs/MATH.md. The backbone and DSM loss are shared.
+Read this file with the method section in README.md. The backbone and DSM loss are shared.
 """
 
 import torch

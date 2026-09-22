@@ -27,6 +27,7 @@ verification/*
 !verification/.gitkeep
 
 # Private research notes and machine-specific orchestration stay local.
+/docs/
 local/
 notes/
 notebooks/local/
@@ -36,4 +37,4 @@ notebooks/*.executed.ipynb
 pretrained/
 
 # Small source arrays supporting committed, reproducible scientific figures.
-!docs/assets/diagnostics_data.npz
+!assets/diagnostics_data.npz
