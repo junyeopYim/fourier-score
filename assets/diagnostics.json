@@ -1,11 +1,11 @@
 {
-  "kind": "synthetic oracle illustrations; no learned-model or image-benchmark results",
+  "kind": "analytic Gaussian-mixture scores, diffusion dynamics, and residual target moments",
   "seed": 20260922,
   "monte_carlo_samples_per_distribution": 32768,
   "python": "3.11.15",
   "numpy": "2.4.6",
   "matplotlib": "3.11.2",
-  "source_sha256": "dd02b6f8d280be779dcf792e2fd8830041fe0b9614d767e0d38aa28a7b557497",
+  "source_sha256": "62379f76ccdf2a660d3e2e29d9ea3f4fccf169ac0d92cb56d58ee3cb7424b2c1",
   "settings": {
     "process": "VE, alpha=1, sigma_squared=4*t, t in [0,1]",
     "integration_steps": 1000,

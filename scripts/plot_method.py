@@ -68,7 +68,7 @@ def main():
     label(.05, .260, "What is fixed in the proposed adapter?", 15, weight="bold", ha="left")
     label(.05, .205, r"$\sigma_t\widehat{s}_{G,k}=-\sigma_t(\widehat y_k-\widehat\mu_k)/(P_k+\sigma_t^2)$", 22, teal, ha="left")
     label(.05, .150, r"$b_{t,k}=\sqrt{P_k/(P_k+\sigma_t^2)}$", 22, teal, ha="left")
-    label(.05, .092, "The Gaussian reference need not equal the data distribution.", 12, muted, ha="left")
+    label(.05, .092, "The reference captures the mean and frequency-wise power.", 12, muted, ha="left")
     label(.05, .052, r"In residual coordinates, the loss retains $b_{t,k}^{\,2}$ weighting.", 12, muted, ha="left")
 
     plot = fig.add_axes((.67, .073, .27, .180))

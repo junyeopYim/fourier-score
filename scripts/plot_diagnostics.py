@@ -1,4 +1,4 @@
-"""Original, deterministic oracle illustrations; no training or dataset download.
+"""Deterministic illustrations of Gaussian-mixture scores and diffusion dynamics.
 
 Run ``python scripts/plot_diagnostics.py`` from any directory. See README.md#figures for the mathematical scope and the distinction
 between these illustrations and empirical results.
@@ -142,9 +142,9 @@ def make_residual_figure(output: Path, data: dict, rho: float):
     for ax in axes:
         ax.set(xlabel="Noisy observation $y$", xlim=(-3.7, 3.7))
         ax.grid(alpha=0.15)
-    fig.suptitle(r"Matched population moments do not determine the score", fontsize=15, y=1.03)
+    fig.suptitle(r"Matched moments, distinct scores", fontsize=15, y=1.03)
     fig.text(0.5, -0.025, r"Clean GMM: $\frac{1}{2}\mathcal{N}(-\rho,1-\rho^2)+\frac{1}{2}\mathcal{N}(\rho,1-\rho^2)$; reference: $\mathcal{N}(0,1)$; "
-             + rf"$\rho={rho}$, $\sigma_t={sigma}$. All curves are analytic; no network is trained.",
+             + rf"$\rho={rho}$, $\sigma_t={sigma}$. Analytic density, score, and residual.",
              ha="center", fontsize=9, color="#526476")
     fig.tight_layout()
     save_figure(fig, output, "gaussian_residual")
@@ -240,7 +240,7 @@ def make_frequency_figure(output: Path, rng, data: dict, checks: dict, n_samples
                 title="Same target second moments", ylim=(0, 1.06))
     axes[2].legend(fontsize=8)
     axes[2].grid(alpha=0.15)
-    fig.suptitle("Frequency scaling uses population second moments, not Gaussian data", fontsize=15, y=1.035)
+    fig.suptitle("Residual scaling from population second moments", fontsize=15, y=1.035)
     fig.text(0.5, -0.035, rf"$8\times8$ grid, mean power 1. Right: $\sigma_t={sigma}$, {n_samples:,} samples per distribution, bars = 2 Monte Carlo SE; modes grouped by radius.",
              ha="center", fontsize=9, color="#526476")
     fig.tight_layout()
@@ -274,7 +274,7 @@ def main():
     make_frequency_figure(args.out, np.random.default_rng(seeds[1]), data, checks, args.samples)
     np.savez_compressed(args.out / "diagnostics_data.npz", **data)
     metadata = {
-        "kind": "synthetic oracle illustrations; no learned-model or image-benchmark results",
+        "kind": "analytic Gaussian-mixture scores, diffusion dynamics, and residual target moments",
         "seed": args.seed, "monte_carlo_samples_per_distribution": args.samples,
         "python": platform.python_version(), "numpy": np.__version__, "matplotlib": matplotlib.__version__,
         "source_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),

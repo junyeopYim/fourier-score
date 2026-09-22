@@ -1,42 +1,56 @@
 # Mechanism notebooks
 
-[`gmm_fourier_residual.ipynb`](gmm_fourier_residual.ipynb) tests whether a learned residual captures structure beyond a fixed Gaussian reference. It constructs a Gaussian and a non-Gaussian mixture with exactly matched population mean and covariance, trains with the repository's DSM loss, and evaluates against the exact noisy joint score.
+The [GMM notebook](gmm_fourier_residual.ipynb) studies residual score learning on
+Gaussian and mixture distributions with exactly matched population moments.
+It uses the repository's DSM objective and evaluates against the exact noisy
+joint score. A spectral sweep compares Scalar and Fourier Gaussian covariance.
 
-This is an explanatory mechanism experiment. It is separate from the CIFAR-10 and Churches latent image benchmarks. A Fourier advantage is a question to measure, not an assumption in the notebook.
-
-## Environment and execution
+## Run
 
 From the repository root:
 
 ```bash
-uv sync --locked --extra notebooks --extra figures
-uv run --locked --extra notebooks --extra figures jupyter lab notebooks/gmm_fourier_residual.ipynb
+uv sync --locked --extra notebooks
+uv run --locked --extra notebooks jupyter lab notebooks/gmm_fourier_residual.ipynb
 ```
 
-The default `smoke` preset runs 12 comparisons with 80 updates each on a 4×4 grid. `pilot` uses an 8×8 grid, 1,500 updates, and one training seed. `experiment` uses an 8×8 grid, 5,000 updates, three spectral settings, and three training seeds: 54 runs in total. Estimate cost with a pilot before using that preset. No preset name establishes convergence.
+| Preset | Grid | Updates per run | Training seeds | Purpose |
+|---|---|---:|---:|---|
+| `smoke` | 4 × 4 | 80 | 1 | Quick CPU example |
+| `pilot` | 8 × 8 | 1,500 | 1 | Explore the protocol and runtime |
+| `experiment` | 8 × 8 | 5,000 | 3 | Repeated-seed spectral comparison |
 
-To execute the full smoke notebook on CPU:
+The default smoke preset has 12 training runs. The full experiment has
+2 distributions × 3 spectra × 3 seeds × 3 methods = 54 runs.
+
+For a command-line execution:
 
 ```bash
-GMM_PRESET=smoke GMM_DEVICE=cpu GMM_RUN_TAG=smoke_v2 \
-  uv run --locked --extra notebooks --extra figures jupyter nbconvert \
+GMM_PRESET=smoke GMM_DEVICE=cpu GMM_RUN_TAG=example \
+  uv run --locked --extra notebooks jupyter nbconvert \
   --to notebook --execute notebooks/gmm_fourier_residual.ipynb \
-  --ExecutePreprocessor.timeout=600 --output gmm_smoke.executed.ipynb \
+  --ExecutePreprocessor.timeout=600 --output gmm_example.executed.ipynb \
   --output-dir saved/gmm_oracle
 ```
 
-Run all cells in order. An existing output directory is reused only when its configuration, numerical source, notebook code, and runtime match. Select a new `GMM_RUN_TAG` for a different protocol. Separate kernels must use separate tags. To resume, use the same tag and unchanged notebook code; saving outputs does not alter the code hash.
+Run cells in order. Choose a new `GMM_RUN_TAG` for a new experiment; reuse the
+same tag and configuration to continue an interrupted run. Training supports
+CPU and CUDA, and the exact-score evaluation uses CPU float64. Set
+`FOURIER_SCORE_ROOT` to select a checkout explicitly.
 
-Set `FOURIER_SCORE_ROOT` if the notebook cannot find the checkout. A kernel that has imported a different checkout must be restarted. Float64 oracle evaluation runs on CPU; training supports CPU or CUDA. Use `GMM_DEVICE=cpu` on an MPS host.
+## Measurements and outputs
 
-## What to inspect
+The primary metric is final-step held-out, noise-scaled true-score MSE.
+Backbone initialization and training streams are paired across methods.
+Repeated training seeds provide uncertainty estimates and paired Scalar–Fourier
+differences on shared evaluation banks.
 
-- **Numerical checks:** exact population moments, independent dense-density/autograd oracle comparison, Gaussian-reference agreement, flat-spectrum Scalar–Fourier outputs and gradients, Parseval's identity, covariance-mismatch identity, and repository DSM equivalence.
-- **Primary metric:** final-step held-out, noise-scaled true-score MSE. The oracle is never a training label.
-- **Controls:** direct score DSM, Scalar Gaussian, Fourier Gaussian, and untrained analytic Gaussian references. Backbone initialization and training random streams are paired across methods.
-- **Uncertainty:** repeat training seeds and report paired Scalar–Fourier differences. One seed has no defined seed standard deviation. Shared evaluation banks condition the reported training-seed uncertainty.
-- **Recovery:** checkpoints contain model, EMA, optimizer, data RNG, completed update, and source/configuration fingerprints. Only trusted local checkpoints should be loaded.
+Results are saved under `saved/gmm_oracle/<preset>/<run_tag>/`:
 
-Outputs live under `saved/gmm_oracle/<preset>/<run_tag>/`. `plan.json` records the actual configuration, runtime, and source hashes. `numerical_tests.json` records deterministic checks; CSV files contain all planned methods/seeds; figures are exported as PNG, SVG, and PDF. Do not promote smoke outputs to experimental evidence or hide unfavorable outcomes.
+- CSV tables: per-seed results, paired differences, learning curves, noise and frequency diagnostics.
+- Figures: PNG, SVG and PDF exports.
+- Checkpoints: model, EMA, optimizer and training state for continuing a run.
+- Run settings and numerical checks.
 
-The checked-in notebook intentionally has no execution output. Keep executed copies and full experiment artifacts under `saved/`, and publish selected figures together with their protocol and result tables when the experiment is complete. Original analytic illustrations are regenerated using `python scripts/plot_diagnostics.py`; see the [figure generation commands](../README.md#figures).
+The [figure generation commands](../README.md#figures) produce the accompanying
+analytic illustrations.
