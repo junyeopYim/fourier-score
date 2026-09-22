@@ -17,10 +17,14 @@ in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 [GMM notebook](#understand-the-mechanism) · [Figures](#figures) ·
 [Development](#development)
 
-![An analytic Gaussian score plus a frequency-scaled neural residual, trained with the same DSM objective.](assets/loss_comparison.svg)
+![Method schematic: direct score prediction and a fixed Gaussian score plus a spectrally scaled neural residual share the DSM objective; the analytic residual scale is shown below.](assets/loss_comparison.svg)
 
-*Gaussian reference and neural residual under the shared DSM objective.
-[Figure source](scripts/plot_method.py) · [PNG](assets/loss_comparison.png)*
+*Score parameterizations under a shared DSM objective. (a) Direct scaled-score
+prediction. (b) A fixed Gaussian reference plus a spectrally scaled neural
+residual, using the same backbone architecture. (c) The analytic adapter and its
+residual scale, determined by fixed training-data moments.
+[Figure source](scripts/plot_method.py) · [PNG](assets/loss_comparison.png) ·
+[PDF](assets/loss_comparison.pdf)*
 
 ## Research status
 
