@@ -222,7 +222,8 @@ uv run --locked --extra ldm python ldm.py train \
 
 `compare` prepares/verifies the common cache once and runs each arm in a separate
 process. Defaults are `epsilon`, `scalar_gaussian`, and `fourier_gaussian`;
-`--parameterizations` can add `fourier_gaussian_unscaled`. Single-arm `train`
+`--parameterizations scalar_gaussian fourier_gaussian` selects the two Gaussian
+arms without baseline retraining. Single-arm `train`
 requires a completed cache. `--dry-run` reads configs only.
 
 All paired runs start with the same raw U-Net weights, data order, posterior
@@ -267,8 +268,7 @@ uv run --locked --extra ldm python scripts/benchmark_ldm.py \
   --steps 100 --warmup 10 --set training.microbatch_size=4
 ```
 
-The four default arms are epsilon, scalar Gaussian, Fourier Gaussian without
-residual scaling, and Fourier Gaussian. Keep the same microbatch and precision
+The three default arms are epsilon, scalar Gaussian, and Fourier Gaussian. Keep the same microbatch and precision
 within each comparison; choose a microbatch that fits the device. Use
 `lsun_churches_l2.json` for the shared L2 comparison. Each arm records per-update
 loss/time, memory, initial U-Net hash, first-stage identity and the resolved
@@ -283,9 +283,9 @@ does not measure convergence. Record any mirror, preprocessing or split changes.
 Downloads, cache preparation, evaluation and checkpoint writes are excluded from
 the projected training time. Benchmark runs do not save large model checkpoints.
 
-The [RTX 5060 Ti measurement record](../verification/2026-09-21-ldm-timing/README.md)
-contains all 16 dataset/arm runs at microbatch 4, their raw 100-update logs,
-full-budget ETAs, image sources and subset limitations.
+Historical machine-specific timing logs are retained locally under `verification/`.
+Measure throughput on the actual device and protocol used for each new study;
+short subset benchmarks do not establish convergence or a guaranteed completion time.
 
 ## Native pretrained reference and trained samples
 

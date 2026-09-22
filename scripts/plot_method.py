@@ -1,6 +1,7 @@
-"""Render the README method diagram as reproducible SVG and PNG artifacts."""
+"""Render the VE method diagram as reproducible SVG, PNG, and PDF artifacts."""
 
 from pathlib import Path
+import argparse
 
 import matplotlib
 
@@ -11,10 +12,15 @@ import numpy as np
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out", "--output", type=Path,
+                        default=Path(__file__).resolve().parents[1] / "docs/assets")
+    args = parser.parse_args()
     plt.rcParams.update({
         "font.family": "DejaVu Sans", "mathtext.fontset": "stix",
         "font.size": 13, "svg.hashsalt": "fourier-score-method-v1",
         "axes.spines.top": False, "axes.spines.right": False,
+        "pdf.fonttype": 42, "ps.fonttype": 42,
     })
     fig = plt.figure(figsize=(14, 9), facecolor="white")
     ax = fig.add_axes((0, 0, 1, 1))
@@ -35,7 +41,7 @@ def main():
                                     linewidth=1.4, color=color, shrinkA=3, shrinkB=3))
 
     label(.05, .958, "Same DSM objective, different score parameterizations", 23, weight="bold", ha="left")
-    label(.05, .913, "Continuous VE: matched backbone initialization, noise draws, loss reduction and sampler", 13, muted, ha="left")
+    label(.05, .913, "Continuous VE: shared backbone architecture and DSM objective; fixed training-data statistics", 13, muted, ha="left")
     box(.18, .804, .64, .073, "#f0f3f7")
     label(.50, .840, r"$x\sim p_{\mathrm{train}},\quad t\sim\mathcal{U}[t_{\min},1],\quad \epsilon\sim\mathcal{N}(0,I),\quad y=x+\sigma_t\epsilon$", 20)
     arrow((.32, .80), (.26, .75))
@@ -62,7 +68,7 @@ def main():
     label(.05, .260, "What is fixed in the proposed adapter?", 15, weight="bold", ha="left")
     label(.05, .205, r"$\sigma_t\widehat{s}_{G,k}=-\sigma_t(\widehat y_k-\widehat\mu_k)/(P_k+\sigma_t^2)$", 22, teal, ha="left")
     label(.05, .150, r"$b_{t,k}=\sqrt{P_k/(P_k+\sigma_t^2)}$", 22, teal, ha="left")
-    label(.05, .092, "Gaussian reference coefficient = 1. No added learned weights.", 12, muted, ha="left")
+    label(.05, .092, "The Gaussian reference need not equal the data distribution.", 12, muted, ha="left")
     label(.05, .052, r"In residual coordinates, the loss retains $b_{t,k}^{\,2}$ weighting.", 12, muted, ha="left")
 
     plot = fig.add_axes((.67, .073, .27, .180))
@@ -78,12 +84,13 @@ def main():
     for spine in plot.spines.values():
         spine.set_color("#b0bac4")
 
-    out = Path(__file__).resolve().parents[1] / "docs/assets"
+    out = args.out
     out.mkdir(parents=True, exist_ok=True)
     svg = out / "loss_comparison.svg"
     fig.savefig(svg, metadata={"Date": None})
     svg.write_text("\n".join(line.rstrip() for line in svg.read_text().splitlines()) + "\n")
     fig.savefig(out / "loss_comparison.png", dpi=160, metadata={"Software": "Fourier Score / matplotlib"})
+    fig.savefig(out / "loss_comparison.pdf", metadata={"Creator": "Fourier Score / matplotlib", "CreationDate": None, "ModDate": None})
     plt.close(fig)
     print(out / "loss_comparison.svg")
 

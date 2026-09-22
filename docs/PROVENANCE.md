@@ -93,7 +93,7 @@ This archive does not grant rights to separately obtained NVIDIA weights/data.
 
 The MMSE scalar gate, linear gate, isotropic variants, and corresponding mode
 names were **not** carried over. The output parameterizations are `score`, `diffusion`, `scalar_gaussian`,
-`fourier_gaussian_unscaled`, and `fourier_gaussian`. All share the DSM objective.
+and `fourier_gaussian`. All share the DSM objective.
 
 Fourier Gaussian implements the previous discussion's unattenuated Gaussian
 score plus frequencywise residual scaling. The mathematical equations and
@@ -115,10 +115,10 @@ reproduction.
 
 ## Verification and dependencies
 
-The tracked lockfile fixes the software environment. Dated test, device, and
-architecture records are indexed in [verification/README.md](../verification/README.md).
-Those records apply to the source revisions they identify; they do not establish
-long-training FID/IS reproduction. Current commands and checkpoint migration
+The tracked lockfile fixes the software environment. Numerical and workflow
+checks are described in [VALIDATION.md](VALIDATION.md). Local historical records
+are retained outside Git; they apply only to their recorded revisions and do not
+establish long-training FID/IS reproduction. Current commands and checkpoint migration
 boundaries are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## Official Score-SDE downloads

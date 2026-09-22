@@ -1,3 +1,0 @@
-$ /opt/pyvenv/bin/python sample.py -r /mnt/data/final_validation/runs/synthetic_ddpm_diffusion_s0/last.pt -o /mnt/data/final_validation/samples/ddpm --num-samples 3
-2/3 images; 16 batched score calls
-3/3 images; 32 batched score calls

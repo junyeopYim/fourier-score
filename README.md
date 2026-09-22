@@ -1,107 +1,51 @@
 # Fourier Score
 
-**Gaussian reference scores and frequency-normalized neural residuals for image generation.**
+**Fixed Gaussian reference scores with frequency-normalized neural residuals.**
 
-This repository studies whether a fixed Gaussian reference, estimated from the
-training distribution, improves the learning efficiency of score-based generative
-models. The backbone learns a residual around that reference; a fixed Fourier
-operator scales the residual at each noise level. Experiments hold the backbone,
-initialization, corruption process, DSM objective and sampler constant across arms.
+Inspired by the asymptotic Gaussianity of Fourier transforms, this project
+constructs a fixed Gaussian reference from the training-data mean and
+frequency-dependent power spectrum. The data distribution is **not assumed to
+be Gaussian**. An analytic reference score accounts for its first and second
+moments, and a neural residual learns the remaining structure. Its output scale
+comes from the second moment of the Gaussian-subtracted denoising target.
 
-Two experimental settings are implemented: **pixel-space NCSN++ / continuous VE**
-and **latent diffusion with a frozen pretrained KL/VQ first stage**. Denoisers in
-the controlled comparisons are trained from scratch. Public pretrained models
-are available as separate inference references.
+The experiments preserve the backbone and DSM objective. They study whether
+frequency-dependent covariance helps relative to a channelwise scalar covariance,
+in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 
-[Method](#method) · [Run experiments](#run-experiments) ·
-[Pretrained references](#official-pretrained-references) ·
-[Evaluation](#sampling-and-evaluation) · [Implementation](#implementation-and-status)
+[Quick start](#quick-start) · [Method](#method) · [Experiments](#reproduce-the-experiments) ·
+[GMM notebook](#understand-the-mechanism) · [Figures](docs/FIGURES.md) ·
+[Debugging](docs/DEVELOPMENT.md) · [Documentation](docs/USAGE.md)
 
-![Score-SDE predicts the full scaled score; Fourier Gaussian adds a fixed Gaussian score to a frequency-scaled neural residual. Both use the same DSM loss.](docs/assets/loss_comparison.svg)
+![An analytic Gaussian score plus a frequency-scaled neural residual, trained with the same DSM objective.](docs/assets/loss_comparison.svg)
 
-*The diagram shows the continuous VE, sigma-squared-weighted DSM setting used
-here, suppressing the common pixel-reduction constant. The curve is the analytic
-residual scale, not a measured learning curve.
-[PNG](docs/assets/loss_comparison.png) · [Figure source](scripts/plot_method.py)*
+*Analytic illustration, not a measured learning curve.
+[Figure source](scripts/plot_method.py) · [PNG](docs/assets/loss_comparison.png)*
 
-## Method
+## Research status
 
-For $y=x+\sigma_t\epsilon$, with $\epsilon\sim\mathcal{N}(0,I)$, the shared objective is
+| Experiment | Question or observation | Status |
+|---|---|---|
+| MNIST | The two Gaussian parameterizations gave similar FID in the exploratory run; no additional Fourier-covariance benefit was observed there. | Preliminary observation; no multi-seed claim. |
+| CIFAR-10 | Does frequency-dependent covariance help relative to scalar covariance? | Three paired seeds × two Gaussian arms, 950K updates; results pending. |
+| LSUN Churches | Is the construction also useful in the latent space of a fixed autoencoder? | Three paired seeds × two Gaussian arms, target 500K updates; results pending. |
+| Matched-moment Gaussian / GMM | Can the residual learn structure beyond an exactly known Gaussian reference? | Reproducible synthetic mechanism experiment with an analytic true score. |
 
-$$
-\mathcal{L}_{\mathrm{DSM}}=\mathbb{E}_{x,t,\epsilon}
-\left\|\sigma_t s_\theta(y,t)+\epsilon\right\|^2.
-$$
+Public pretrained models and published FID values are external references, with
+different training histories and potentially different metric protocols. They
+are not paired baseline retraining runs. No image-quality improvement is claimed
+before the controlled experiments are complete. [Comparison boundaries](docs/ABLATIONS.md).
 
-The **Score-SDE baseline** predicts the scaled score directly:
-$\sigma_t s_\theta=h_\theta$. The **Fourier Gaussian parameterization** uses
+## Quick start
 
-$$
-\sigma_t s_\theta=\sigma_t s_G+
-\mathcal{F}^{-1}\!\left[b_t\,\mathcal{F}h_\theta\right],\qquad
-\widehat{s}_{G,k}=-\frac{\widehat{y}_k-\widehat{\mu}_k}{P_k+\sigma_t^2},\qquad
-b_{t,k}=\sqrt{\frac{P_k}{P_k+\sigma_t^2}}.
-$$
-
-Here $\mu$ is the full mean image and $P_k$ is the per-channel Fourier power,
-estimated from **training data only**. The FFT is orthonormal; power is floored for
-stability. The Gaussian reference has coefficient one. No learned layer or
-parameter is added to NCSN++.
-
-### How the losses differ
-
-Expressed in the raw network output, the baseline minimizes
-$\mathbb{E}\|h_\theta+\epsilon\|^2$, while ours minimizes
-$\mathbb{E}\|\sigma_t s_G+\mathcal{F}^{-1}[b_t\mathcal{F}h_\theta]+\epsilon\|^2$.
-They are two parameterizations of the **same DSM objective**; their gradients
-with respect to the network output differ through the fixed spectral operator.
-
-The motivation for $b_t$ comes from the Gaussian-subtracted target
-$T=-\epsilon-\sigma_t s_G$. With matching second moments,
-$\mathbb{E}|\widehat{T}_k|^2=b_{t,k}^2$; Gaussianity of the data is not required
-for this identity. The raw residual target is therefore normalized by $b_t$.
-Estimation and flooring make this normalization approximate in practice.
-The implemented loss still retains **$b_{t,k}^2$ weighting** in normalized
-residual coordinates. Dropping that weighting would change the objective.
-
-The table defines the four primary experimental arms. They use the same initial
-backbone weights; the interpreted initial scores differ because of the reference.
-
-| `--parameterization` | Fixed reference | Residual scale | Experimental role |
-|---|---|---|---|
-| `score` | None | 1 | Score-SDE DSM baseline |
-| `scalar_gaussian` | Channelwise scalar covariance; same full mean | Channelwise scalar | Gaussian reference without frequency-dependent covariance |
-| `fourier_gaussian_unscaled` | Empirical Fourier covariance | 1 | Reference without residual normalization |
-| `fourier_gaussian` | Empirical Fourier covariance | $b_{t,k}$ | Full proposed parameterization |
-
-`diffusion` is an additional noise-prediction sign convention. For the same
-forward process it is algebraically equivalent to score prediction after a sign
-change; selecting a DDPM process is a separate experiment. The latent path uses
-a common epsilon-output adapter and replaces $P_k$ by $\alpha_t^2P_k$ and $\mu$
-by $\alpha_t\mu$ in the Gaussian formulas.
-
-See [the derivation and assumptions](docs/MATH.md) and
-[ablation interpretation](docs/ABLATIONS.md). This is an output-parameterization
-study, related to Gaussian/EDM preconditioning; the algebra alone does not establish
-faster convergence or better FID.
-
-## Run experiments
-
-Run commands from the repository root. Python 3.11 and `uv.lock` define the environment.
+Run from the repository root. Python 3.11 and the committed `uv.lock` specify the
+environment. Optional dependencies are separate from the core pixel experiment.
 
 ```bash
-uv sync --locked --python 3.11 --extra ldm --extra datasets --extra metrics
-uv run --locked python scripts/doctor.py --device cuda
-```
+uv sync --locked --python 3.11
+uv run --locked python scripts/doctor.py --device cpu
 
-Pixel experiments need only `uv sync --locked --python 3.11`. Use `--device cpu`
-or `--device mps` for supported local runs. Training is single-device FP32;
-microbatch accumulation controls memory while preserving effective batch size.
-
-### 1. Check the complete pipeline
-
-```bash
-# Three updates on synthetic data; no dataset or pretrained weights needed.
+# Three updates on synthetic data; no download or pretrained checkpoint needed.
 uv run --locked python train.py -c configs/smoke.json --device cpu \
   --set name=readme_smoke
 uv run --locked python sample.py -r saved/readme_smoke/last.pt \
@@ -110,190 +54,182 @@ uv run --locked python evaluate.py dsm -r saved/readme_smoke/last.pt \
   -o saved/readme_smoke_dsm.json
 ```
 
-Use a new run name/output directory when repeating a command; completed runs and
-sample folders are not overwritten. This smoke run checks execution, not quality.
+Use a new run name and output path when repeating the commands. Existing runs
+are not overwritten. This verifies the pipeline, not generation quality.
+For CUDA, run `scripts/doctor.py --device cuda` in the same environment before
+training. See [installation](docs/INSTALL.md) and [device checks](docs/MPS.md).
 
-### 2. Prepare CIFAR-10 and the common statistics
+## Method
+
+For $y=x+\sigma_t\epsilon$, $\epsilon\sim\mathcal N(0,I)$, all pixel arms minimize
+
+$$
+\mathcal L_{\mathrm{DSM}}=
+\mathbb E_{x,t,\epsilon}\left\|\sigma_t s_\theta(y,t)+\epsilon\right\|^2.
+$$
+
+The baseline predicts the scaled score directly, $\sigma_t s_\theta=h_\theta$.
+The Gaussian parameterizations instead use
+
+$$
+\sigma_t s_\theta(y,t)=\sigma_t s_G(y,t)
++\mathcal F^{-1}\!\left[b_t\mathcal F h_\theta(y,t)\right],
+$$
+
+$$
+\widehat{s}_{G,k}=-\frac{\widehat y_k-\widehat\mu_k}{P_k+\sigma_t^2},
+\qquad b_{t,k}=\sqrt{\frac{P_k}{P_k+\sigma_t^2}}.
+$$
+
+$\mu$ is the full mean image and $P_k$ the per-channel power of its centered,
+orthonormal Fourier transform, estimated from **training data only**. The
+reference has coefficient one and adds no learned parameters. Cross-channel
+and cross-frequency covariance are not modeled by this reference; the neural
+network still observes the entire image.
+
+For $T=-\epsilon-\sigma_t s_G$, matching population moments give
+$\mathbb E|\widehat T_k|^2=b_{t,k}^2$ without Gaussianity of the data. The scale
+therefore normalizes the residual target's second moment. Estimated statistics
+and numerical power floors make this a plug-in approximation in real experiments.
+The original DSM objective retains the $b_{t,k}^2$ weighting in normalized
+coordinates; unweighted MSE on $T/b_t$ would be a different objective.
+
+| Parameterization | Gaussian reference | Residual scale |
+|---|---|---|
+| `score` | None | 1 |
+| `scalar_gaussian` | Same full mean; frequency-averaged variance within each channel | Channelwise |
+| `fourier_gaussian` | Same full mean; per-channel, per-frequency variance | Frequencywise |
+
+`diffusion` is an additional epsilon-prediction sign convention. In the latent
+path, $y=\alpha_t z+\sigma_t\epsilon$ replaces $\mu$ by $\alpha_t\mu$ and $P_k$
+by $\alpha_t^2P_k$; the common adapter returns total epsilon. The first stage
+stays frozen. [Derivation and assumptions](docs/MATH.md) · [Native LDM protocol](docs/LDM.md).
+
+## Reproduce the experiments
+
+### CIFAR-10: scalar versus Fourier covariance
 
 ```bash
-uv run --locked python scripts/prepare.py \
-  -c configs/cifar10_ablation.json --download
-```
+# Prepare full-training-set statistics shared by both arms.
+uv run --locked python scripts/prepare.py -c configs/cifar10_950k.json --download
 
-Images live under `data/`; training-only mean/power caches live under `data/stats/`.
-The same cache and split are shared by every parameterization. MNIST also supports
-automatic download via `configs/mnist.json` and `--download`.
-
-| CIFAR-10 protocol | Optimizer updates | Training / diagnostic images | Run prefix |
-|---|---:|---|---|
-| [50K pilot](configs/cifar10_ablation.json) | 50,000 | 45,000 / 5,000 validation | `cifar10_50k_holdout5000` |
-| [950K](configs/cifar10_950k.json) | 950,000 | 50,000 / CIFAR-10 test | `cifar10_950k_full` |
-| [1.3M](configs/cifar10_1m3.json) | 1,300,000 | 50,000 / CIFAR-10 test | `cifar10_1m3_full` |
-
-These presets use NCSN++ with `num_res_blocks=4` per resolution. The two full-data
-protocols differ only in budget and name; the 950K preset does not select the
-pretrained deep model with `num_res_blocks=8`. Use the pilot to select hyperparameters and
-the test split for reporting.
-
-### 3. Train the controlled comparison
-
-```bash
-# Inspect the four arms × three paired seeds before launching.
-bash scripts/reproduce_cifar10.sh 50k --device cuda --seeds 42 43 44 \
+# Inspect six commands: two arms × three paired seeds, 950K updates each.
+bash scripts/reproduce_cifar10.sh 950k --device cuda --seeds 42 43 44 \
+  --parameterizations scalar_gaussian fourier_gaussian \
   --set trainer.microbatch_size=32 --dry-run
 
-# Run those experiments sequentially, preparing any missing data/cache once.
-bash scripts/reproduce_cifar10.sh 50k --download --device cuda --seeds 42 43 44 \
-  --set trainer.microbatch_size=32
-
-# A single arm, or resume that arm after interruption.
-uv run --locked python train.py -c configs/cifar10_ablation.json --download \
-  --device cuda --parameterization fourier_gaussian --set trainer.microbatch_size=32
+# Remove --dry-run to launch those six jobs sequentially.
+# Resume one interrupted run in the matching source checkout:
 uv run --locked python train.py \
-  -r saved/cifar10_50k_holdout5000_fourier_gaussian_s42/last.pt
+  -r saved/cifar10_950k_full_fourier_gaussian_s42/last.pt
 ```
 
-The single-arm command is an alternative to the comparison runner, not an extra
-run to append to the same output folder. Replace `50k` with `950k` or `1m3` for a
-larger budget. Keep microbatch size, backend and precision identical across arms.
-Resume requires the same source and locked runtime; use a separate worktree for
-edits while training is running. [Detailed recipes and timing](docs/EXPERIMENTS.md)
-explain how to measure a short run before allocating a full training budget.
+The default runner also includes `score`; the explicit two-arm selection above
+omits baseline retraining. Independent devices can run separate jobs. Training
+uses single-device FP32 with microbatch accumulation. Keep the source revision,
+locked environment, effective batch and microbatch identical across paired arms.
+A 50K holdout pilot and 1.3M full-data preset are also available.
+[Complete recipes, evaluation and reporting](docs/EXPERIMENTS.md).
 
-### 4. Run a frozen-first-stage latent experiment
+### LSUN Churches: frozen first stage
 
 ```bash
-# Original weights + original dataset + official CompVis split lists.
+uv sync --locked --extra ldm --extra datasets --extra metrics
 uv run --locked --extra datasets python scripts/download_ldm.py \
   --model lsun_churches --with-data
-
-# Frozen KL encode, posterior-aware latent cache, and training-only statistics.
 uv run --locked --extra ldm python ldm.py prepare \
   -c configs/ldm/lsun_churches_l2.json --device cuda
-
-# Inspect, then launch the three latent arms with paired seeds.
 uv run --locked --extra ldm python ldm.py compare \
-  -c configs/ldm/lsun_churches_l2.json --device cuda --seeds 42 43 44 --dry-run
-uv run --locked --extra ldm python ldm.py compare \
-  -c configs/ldm/lsun_churches_l2.json --device cuda --seeds 42 43 44
+  -c configs/ldm/lsun_churches_l2.json --device cuda --seeds 41 42 43 \
+  --parameterizations scalar_gaussian fourier_gaussian --dry-run
 ```
 
-The VAE/VQ stage stays frozen and the latent denoiser starts from scratch. FFHQ,
-CelebA-HQ, LSUN Churches and Bedrooms use the native CompVis architectures,
-schedules and paper-derived batch/LR/update budgets. Churches' original preset
-uses **L1**; the `_l2` preset explicitly applies the common **L2/DSM** loss to all
-compared arms. Default latent arms are epsilon / scalar Gaussian / Fourier Gaussian.
+Remove `--dry-run` to train after preparation. The target budget is 500K updates.
+The `_l2` preset uses common L2/DSM; the original CompVis Churches preset uses
+**L1**, so this is not an exact reproduction of its published training objective.
+If a run stops early, report its actual update count and compare matched budgets.
+[Other datasets, latent caches, sampling and RGB FID](docs/LDM.md).
 
-Weights go to `pretrained/ldm/<model>/`; datasets use `data/ffhq`, `data/celebahq`
-or `data/lsun/{churches,bedrooms}`; latent caches use `data/ldm_cache/<model>/`.
-FFHQ/LSUN download directly. CelebA-HQ requires the original `.npy` directory/ZIP
-or its URL. [The LDM guide](docs/LDM.md) covers data import, full native presets,
-KL posterior sampling, VQ decode, latent evaluation, sampling and RGB FID.
-
-## Sampling and evaluation
+### Sampling and FID
 
 ```bash
-# All inference uses EMA. For a quick check, request 64 images in a new folder.
 uv run --locked python sample.py \
-  -r saved/cifar10_50k_holdout5000_fourier_gaussian_s42/last.pt \
-  -o saved/cifar10_50k_fg_samples50k --device cuda \
+  -r saved/cifar10_950k_full_fourier_gaussian_s42/last.pt \
+  -o saved/cifar10_fg_s42_samples50k --device cuda \
   --num-samples 50000 --batch-size 64
-
-uv run --locked python evaluate.py dsm \
-  -r saved/cifar10_50k_holdout5000_fourier_gaussian_s42/last.pt \
-  -o saved/cifar10_50k_fg_dsm.json --device cuda
-
-uv run --locked python scripts/export_real.py -c configs/cifar10_ablation.json \
-  --split train -o saved/cifar10_pilot_real
+uv run --locked python scripts/export_real.py -c configs/cifar10_950k.json \
+  --split train -o saved/cifar10_real
 uv run --locked --extra metrics python evaluate.py fid \
-  --real saved/cifar10_pilot_real/png --generated saved/cifar10_50k_fg_samples50k/png \
-  --device cuda -o saved/cifar10_50k_fg_fid.json
+  --real saved/cifar10_real/png --generated saved/cifar10_fg_s42_samples50k/png \
+  --device cuda -o saved/cifar10_fg_s42_fid.json
 ```
 
-Use the same real split, sample count, sampler, NFE, batch size and metric backend
-for every arm. Pixel-space FID/IS uses `torch-fidelity`; this is a new evaluation
-protocol relative to the original Score-SDE TensorFlow metrics. LDM's `fid`
-command computes FID only. The CIFAR pilot's 45K-image reference differs from the
-full-data protocol's 50K training reference; do not mix their FID curves.
+Inference uses EMA. Keep real split, preprocessing, sample count, sampler,
+actual NFE, seed, batch size and metric backend fixed. The local
+`torch-fidelity` protocol differs from Score-SDE's original TensorFlow metrics.
+Report variation across independent training seeds, and curves against both
+updates and training time. [Official checkpoint download/import](docs/SCORE_SDE.md).
 
-| Artifact | Contents |
-|---|---|
-| `saved/<run>/config.json`, `environment.json` | Resolved protocol, source/runtime fingerprint |
-| `architecture.json` | Backbone structure and initial weight fingerprint |
-| `metrics.jsonl` | Training loss, held-out DSM, timing and optional frequency diagnostics |
-| `last.pt`, `ema_*.pt` | Exact training resume / EMA inference snapshots |
-| Sample output directory | PNGs, NHWC uint8 NPZ shards, preview and `settings.json` |
+## Understand the mechanism
 
-For the learning-efficiency question, report DSM and FID against **both optimizer
-updates and elapsed training time**, plus throughput, cache preparation cost,
-sample NFE and variation across independent seeds. Aggregate learning curves are
-currently assembled from the saved artifacts; no automatic report sweep is implied.
+![Forward noising and reverse denoising of an analytic Gaussian mixture, with stochastic and probability-flow trajectories.](docs/assets/stochastic_process.svg)
 
-## Official pretrained references
+*Original analytic illustration using the exact mixture score; no learned model
+is used. [PNG](docs/assets/stochastic_process.png) · [PDF](docs/assets/stochastic_process.pdf).*
 
-The downloaders fetch missing files, retain source URLs/hashes, and verify completed
-downloads on reuse. Weights and datasets are ignored by Git.
-
-| Score-SDE reference | Original file | Local bundle |
-|---|---|---|
-| CIFAR-10 NCSN++ continuous VE | `checkpoint_24.pth` | `pretrained/score_sde/cifar10_ncsnpp_continuous/` |
-| CIFAR-10 NCSN++ deep continuous VE | `checkpoint_12.pth` | `pretrained/score_sde/cifar10_ncsnpp_deep_continuous/` |
-| FFHQ-256 NCSN++ continuous VE | `checkpoint_48.pth` | `pretrained/score_sde/ffhq_256_ncsnpp_continuous/` |
+The [GMM notebook](notebooks/gmm_fourier_residual.ipynb) compares a Gaussian and
+a non-Gaussian mixture with identical **population** mean and covariance on an
+8 × 8 spatial grid. Their reference scores match, but the mixture's exact score
+contains a residual. It measures true-score error and varies spectral
+heterogeneity at fixed average power, including the flat-spectrum control.
 
 ```bash
-python scripts/download_score_sde.py --list
-python scripts/download_score_sde.py --all --dry-run
-uv run --locked --extra datasets python scripts/download_score_sde.py --all
-
-# Strictly map original model/EMA tensors to a local inference-only snapshot.
-uv run --locked python scripts/import_score_sde.py --model cifar10_ncsnpp_continuous
-uv run --locked python sample.py \
-  -r pretrained/score_sde/cifar10_ncsnpp_continuous/ema.pt \
-  -o saved/official_cifar10_reference --device cuda --num-samples 64 --batch-size 64
-
-# CompVis LDM public denoiser reference, with native sampling and frozen decode.
-uv run --locked --extra ldm python ldm.py sample \
-  -c configs/ldm/lsun_churches.json --pretrained --weights ema --device cuda \
-  --num-samples 64 --batch-size 1 -o saved/official_churches_reference
+uv sync --locked --extra notebooks
+uv run --locked --extra notebooks jupyter lab notebooks/gmm_fourier_residual.ipynb
 ```
 
-These references have their own training histories and are **not** paired arms of
-the from-scratch learning-efficiency experiment. Score-SDE exports use the local
-sampler and preserve their official-source identity in output metadata. Original
-`.pth` files are not local training-resume checkpoints. See
-[Score-SDE download/import details](docs/SCORE_SDE.md) for scope and verification.
+The default smoke preset checks the complete experiment on CPU. Use the full
+preset for a substantive mechanism study and report its actual settings; smoke
+curves are not evidence of image-model performance. The figure scripts generate
+original analytic illustrations independently of model training.
+[Figure sources and export commands](docs/FIGURES.md).
 
-## Implementation and status
+## Repository layout
 
-| Component | Entry points |
-|---|---|
-| Gaussian reference / residual normalization | [method.py](fourier_score/method.py), [statistics.py](fourier_score/statistics.py) |
-| Shared score adapter and DSM | [model.py](fourier_score/model.py), [loss.py](fourier_score/loss.py) |
-| Pixel training / inference / metrics | [train.py](train.py), [sample.py](sample.py), [evaluate.py](evaluate.py) |
-| Native latent experiment pipeline | [ldm.py](ldm.py), [fourier_score/ldm/](fourier_score/ldm/) |
-| LDM throughput / full-budget ETA | [benchmark runner](scripts/benchmark_ldm.py), [16 measured dataset/arm runs](verification/2026-09-21-ldm-timing/README.md) |
-| Reproducibility checks | [tests/](tests/), [verification records](verification/README.md) |
+```text
+train.py / sample.py / evaluate.py   Pixel training, inference and metrics
+ldm.py                             Native latent pipeline
+configs/                           Versioned experimental protocols
+fourier_score/                     Method, statistics, trainers and samplers
+  backbones/                       Attributed NCSN++ implementation
+  ldm/                             Frozen-first-stage latent implementation
+notebooks/                         Runnable mechanism experiments
+scripts/                           Preparation, diagnostics and figure generation
+tests/                             Numerical and end-to-end regression checks
+docs/                              Derivations, protocols and generated figures
+```
 
-The repository includes numerical, checkpoint-resume and end-to-end execution
-checks. **A completed multi-seed learning-efficiency or FID result is not yet
-reported.** Implementation checks and pretrained samples do not establish a
-quality improvement for the proposed method.
+Runs save resolved config, environment/source fingerprint, initial backbone
+fingerprint, metrics, optimizer/RNG/data-cursor checkpoints, and EMA snapshots.
+Sampling saves checkpoint identity and settings alongside images.
+`data/`, `saved/`, `pretrained/`, `verification/`, `local/` and `notes/` are local,
+ignored artifact locations. Share curated results with their manifests, rather
+than raw machine-specific orchestration logs.
 
 ```bash
-uv run --locked --extra ldm --extra metrics --extra datasets python -m pytest -q
-# Regenerate the committed method figure; not needed for training.
-uv run --locked --extra figures python scripts/plot_method.py
+uv run --locked --all-extras python -m pytest -q
+uv run --locked --extra notebooks python scripts/check_notebooks.py
 ```
 
-Further documentation: [installation](docs/INSTALL.md), [configuration](docs/CONFIG.md),
-[development and resume](docs/DEVELOPMENT.md), [MPS](docs/MPS.md),
-[한국어 사용 안내](docs/USAGE.md), [source attribution](docs/PROVENANCE.md).
+The CI workflow checks numerical behavior and notebook execution on CPU. For
+source navigation, resume failures and debugging, see [DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-## References
+## References and attribution
 
-- Song et al., [Score-Based Generative Modeling through Stochastic Differential Equations](https://arxiv.org/abs/2011.13456), ICLR 2021. [Official PyTorch code](https://github.com/yang-song/score_sde_pytorch).
+- Song et al., [Score-Based Generative Modeling through Stochastic Differential Equations](https://arxiv.org/abs/2011.13456), ICLR 2021. [Official code](https://github.com/yang-song/score_sde_pytorch).
 - Rombach et al., [High-Resolution Image Synthesis with Latent Diffusion Models](https://arxiv.org/abs/2112.10752), CVPR 2022. [Official code](https://github.com/CompVis/latent-diffusion).
-- Karras et al., [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364), NeurIPS 2022.
+- Karras et al., [Elucidating the Design Space of Diffusion-Based Generative Models](https://arxiv.org/abs/2206.00364), NeurIPS 2022. [Official code](https://github.com/NVlabs/edm).
+- [PyTorch Template](https://github.com/victoresque/pytorch-template) inspired the config-driven entry points, checkpointing and separation of concerns. The project uses a single trainer per domain rather than copying classifier abstractions.
 
-See [LICENSE](LICENSE) and [NOTICE](NOTICE) for code attribution. Downloaded
-third-party weights and datasets remain subject to their respective terms.
+See [LICENSE](LICENSE), [NOTICE](NOTICE) and [source provenance](docs/PROVENANCE.md).
+Downloaded third-party weights and datasets retain their respective terms.

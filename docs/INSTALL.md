@@ -1,69 +1,59 @@
-# Installation and version policy
+# Installation
 
-`pyproject.toml` pins PyTorch 2.14.0 and TorchVision 0.29.0. Python 3.11 is the
-default, and the repository includes a tracked `uv.lock`.
-
-The September 20 verification ran in the existing `.venv` with Python 3.11.15,
-torch 2.14.0+cu130 and torchvision 0.29.0+cu130. CPU and CUDA doctor checks
-passed on an NVIDIA GeForce RTX 5060 Ti. `uv lock --check --offline` also passed.
-See [the verification record](VALIDATION.md) for exact environment and scope;
-this was not a clean-install or MPS validation.
+Use Python 3.11 and the committed `uv.lock` to reproduce the software environment.
+The project pins PyTorch 2.14.0 and TorchVision 0.29.0. Device availability depends
+on the installed wheel and host; verify it instead of assuming CUDA or MPS.
 
 ```bash
 uv python install 3.11
 uv sync --locked --python 3.11
-uv run --locked python scripts/doctor.py
+uv run --locked python scripts/doctor.py --device cpu
 uv run --locked python -m pytest -q
 ```
 
-Use `uv sync --locked` for subsequent installs and keep all experimental arms
-on the same wheel/library versions. Regenerate and commit the lockfile only
-when intentionally changing dependency requirements or sources.
+Run commands from the repository root. Keep all paired experiments on the same
+locked package versions, backend and precision. Update the lockfile deliberately
+when dependencies change. A successful lock check is not a clean-install or
+cross-device numerical-equivalence test.
 
-`verification/uv_lock_attempt.txt` documents the original September 19 package
-access failure. Its older CPU-only environment and missing-lockfile statements
-are preserved in [the historical record](VALIDATION_2026-09-19.md); they do not
-describe the current checkout.
+## Optional dependencies
 
-The default dependency source is PyPI. To choose a specific official CUDA or
-CPU wheel index, configure **both torch and torchvision** with uv sources;
-do not use an extra-index flag that can pull unrelated packages from that index.
-For example, the CPU-only source for Linux/Windows can be appended to pyproject:
-
-```toml
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[tool.uv.sources]
-torch = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
-torchvision = [{ index = "pytorch-cpu", marker = "sys_platform != 'darwin'" }]
-```
-
-For CUDA, substitute the official index for the chosen supported wheel/driver
-combination, and regenerate the lockfile. This project intentionally does not
-invent a fixed CUDA 2.14 wheel variant or driver minimum without validating it.
-macOS remains on PyPI for its MPS-capable build. PyPI on Windows may select a
-CPU-only wheel; verify availability via doctor rather than assuming CUDA.
-
-Official uv integration guide:
-https://docs.astral.sh/uv/guides/integration/pytorch/
-Official PyTorch installer:
-https://pytorch.org/get-started/locally/
-
-Optional packages:
+| Extra | Purpose |
+|---|---|
+| `metrics` | FID/IS through torch-fidelity; Inception weights download on first use |
+| `ldm` | Native frozen KL/VQ first-stage latent experiments |
+| `datasets` | Google Drive and LSUN LMDB preparation |
+| `tensorboard` | Training log visualization |
+| `figures` | Matplotlib figure export |
+| `notebooks` | Locked JupyterLab, kernel, notebook execution and plotting |
 
 ```bash
-uv sync --locked --extra metrics        # torch-fidelity; downloads Inception on use
-uv sync --locked --extra tensorboard    # SummaryWriter
-uv sync --locked --extra ldm --extra metrics  # native LDM + decoded-image FID
-uv sync --locked --extra ldm --extra metrics --extra datasets  # Google Drive + LSUN LMDB preparation
-uv run --locked --extra figures python scripts/plot_method.py  # regenerate README SVG/PNG
+uv sync --locked --extra ldm --extra datasets --extra metrics
+uv run --locked --extra notebooks jupyter lab notebooks/gmm_fourier_residual.ipynb
+uv run --locked --extra figures python scripts/plot_method.py
+# Everything needed for development and CI:
+uv sync --locked --all-extras
 ```
 
-Every time optional dependency selections change, preserve the corresponding
-uv command / environment for all arms. The historical CPU build also exercised
-Python 3.13 with older torch/torchvision versions. No `.venv`, wheels, datasets
-or model weights are tracked in the repository. No credentials or repository
-access are required at runtime.
+`uv run` can synchronize the environment to its requested extras. For development,
+use `--all-extras` consistently, or run `.venv/bin/python` after syncing. Training
+should use its own environment, unchanged for the lifetime of a run and resume.
+
+## Devices
+
+```bash
+uv run --locked python scripts/doctor.py --device cuda
+# On a Mac with supported Apple hardware:
+uv run --locked python scripts/doctor.py --device mps
+```
+
+The default package source is PyPI. If selecting a specific CPU/CUDA wheel index,
+configure **both** torch and torchvision with an explicit uv source and regenerate
+the lockfile; record that environment as a different experimental setup. See
+[uv's PyTorch guide](https://docs.astral.sh/uv/guides/integration/pytorch/) and the
+[official PyTorch installer](https://pytorch.org/get-started/locally/) for host-specific
+installation. Do not mix wheel variants between paired arms or during resume.
+
+Model weights, datasets, wheels and virtual environments are not redistributed.
+Official reference weights have their own source/license manifests; see
+[SCORE_SDE.md](SCORE_SDE.md), [LDM.md](LDM.md) and [PROVENANCE.md](PROVENANCE.md).

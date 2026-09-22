@@ -1,4 +1,0 @@
-Using CPython 3.13.5 interpreter at: /opt/pyvenv/bin/python
-error: Failed to fetch: `https://pypi.org/simple/numpy/`
-  Caused by: error sending request for url (https://pypi.org/simple/numpy/)
-  Caused by: operation timed out

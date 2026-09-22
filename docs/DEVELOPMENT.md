@@ -1,102 +1,120 @@
-# Development and migration
+# Development and debugging
 
-## Reading order
+## Repository design
 
-1. `fourier_score/method.py`: Gaussian reference and residual scaling.
-2. `fourier_score/statistics.py`: training-only mean and Fourier power estimation.
-3. `fourier_score/model.py` and `loss.py`: raw backbone output → scaled score → DSM.
-4. `fourier_score/training.py`: a single Trainer, without base-class inheritance.
-5. `fourier_score/diffusion.py`: the shared process and samplers.
+The layout follows the useful parts of the PyTorch Template pattern: explicit
+entry points, versioned configs, separate data/model/training/evaluation modules,
+and complete checkpoints. One trainer per domain keeps the numerical path easy
+to inspect without a hierarchy of generic classifier base classes.
 
-Device support and serialization are in `utils.py`; EMA, terminal logging, and
-image output have separate small modules. `spectral.py` contains FFT / real-DFT
-implementations. These support the method without changing its equations.
-`backbones/` contains attributed upstream code; do not reformat those files.
+Read the implementation in this order:
 
-## Checks
+1. `fourier_score/method.py`: fixed Gaussian reference and residual scale.
+2. `fourier_score/statistics.py`: training-only mean and Fourier power.
+3. `fourier_score/model.py` and `loss.py`: backbone output → total score → DSM.
+4. `fourier_score/training.py`: consumed batches, optimization, EMA and resume.
+5. `fourier_score/diffusion.py`: shared forward process and samplers.
+
+The native latent equivalents live under `fourier_score/ldm/`. Vendored code in
+`backbones/` and `ldm/upstream/` retains source attribution and should not be
+reformatted as part of local infrastructure changes.
+
+## Checks before a long experiment
 
 ```bash
-uv run --locked python -m pytest -q
+uv sync --locked --all-extras
+uv run --locked --all-extras python -m pytest -q
 uv run --locked python scripts/doctor.py --device cpu
-uv run --locked python scripts/inspect_model.py -c configs/cifar10_ablation.json
-bash scripts/reproduce_cifar10.sh 950k --seeds 42 43 --dry-run
-# Include the optional native LDM and dataset integration tests:
-uv run --locked --extra ldm --extra metrics --extra datasets python -m pytest -q
-# Optional CUDA parity audit; downloads small, pinned original source files.
-uv run --locked --extra ldm --extra metrics python scripts/verify_ldm_upstream.py --output saved/ldm_upstream_parity.json
+uv run --locked python scripts/doctor.py --device cuda
+uv run --locked python scripts/inspect_model.py -c configs/cifar10_950k.json
+bash scripts/reproduce_cifar10.sh 950k --seeds 42 43 44 \
+  --parameterizations scalar_gaussian fourier_gaussian --dry-run
+uv run --locked --extra notebooks python scripts/check_notebooks.py --execute
 ```
 
-The focused suite has **45 cases** with all extras installed. It retains Gaussian
-reference/filter algebra and gradients, matched backbone initialization, finite
-loss/sampling for the main processes, training-only statistics, exact consumed-batch
-resume, EMA, checkpoint source provenance, timing and frequency diagnostics, and
-the public download/evaluation paths. Dataset tests use tiny local HTTP/ZIP/LMDB
-fixtures; pytest does not download public datasets or model weights. A single
-Score-SDE workflow test covers verified download/reuse, strict EMA conversion,
-frozen embeddings, inference and source attribution.
+The CUDA command requires an NVIDIA device; use `--device mps` on a supported
+Mac. Pytest uses small local fixtures, not downloaded datasets or public weights.
+It covers Gaussian algebra/gradients, matched initialization, objective/process
+conventions, consumed-batch resume, EMA, statistics, provenance and native latent
+workflows. The notebook smoke run checks analytic controls and short training;
+it is not evidence of convergence or image quality.
 
-The former Cartesian backbone grid, repeated preset/type-validation cases and
-terminal presentation checks were removed. Representative numerical and complete
-workflow checks cover the supported experiment paths. Device smoke checks are
-explicit `scripts/doctor.py --device cuda` / `--device mps` commands. A smoke test
-or structural audit is not evidence of long-training convergence or image quality.
+## Diagnose failures at the smallest useful level
 
-The LDM path lives in `fourier_score/ldm/` and uses `ldm.py` as its CLI. Pinned
-computational modules under `ldm/upstream/` retain upstream arithmetic and keys;
-do not reformat them. Local LDM checkpoints have a separate format. Its tests
-exercise both KL and VQ stages, analytic posterior statistics, encoded pixel
-flips, training-only splits, paired initialization, exact CPU resume, public EMA
-selection, native DDIM endpoints, and decoded image artifacts.
-
-Dated records under `verification/` and `docs/VALIDATION*` describe the source
-revisions they name. Old paths and commands in those records are historical.
-See [the verification index](../verification/README.md) for their scope.
-
-## Entry point changes
-
-| Before | Now |
+| Symptom | Inspect / action |
 |---|---|
-| `train.py`, `sample.py` | Same entry points and existing flags |
-| `test.py -r ... -o ...` | `evaluate.py dsm -r ... -o ...` |
-| `metrics.py --real ... --generated ...` | `evaluate.py fid --real ... --generated ...` |
-| `prepare.py`, `export_real.py` | `scripts/prepare.py`, `scripts/export_real.py` |
-| `doctor.py`, `inspect_model.py` | `scripts/doctor.py`, `scripts/inspect_model.py` |
-| `parse_config`, `model.*`, `trainer.*`, etc. | Modules under `fourier_score` |
+| Invalid config or unexpected preset | `train.py -c <config> --dry-run`; compare the resolved config saved with the run. |
+| CUDA/MPS unavailable or FFT problem | `scripts/doctor.py --device <device>`; record the actual device and wheel versions. |
+| Out of memory | Run a separate short experiment with smaller microbatches at the same effective batch; keep that setting fixed across paired arms. |
+| Non-finite loss or gradients | Check input range, cached mean/power, noise range and power floor; reproduce on `configs/smoke.json` before modifying the objective. |
+| Statistics/cache identity mismatch | Verify dataset, split and preprocessing. Prepare a distinct cache for a changed protocol; do not overwrite the cache used by active runs. |
+| Resume source/runtime mismatch | Use the original source checkout and locked environment. Do not bypass provenance checks. |
+| Existing output directory | Choose a new run/output name or explicitly resume its `last.pt`. |
+| A low DSM value but poor samples | Confirm total-score conversion, EMA and sampler settings. Noisy DSM is not FID or exact true-score error. |
+| FID differs from a published number | Compare architecture, training history, image preprocessing, real reference, NFE and metric implementation first. |
+| Notebook import/filename failure | Launch the notebook from this checkout; install `--extra notebooks`. Use `FOURIER_SCORE_ROOT` only when root discovery is insufficient. |
 
-`train.py --download` covers the common MNIST/CIFAR-10 preparation workflow.
-`--parameterization` is a public alias for the saved v1 `loss.type` field;
-`--objectives` remains an alias for comparison-runner `--parameterizations`.
-Old Python import paths are not maintained as a second implementation.
+Keep failure reproductions small. Include the exact command, resolved config,
+source revision, environment, final complete checkpoint step and traceback.
+Do not infer a saved step from a progress line printed before checkpoint writing.
 
-## Checkpoint compatibility
+## Reproducibility artifacts
 
-The v1 tensor checkpoint format, backbone parameter keys, EMA keys, and Gaussian
-buffers are unchanged. Earlier v1 checkpoints can be used by `sample.py` and
-`evaluate.py dsm`; source differences produce the existing inference warning.
+Each run saves `config.json`, `environment.json`, `architecture.json`,
+`metrics.jsonl`, resumable `last.pt` and inference EMA snapshots. The complete
+checkpoint contains optimizer state, EMA, RNGs, the consumed-batch cursor and
+statistics. Latent checkpoints also identify the immutable first-stage weights
+and latent cache. Sampling records checkpoint identity and settings.
 
-Training resume still requires the same source hash and runtime protocol. This
-refactor changes that hash, so continue pre-refactor training runs in their original
-revision. The latest pre-refactor revision is `865e84e`. No compatibility flag
-silently bypasses that check. New runs preserve deterministic CPU resume across
-interruptions within this revision. Changing a run's update limit does not change
-its explicit preset name or output path.
+When sharing a result, include the source revision **and dirty diff if any**,
+`uv.lock`, resolved configs, split/preprocessing/statistics identity, seed, actual
+update count, EMA choice, sampler/actual NFE, sampling batch/seed, metric backend,
+real reference and completion status. Record missing measurements as missing.
+Report training-seed variation separately from sampling-seed variation.
 
-## Editing while training is running
+The [figure guide](FIGURES.md) distinguishes analytic illustrations, synthetic
+mechanism measurements and image-model results. Keep those labels in captions.
 
-Keep a training checkout at its starting revision until that process finishes.
-Use a separate Git worktree for development; do not pull, switch revisions, or
-move Python modules inside an active training checkout. Lazy imports can still
-read files after startup.
+## Public files and local work
 
-Checkpoints now reuse the source fingerprint recorded in the run's startup
-environment. Saving no longer rereads source files: a moved file cannot prevent
-checkpoint saving, and edited files cannot relabel the loaded model code as a
-different source revision. Resume still checks the current source against the
-checkpoint's fingerprint. This fix only applies to newly started processes;
-already running Python processes keep their old checkpoint implementation.
+Public source belongs in `fourier_score/`, protocols in `configs/`, reusable
+commands in `scripts/`, curated notebooks in `notebooks/`, and derivations and
+figures in `docs/`. Git tracks these paths, including newly added documentation.
 
-If an older run failed while saving after files were moved, use the last complete
-`last.pt` with a separate checkout of its matching source revision. Restore the
-same locked environment, data, and device, and change `trainer.save_dir` when
-keeping the failed attempt's logs separate. A save failure does not establish that
-the step shown in the log reached disk; inspect the checkpoint's `step` field.
+`local/`, `notes/`, `notebooks/local/` and `verification/` are ignored locations
+for private notes, executed exploratory notebooks, machine-specific orchestration,
+and raw historical checks. Data, weights and generated runs remain under the
+ignored `data/`, `pretrained/`, `saved/` and `evaluation/` paths. Historical files
+already present locally are preserved, including retired experiments. Removing
+tracking does not remove files from earlier Git history.
+
+Publish a curated result table or figure only with its source records and protocol.
+Do not copy raw pod addresses, operational logs or unrelated local notes into the
+README. Notebook source should be English and use `$...$` / `$$...$$` math so it
+renders in both Jupyter and GitHub. Clear stale errors and keep executed copies
+under `saved/`; the source notebook remains a clean executable document.
+
+## Checkpoints and active training
+
+Only supported parameterizations can be loaded in this checkout. Removed
+experimental variants are not silently converted to a different method; use
+an archived matching revision to inspect those checkpoints.
+
+Training resume requires the same source fingerprint and runtime protocol.
+Changes to the local method source therefore require a new experiment or an
+original matching checkout for resume. Existing supported inference snapshots
+can be loaded with the usual source-difference warning. Numerical backbone and
+Gaussian-buffer keys remain unchanged for the supported methods.
+
+Keep an active training checkout at its starting revision until training and
+queued evaluation finish. Use a separate worktree for development:
+
+```bash
+git worktree add ../fourier-score-dev -b codex/research-cleanup
+```
+
+Do not pull new source or rename modules inside an active training checkout;
+lazy imports may still read files after startup. Checkpoints reuse the source
+fingerprint captured at process startup. A source edit must never relabel an
+already running model as if it used the new implementation. Remote scheduling
+and checkpoints remain operational artifacts rather than part of the public CLI.

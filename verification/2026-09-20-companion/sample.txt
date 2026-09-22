@@ -1,2 +1,0 @@
-2/4 images; 7 batched score calls
-4/4 images; 14 batched score calls

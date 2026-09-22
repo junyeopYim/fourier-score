@@ -83,5 +83,5 @@ architectures. Keep them labeled separately from matched-budget learning curves.
 Sampling uses this repository's implementation and recorded batch/NFE/precision.
 It is not a claim of reproducing the source's full sampler, data pipeline,
 TensorFlow FID/IS or paper result. Use the same local evaluation protocol when
-comparing generated images. The exact checked downloads and smoke execution are
-recorded under [verification/](../verification/README.md).
+comparing generated images. Download manifests record source URLs, file hashes and conversion identity.
+See [VALIDATION.md](VALIDATION.md) for reproducible implementation checks.

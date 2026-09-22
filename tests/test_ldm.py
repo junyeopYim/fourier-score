@@ -270,7 +270,6 @@ def test_all_arms_initialize_the_same_and_sampling_uses_adapter(latent_experimen
     for arm in (
         "epsilon",
         "scalar_gaussian",
-        "fourier_gaussian_unscaled",
         "fourier_gaussian",
     ):
         c = copy.deepcopy(cfg)

@@ -13,6 +13,9 @@ saved/*
 # uv.lock is intentionally tracked after the first successful uv sync.
 .uv-cache/
 .ruff_cache/
+.DS_Store
+.ipynb_checkpoints/
+**/.ipynb_checkpoints/
 .env
 .env.*
 !.env.example
@@ -23,9 +26,14 @@ evaluation/*
 verification/*
 !verification/.gitkeep
 
-docs/*
-!docs/.gitkeep
-!docs/assets/
+# Private research notes and machine-specific orchestration stay local.
+local/
+notes/
+notebooks/local/
+notebooks/*.executed.ipynb
 
 # Downloaded official checkpoints and their configs/manifests.
 pretrained/
+
+# Small source arrays supporting committed, reproducible scientific figures.
+!docs/assets/diagnostics_data.npz

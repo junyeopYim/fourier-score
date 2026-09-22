@@ -149,7 +149,6 @@ def main(argv=None):
         default=[
             "epsilon",
             "scalar_gaussian",
-            "fourier_gaussian_unscaled",
             "fourier_gaussian",
         ],
     )

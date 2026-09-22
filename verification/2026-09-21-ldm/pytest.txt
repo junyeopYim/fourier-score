@@ -1,2 +1,0 @@
-Command: uv run --locked --extra ldm --extra metrics python -m pytest -q
-197 passed, 2 skipped in 18.47s

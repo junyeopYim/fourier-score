@@ -1,0 +1,38 @@
+{
+  "kind": "synthetic oracle illustrations; no learned-model or image-benchmark results",
+  "seed": 20260922,
+  "monte_carlo_samples_per_distribution": 32768,
+  "python": "3.11.15",
+  "numpy": "2.4.6",
+  "matplotlib": "3.11.2",
+  "source_sha256": "1d78add524c003c219c7bd07d6dd2f87cb8c5ff61e08a8760552fcd75c8a3911",
+  "settings": {
+    "process": "VE, alpha=1, sigma_squared=4*t, t in [0,1]",
+    "integration_steps": 1000,
+    "process_mixture_rho": 0.92,
+    "residual_figure_sigma": 0.35,
+    "spectrum_grid": [
+      8,
+      8
+    ],
+    "spectrum_knee": 0.15,
+    "spectrum_exponent": 1.5,
+    "spectrum_mean_power": 1.0,
+    "spectrum_mixture_rho": 0.85,
+    "spectrum_moment_sigma": 0.7
+  },
+  "checks": {
+    "score_log_density_gradient_max_abs_error": 4.840476908185565e-10,
+    "gmm_mean_max_abs": 8.847089727481716e-17,
+    "matched_covariance_max_abs": 7.771561172376096e-16,
+    "flat_scalar_fourier_scale_max_abs": 0.0,
+    "flat_scalar_fourier_score_max_abs": 2.220446049250313e-16,
+    "gaussian_target_moment_max_abs_error": 0.008014771194234549,
+    "gmm_target_moment_max_abs_error": 0.013633403468000571
+  },
+  "figures": [
+    "stochastic_process",
+    "gaussian_residual",
+    "frequency_scaling"
+  ]
+}

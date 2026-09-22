@@ -1,7 +1,7 @@
 [project]
 name = "fourier-image-template"
 version = "0.1.0"
-description = "Identical NCSN++ backbones for Fourier Gaussian, score DSM, and diffusion"
+description = "Fixed Gaussian reference scores and normalized neural residuals for diffusion models"
 requires-python = ">=3.11,<3.15"
 dependencies = [
   "torch==2.14.0",
@@ -16,6 +16,7 @@ tensorboard = ["tensorboard>=2.18,<3"]
 ldm = ["einops>=0.8.1,<0.9", "pyyaml>=6.0.2,<7", "opencv-python-headless>=4.10,<5"]
 datasets = ["gdown>=5.2,<6", "lmdb>=1.6,<3"]
 figures = ["matplotlib>=3.10,<4"]
+notebooks = ["jupyterlab>=4.4,<5", "ipykernel>=6.29,<8", "nbconvert>=7.16,<8", "matplotlib>=3.10,<4"]
 
 [dependency-groups]
 dev = ["pytest>=8,<10"]

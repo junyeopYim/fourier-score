@@ -9,9 +9,8 @@ from fourier_score.spectral import SpectralFilter, conjugate_symmetrize
 
 
 GAUSSIAN_OBJECTIVES = {
-    "scalar_gaussian": {"covariance": "scalar", "scale_residual": True},
-    "fourier_gaussian_unscaled": {"covariance": "fourier", "scale_residual": False},
-    "fourier_gaussian": {"covariance": "fourier", "scale_residual": True},
+    "scalar_gaussian": {"covariance": "scalar"},
+    "fourier_gaussian": {"covariance": "fourier"},
 }
 OBJECTIVES = ("score", "diffusion", *GAUSSIAN_OBJECTIVES)
 # Score and diffusion are sign conventions, so only one is in the main ablation.
@@ -23,17 +22,14 @@ class FourierGaussian(nn.Module):
 
     ``stats['mean']`` and ``stats['power']`` have shape [C, H, W].
     The full method uses the empirical Fourier power P. The scalar control
-    replaces P by a channelwise constant; the unscaled control sets b = 1.
+    replaces P by a channelwise constant. Both normalize the residual using
+    the second moment of the denoising target after reference subtraction.
     """
 
-    def __init__(
-        self, stats: dict, backend="auto", *, covariance="fourier", scale_residual=True
-    ):
+    def __init__(self, stats: dict, backend="auto", *, covariance="fourier"):
         super().__init__()
         if covariance not in ("fourier", "scalar"):
             raise ValueError("Invalid Gaussian covariance")
-        if type(scale_residual) is not bool:
-            raise ValueError("scale_residual must be boolean")
         mean = stats["mean"].detach().cpu().float().clone()
         power = stats["power"].detach().cpu().float().clone()
         if mean.ndim != 3 or power.shape != mean.shape:
@@ -47,7 +43,6 @@ class FourierGaussian(nn.Module):
         if not torch.allclose(power, conjugate_symmetrize(power), atol=1e-6, rtol=1e-5):
             raise ValueError("Power is not conjugate symmetric")
         self.covariance = covariance
-        self.scale_residual = scale_residual
         # Average the SAME floored training spectrum, retaining the full mean.
         # The shared statistics cache must never be flattened in place.
         if covariance == "scalar":
@@ -83,10 +78,8 @@ class FourierGaussian(nn.Module):
         if self.covariance == "scalar":
             # A spatially constant spectral multiplier is pointwise in pixels.
             gaussian = -s * (y - a * self.mean[None]) / denom
-            residual = (prior / denom).sqrt() * raw if self.scale_residual else raw
+            residual = (prior / denom).sqrt() * raw
             return gaussian + residual
         gaussian = -s * self.filter(y - a * self.mean[None], denom.reciprocal())
-        residual = (
-            self.filter(raw, (prior / denom).sqrt()) if self.scale_residual else raw
-        )
+        residual = self.filter(raw, (prior / denom).sqrt())
         return gaussian + residual

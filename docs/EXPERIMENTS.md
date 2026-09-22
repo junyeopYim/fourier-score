@@ -20,11 +20,12 @@ Use validation/pilot runs to select hyperparameters; do not tune on the test spl
 # Preview all commands: no data loading, downloading, or training.
 bash scripts/reproduce_cifar10.sh 50k --device cuda --seeds 42 --dry-run
 
-# Four arms, repeated with paired seeds; creates separate runs.
+# Two Gaussian arms, three paired seeds; six runs without baseline retraining.
 bash scripts/reproduce_cifar10.sh 950k --download --device cuda \
-  --seeds 42 43 44 --set trainer.microbatch_size=32
+  --seeds 42 43 44 --parameterizations scalar_gaussian fourier_gaussian \
+  --set trainer.microbatch_size=32
 
-# Select three arms, or choose the 1.3M budget instead.
+# Include a paired score baseline explicitly, or choose the 1.3M budget instead.
 bash scripts/reproduce_cifar10.sh 1m3 --device cuda --seeds 42 --dry-run \
   --parameterizations score scalar_gaussian fourier_gaussian
 ```
@@ -70,7 +71,8 @@ This excludes setup, periodic diagnostics, checkpoint I/O, and final sampling/FI
 Measure each selected arm; do not assume identical throughput. At an illustrative
 1 update/second, 50K / 950K / 1.3M take 13.9 / 263.9 / 361.1 training hours per
 arm and seed. These are arithmetic scenarios, not measured GPU benchmarks.
-The default four-arm recipe with three seeds means **12 runs**.
+The default three-arm recipe with three seeds means **9 runs**; the explicit
+two-Gaussian-arm recipe above means **6 runs**.
 
 Use Runpod on-demand Pods for these long jobs. Check current
 [GPU rates](https://www.runpod.io/pricing) and
@@ -114,7 +116,9 @@ Checkpoint sweeps and report aggregation are still manual.
 
 Budget sampling separately: the default PC sampler has 1,000 predictor steps
 and one corrector per step, or 2,000 score calls per image trajectory. At batch
-64, 50,000 images require 782 full batches. Time a 64-image run with the exact
+64, 50,000 images require 782 full sampling batches; only 16 images are retained
+from the last batch. Keeping the final sampling batch full preserves the
+batch-mean Langevin normalization. Time a 64-image run with the exact
 same sampler/batch settings, then multiply its `settings.json` `wall_seconds`
 by 782 for an initial generation estimate. FID/IS computation is additional.
 Reducing sampler steps changes the evaluation protocol and must be reported.
@@ -148,7 +152,7 @@ Use the explicit `cifar10_950k.json` / `cifar10_1m3.json` pair for new budget
 comparisons. The legacy `paper` filename does not establish paper reproduction.
 The repository has no 95,000-update preset.
 
-## Planned extensions
+## Additional settings
 
 Unconditional CompVis LDM first-stage loading, latent statistics, training from
 scratch, native DDIM/DDPM sampling and decoded RGB evaluation are implemented in

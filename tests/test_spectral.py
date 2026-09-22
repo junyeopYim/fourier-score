@@ -60,16 +60,3 @@ def test_scalar_matches_flat_spectrum_without_fft(monkeypatch):
     torch.testing.assert_close(scalar.mean,mean,atol=0,rtol=0)
     torch.testing.assert_close(stored['power'],power,atol=0,rtol=0)
     torch.testing.assert_close(stored['mean'],mean,atol=0,rtol=0)
-
-
-def test_unscaled_keeps_reference_and_identity_residual():
-    backend = 'fft'
-    stats={'mean':torch.randn(2,8,8),'power':conjugate_symmetrize(torch.rand(2,8,8)+0.1)}
-    scaled=FourierGaussian(stats,backend)
-    unscaled=FourierGaussian(stats,backend,scale_residual=False)
-    y=torch.randn(3,2,8,8); raw=torch.randn_like(y,requires_grad=True)
-    sigma=torch.tensor([0.1,1.,10.]); alpha=torch.tensor([1.,0.8,0.3])
-    baseline=scaled.scaled_score(torch.zeros_like(raw),y,alpha,sigma)
-    got=unscaled.scaled_score(raw,y,alpha,sigma)
-    torch.testing.assert_close(got,baseline+raw,atol=0,rtol=0)
-    torch.testing.assert_close(torch.autograd.grad(got.sum(),raw)[0],torch.ones_like(raw),atol=0,rtol=0)

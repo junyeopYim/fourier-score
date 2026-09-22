@@ -1,8 +1,0 @@
-{
-  "identity": "71a9d9065f796ac86db88a33fdc72bbd8e1ea988c36c5a0a2a80326e2b55e229",
-  "n_train": 12,
-  "n_effective": 12,
-  "n_validation": 4,
-  "eval_split": "validation",
-  "floored_fraction": 0.0
-}
