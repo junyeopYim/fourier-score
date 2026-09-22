@@ -89,7 +89,7 @@ class Trainer:
                 )
             if checkpoint["source_sha256"] != source_hash():
                 raise ValueError(
-                    "Source differs from checkpoint; no silent cross-version resume"
+                    "Source differs from checkpoint; resume with the original source revision"
                 )
             old = checkpoint["environment"]
             if old["device"] != str(device) or old["torch"] != str(torch.__version__):

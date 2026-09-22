@@ -160,6 +160,6 @@ def sample_batch(model, cfg, batch_size, device, generator):
             raise ValueError("Unknown sampler")
     if not torch.isfinite(x).all():
         raise FloatingPointError(
-            "Nonfinite samples. Inspect model and sampler settings; no silent clipping."
+            "Nonfinite samples. Check model and sampler settings."
         )
     return x, nfe

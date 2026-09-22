@@ -141,7 +141,7 @@ def build_data(cfg):
         label = "test"
     else:
         raise ValueError(
-            "image_folder requires a nonzero validation_size; no silent training-set evaluation"
+            "image_folder requires validation_size > 0 for a held-out evaluation split"
         )
     meta = {
         "schema_version": 1,

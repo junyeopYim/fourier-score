@@ -121,7 +121,7 @@ def benchmark(cfg, spec, output, steps, warmup):
         "environment": trainer.env,
         "source_sha256": source_hash(),
         "benchmark_script_sha256": SCRIPT_SHA256,
-        "timing_scope": "Synchronized optimizer updates including cached data access, forward/backward, AdamW and LitEma. No evaluation, checkpoint writes, downloads or encoding included. Finite repeated subset; not a convergence experiment.",
+        "timing_scope": "Synchronized optimizer updates on a repeated data subset: cached data access, forward/backward, AdamW and LitEma. Evaluation, checkpoint writes, downloads and encoding are outside the timing window.",
         "checkpoint_saved": False,
     }
     json_write(result, trainer.out / "benchmark.json")

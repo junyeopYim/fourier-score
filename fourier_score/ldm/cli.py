@@ -124,7 +124,7 @@ def main(argv=None):
                         "config": cfg,
                         "spec": spec,
                         "run": experiment_name(cfg),
-                        "note": "upstream preserves released loss; l2 is an explicit loss-only ablation. Paper budgets are not convergence guarantees.",
+                        "note": "upstream uses the released loss; l2 uses L2/DSM.",
                     },
                     indent=2,
                 )

@@ -19,7 +19,7 @@ def file_sha256(path):
 
 
 def read_state(path):
-    """Never silently fall back to arbitrary pickle execution."""
+    """Load a checkpoint with PyTorch's weights-only deserializer."""
     obj = torch.load(path, map_location="cpu", weights_only=True)
     state = obj.get("state_dict", obj)
     if not isinstance(state, dict) or not all(isinstance(k, str) for k in state):

@@ -1,4 +1,4 @@
-"""Common DSM and optional noise-by-frequency diagnostics, no FID claims."""
+"""DSM, spectral diagnostics, and FID/IS evaluation."""
 
 import math
 import torch

@@ -207,7 +207,7 @@ def make_frequency_figure(output: Path, rng, data: dict, checks: dict, n_samples
         estimate = total/n_samples
         standard_error = np.sqrt(np.maximum((total_squared-n_samples*estimate**2)/(n_samples-1), 0)/n_samples)
         estimates[distribution] = (estimate, standard_error)
-        # Finite-sample Monte Carlo check, not a guarantee at every seed/budget.
+        # Monte Carlo error at the configured sample count.
         checks[f"{distribution}_target_moment_max_abs_error"] = float(np.abs(estimate-analytic).max())
         assert checks[f"{distribution}_target_moment_max_abs_error"] < 0.045
         data[f"{distribution}_target_moment"] = estimate
