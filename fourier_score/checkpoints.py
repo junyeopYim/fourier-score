@@ -19,10 +19,14 @@ def resume_signature(cfg):
     # Adding disabled-gate defaults must preserve pre-gate v1 signatures.
     if c["fourier"].get("gate", {}).get("mode", "none") == "none":
         c["fourier"].pop("gate", None)
-    elif c["fourier"]["gate"]["mode"] != "log_sigma_plateau":
-        # Plateau-only defaults must not change existing active-gate signatures.
-        c["fourier"]["gate"].pop("sigma_lo", None)
-        c["fourier"]["gate"].pop("sigma_hi", None)
+    else:
+        gate = c["fourier"]["gate"]
+        if gate["mode"] not in ("log_sigma_plateau", "spectral_cap"):
+            gate.pop("sigma_lo", None)
+            gate.pop("sigma_hi", None)
+        # Optional defaults must not change older active-gate signatures.
+        if gate["mode"] != "spectral_cap":
+            gate.pop("delta", None)
     for k in ("name", "device", "evaluation", "sampling"):
         c.pop(k)
     for k in (

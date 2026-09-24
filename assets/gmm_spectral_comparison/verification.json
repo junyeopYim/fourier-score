@@ -1,0 +1,177 @@
+{
+  "checked_utc": "2026-09-24T05:52:45.526300+00:00",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 152,
+    "seconds": 18.91
+  },
+  "full_experiment": {
+    "new_training_runs": 18,
+    "reused_runs": 81,
+    "test_runs": 99,
+    "workers": 12,
+    "cpu_threads_per_job": 1,
+    "source_unchanged_after_training": true,
+    "source_sha256": "792457d189635b64d8b524f76dae189fc9e3dae09cfe16014d4fa70a6e89f030",
+    "runner_and_helper_hashes_match_protocol": true,
+    "baseline_validation_reproduction": "exact for all 81 reused checkpoints, including every noise bin",
+    "pairing_conditions": 9,
+    "gradient_clipping_activated": false
+  },
+  "constraints": {
+    "backbones_per_model": 1,
+    "loss": "normalized_residual for new arms",
+    "teachers": false,
+    "auxiliary_losses": false,
+    "pretrained_initialization": false
+  },
+  "parameter_counts": {
+    "score": 102016,
+    "scalar_gaussian": 102016,
+    "fourier_gaussian": 102016,
+    "scalar_normalized": 102016,
+    "fourier_normalized": 102016,
+    "scalar_gate_s1p5_p4": 102016,
+    "fourier_gate_s1p5_p4": 102016,
+    "scalar_gate_s1p5_p4_plateau_lo0p8_hi1": 102016,
+    "fourier_gate_s1p5_p4_plateau_lo0p8_hi1": 102016,
+    "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5": 102016,
+    "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5": 102016
+  },
+  "gate_check": {
+    "dtype": "float64",
+    "low_grid": {
+      "min": 0.1,
+      "max": 1.0,
+      "n": 100
+    },
+    "high_grid": {
+      "min": 2.0,
+      "max": 3.0,
+      "n": 1000
+    },
+    "results": [
+      {
+        "spectrum_lambda": 0.0,
+        "covariance": "scalar",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.0583407335683968,
+        "high_bound": 1.118033988749895
+      },
+      {
+        "spectrum_lambda": 0.0,
+        "covariance": "fourier",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.0583407335683968,
+        "high_bound": 1.118033988749895
+      },
+      {
+        "spectrum_lambda": 0.5,
+        "covariance": "scalar",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.0583407335683968,
+        "high_bound": 1.118033988749895
+      },
+      {
+        "spectrum_lambda": 0.5,
+        "covariance": "fourier",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.0758760870369044,
+        "high_bound": 1.118033988749895
+      },
+      {
+        "spectrum_lambda": 1.0,
+        "covariance": "scalar",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.0583407335683968,
+        "high_bound": 1.118033988749895
+      },
+      {
+        "spectrum_lambda": 1.0,
+        "covariance": "fourier",
+        "low_matches_sigmoid_exactly": true,
+        "high_max_scale_ratio": 1.1085219162374242,
+        "high_bound": 1.118033988749895
+      }
+    ],
+    "unit_test_coverage": [
+      "frequency-domain Gaussian reference",
+      "weighted DSM loss and gradient equivalence",
+      "normalized target second moment",
+      "FP32 and FP64",
+      "FFT and matrix backends",
+      "extreme power and noise",
+      "checkpoint resume and inference"
+    ]
+  },
+  "independent_test_banks": [
+    {
+      "spectrum_lambda": 0.0,
+      "current": "102948d2e2a56782ecdbf79546d47f94e6ab6f4d6ee8b70d815f3f08ac49182d",
+      "previous": {
+        "gmm_gated_comparison": [
+          "b5ec42f4115adb45598048e182a410f0fa715b618c58de650b8b75a45181b389"
+        ],
+        "gmm_plateau_comparison": [
+          "778eb5b26b189a6f7ed9a8438343b022b46c8042fd06405c9614c29f1d93cc3f"
+        ]
+      }
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "current": "d349905efc62a90eea2bac664f9f5986fd494291178fc83afc57293ee4a097dd",
+      "previous": {
+        "gmm_gated_comparison": [
+          "8b1bfd743c2b09c82ab70806ff5da2408f7e3d12e08e9b6ff6cc468430effed5"
+        ],
+        "gmm_plateau_comparison": [
+          "88351be3524f0d1a6f2da3737dd9067d0276a05387714e353ea6fabfaf4838db"
+        ]
+      }
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "current": "759f979010a6d2646cc9a235950909de3018aa21e337992bff9551caa5151784",
+      "previous": {
+        "gmm_gated_comparison": [
+          "81fcfed3ae9bb3b7df80f507f95e10eeaf8250cb7cde4e1b78f05a5b0d271479"
+        ],
+        "gmm_plateau_comparison": [
+          "46cf2fc6b91e3fb0bbcbd7846bdf7e5ba961b460c224ebaac798984c4df2c528"
+        ]
+      }
+    }
+  ],
+  "paired_region_wins_at_lambda1_vs_sigmoid": {
+    "low": 3,
+    "middle": 3,
+    "high": 3
+  },
+  "smoke": {
+    "passed": true,
+    "resumed_with_workers": [
+      12,
+      2
+    ],
+    "summary_sha256": "99d91a0302eeaed82c01afac5eca1104f83c80bd7e26711377805dae86319d46",
+    "resume_summary_identical": true
+  },
+  "legacy_plateau_runner_smoke": {
+    "passed": true,
+    "new_training_runs": 4,
+    "reused_runs": 14,
+    "test_runs": 18
+  },
+  "image_model_cli_dry_run": {
+    "passed": true,
+    "config": "configs/smoke.json",
+    "mode": "spectral_cap",
+    "sigma_lo": 1.0,
+    "sigma_hi": 2.0,
+    "delta": 0.5
+  },
+  "figures_visually_inspected": [
+    "gmm_spectral_comparison.png",
+    "gmm_spectral_diagnostics.png"
+  ]
+}

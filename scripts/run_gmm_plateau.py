@@ -43,7 +43,7 @@ def prepare_arm(task):
     family = MatchedMomentFamily(cfg, "gmm", lam)
     validation = make_bank(family, "validation")
     relative = Path(family.case_id) / f"{arm.name}_seed{seed}" / "checkpoint.pt"
-    if reuse is not None and arm.gate_mode != "log_sigma_plateau":
+    if reuse is not None:
         checkpoint = reuse / relative
         payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
         state = payload["state"]
@@ -273,7 +273,8 @@ def main(argv=None):
     json_write(history, history_path)
     # Schedule new training first, allowing baseline audits to fill spare cores.
     ordered_arms = (*arms[-2:], *arms[:-2])
-    tasks = [(cfg, lam, seed, arm, output, reuse, provenance)
+    tasks = [(cfg, lam, seed, arm, output,
+              reuse if arm.gate_mode != "log_sigma_plateau" else None, provenance)
              for arm in ordered_arms for lam in cfg.spectrum_lambdas for seed in cfg.seeds]
     results = parallel_map(prepare_arm, tasks, args.workers)
     pairing = verify_pairing(results, cfg, arms)

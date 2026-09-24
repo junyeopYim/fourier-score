@@ -16,6 +16,7 @@ from fourier_score.config import validate
     ('fourier_gaussian','normalized_residual',False),
     ('fourier_gaussian','normalized_residual','log_sigma'),
     ('fourier_gaussian','normalized_residual','log_sigma_plateau'),
+    ('fourier_gaussian','normalized_residual','spectral_cap'),
 ])
 def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     cfg['loss'].update(type=parameterization,objective=objective)
@@ -46,9 +47,14 @@ def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
             Trainer(changed,load_checkpoint(first.out/'last.pt'))
         with pytest.raises(ValueError,match='Inference cannot alter'):
             load_inference(first.out/'last.pt',['fourier.gate.sigma_switch=1.0'])
-        if gated == 'log_sigma_plateau':
+        if gated in ('log_sigma_plateau', 'spectral_cap'):
             changed=copy.deepcopy(cfg)
             changed['fourier']['gate']['sigma_hi']=1.1
+            with pytest.raises(ValueError,match='Resume config mismatch'):
+                Trainer(changed,load_checkpoint(first.out/'last.pt'))
+        if gated == 'spectral_cap':
+            changed=copy.deepcopy(cfg)
+            changed['fourier']['gate']['delta']=.25
             with pytest.raises(ValueError,match='Resume config mismatch'):
                 Trainer(changed,load_checkpoint(first.out/'last.pt'))
     snapshot,_,_,_=load_inference(first.out/f'ema_{first.step:09d}.pt')

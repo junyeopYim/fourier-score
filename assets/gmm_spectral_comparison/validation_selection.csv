@@ -1,0 +1,2 @@
+sigma_switch,sharpness,sigma_lo,sigma_hi,delta,selection
+1.5,4.0,1.0,2.0,0.5,fixed

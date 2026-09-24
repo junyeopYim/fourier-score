@@ -42,7 +42,7 @@ def test_gate_endpoints(covariance, value):
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
 @pytest.mark.parametrize("reduction", ["mean", "half_sum"])
 @pytest.mark.parametrize("backend", ["fft", "matmul"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
 def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction, backend, mode):
     stats, x, noise, raw, level = inputs()
     ref = FourierGaussian(stats, backend, covariance=covariance,
@@ -58,6 +58,10 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
     if mode == "log_sigma_plateau":
         z = (torch.log(s / .25) / torch.log(torch.tensor(3., dtype=s.dtype))).clamp(0, 1)
         g = g + z.square() * (3 - 2*z) * (1 - g)
+    elif mode == "spectral_cap":
+        z = (torch.log(s / .25) / torch.log(torch.tensor(3., dtype=s.dtype))).clamp(0, 1)
+        ramp = z.square() * (3 - 2*z)
+        g = 1 - (1-g) / (1 + ramp * (1-g).square() * s.square() / (.5**2 * ref.power[None])).sqrt()
     total = ref.power[None] + s.square()
     variance = (g.square() * s.square() * ref.power[None]
                 + (ref.power[None] + (1-g)*s.square()).square()) / total.square()
@@ -72,7 +76,7 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
 def test_nongaussian_target_second_moment(covariance, mode):
     # Finite population with exact covariance: signed scaled basis vectors.
     d = 16
@@ -93,7 +97,7 @@ def test_nongaussian_target_second_moment(covariance, mode):
     torch.testing.assert_close(moment, torch.ones_like(moment), atol=2e-12, rtol=2e-12)
 
 
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
 def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mode):
     stats, x, noise, raw, level = inputs()
     stats["power"] = stats["power"].mean((-2, -1), keepdim=True).expand_as(stats["power"])
@@ -109,7 +113,7 @@ def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mod
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
 def test_gated_target_extreme_power_noise(covariance, mode):
     ref = FourierGaussian(dict(mean=torch.zeros(1, 4, 4), power=torch.full((1, 4, 4), 1e-12)),
                           covariance=covariance, gate=dict(mode=mode)).float()
@@ -194,6 +198,57 @@ def test_plateau_config_and_pre_plateau_active_gate_signature(cfg):
     assert resume_signature(changed) != resume_signature(cfg)
 
 
+@pytest.mark.parametrize("covariance", ["scalar", "fourier"])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_spectral_cap_preserves_low_noise_and_bounds_high_scale(covariance, dtype):
+    stats, x, noise, raw, _ = inputs()
+    x, noise, raw = [t.to(dtype) for t in (x, noise, raw)]
+    sigma = torch.tensor([.1, 1., 2., 50.], dtype=dtype)
+    gate = dict(mode="spectral_cap", sigma_switch=1.5, sigma_lo=1., sigma_hi=2., delta=.5)
+    ref = FourierGaussian(stats, covariance=covariance, gate=gate).to(dtype)
+    old = FourierGaussian(stats, covariance=covariance,
+                          gate=dict(mode="log_sigma", sigma_switch=1.5)).to(dtype)
+    g, q, c, total = ref._coefficients(sigma, ref.power[None])
+    old_g, old_q = old._gate_weights(sigma)
+    torch.testing.assert_close(g[:2], old_g[:2].expand_as(g[:2]), atol=0, rtol=0)
+    torch.testing.assert_close(q[:2], old_q[:2].expand_as(q[:2]), atol=0, rtol=0)
+    tolerance = 3e-6 if dtype == torch.float32 else 3e-12
+    b = (ref.power[None] / total).sqrt()
+    assert ((c/b)[2:] <= (1+.5**2)**.5 + tolerance).all()
+    torch.testing.assert_close(g+q, torch.ones_like(g), atol=tolerance, rtol=tolerance)
+    assert not list(ref.parameters())
+    y = x + sigma[:, None, None, None] * noise
+    target = ref.normalized_target(x, noise, sigma)
+    torch.testing.assert_close(target[:2], old.normalized_target(x[:2], noise[:2], sigma[:2]),
+                               atol=0, rtol=0)
+    scaled = ref.scaled_score(raw, y, torch.ones_like(sigma), sigma)
+    torch.testing.assert_close(scaled[:2], old.scaled_score(raw[:2], y[:2], torch.ones(2, dtype=dtype), sigma[:2]),
+                               atol=tolerance, rtol=tolerance)
+    if covariance == "fourier":
+        # A varying Fourier multiplier must never be applied as a pixel mask.
+        expected = torch.fft.ifft2(-sigma[:,None,None,None] * g / total
+                                  * torch.fft.fft2(y-ref.mean[None], norm="ortho")
+                                  + c * torch.fft.fft2(raw, norm="ortho"), norm="ortho").real
+        torch.testing.assert_close(scaled, expected, atol=tolerance, rtol=tolerance)
+        assert g[2].max() > g[2].min()
+
+
+@pytest.mark.parametrize("mode", ["constant", "log_sigma", "log_sigma_plateau"])
+def test_spectral_delta_preserves_legacy_signatures(cfg, mode):
+    cfg["fourier"]["gate"]["mode"] = mode
+    legacy = copy.deepcopy(cfg)
+    del legacy["fourier"]["gate"]["delta"]
+    assert validate(legacy) == cfg
+    assert resume_signature(legacy) == resume_signature(cfg)
+    cfg["fourier"]["gate"].update(mode="spectral_cap", sigma_switch=1.5, sigma_lo=1., sigma_hi=2.)
+    assert experiment_name(cfg).endswith("_gate_s1p5_p4_cap_lo1_hi2_d0p5")
+    for key, value in (("delta", .25), ("sigma_hi", 2.5)):
+        changed = copy.deepcopy(cfg)
+        changed["fourier"]["gate"][key] = value
+        assert resume_signature(changed) != resume_signature(cfg)
+        assert experiment_name(changed) != experiment_name(cfg)
+
+
 @pytest.mark.parametrize("parameterization,process", [("score", "ve"), ("fourier_gaussian", "ddpm")])
 def test_gate_rejects_unsupported_models(cfg, parameterization, process):
     cfg["loss"]["type"] = parameterization
@@ -206,7 +261,8 @@ def test_gate_rejects_unsupported_models(cfg, parameterization, process):
 @pytest.mark.parametrize("gate", [dict(mode="learned"), dict(sigma_switch=0), dict(sharpness=-1),
                                 dict(value=1.1), dict(value=float("nan")), dict(sharpness=True),
                                 dict(sigma_lo=0), dict(sigma_lo=1), dict(sigma_hi=.5),
-                                dict(sigma_hi=float("inf"))])
+                                dict(sigma_hi=float("inf")), dict(delta=0), dict(delta=-.5),
+                                dict(delta=float("nan"))])
 def test_invalid_gate(gate, stats):
     with pytest.raises(ValueError, match="gate"):
         FourierGaussian(stats, gate=gate)

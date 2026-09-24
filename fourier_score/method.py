@@ -18,7 +18,7 @@ OBJECTIVES = ("score", "diffusion", *GAUSSIAN_OBJECTIVES)
 COMPARISON_OBJECTIVES = ("score", *GAUSSIAN_OBJECTIVES)
 
 GATE_DEFAULTS = {"mode": "none", "sigma_switch": 1.0, "sharpness": 4.0, "value": 1.0,
-                 "sigma_lo": 0.8, "sigma_hi": 1.0}
+                 "sigma_lo": 0.8, "sigma_hi": 1.0, "delta": 0.5}
 
 
 def validate_gate(gate=None):
@@ -26,9 +26,9 @@ def validate_gate(gate=None):
     if gate is not None and (not isinstance(gate, dict) or set(gate) - GATE_DEFAULTS.keys()):
         raise ValueError("Invalid Gaussian gate configuration")
     result = {**GATE_DEFAULTS, **(gate or {})}
-    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau"):
-        raise ValueError("gate.mode must be none, constant, log_sigma, or log_sigma_plateau")
-    for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi"):
+    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau", "spectral_cap"):
+        raise ValueError("gate.mode must be none, constant, log_sigma, log_sigma_plateau, or spectral_cap")
+    for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi", "delta"):
         value = result[key]
         if type(value) not in (int, float) or not math.isfinite(value):
             raise ValueError(f"gate.{key} must be finite")
@@ -38,6 +38,8 @@ def validate_gate(gate=None):
         raise ValueError("gate.value must be between zero and one")
     if not 0 < result["sigma_lo"] < result["sigma_hi"]:
         raise ValueError("gate requires 0 < sigma_lo < sigma_hi")
+    if result["delta"] <= 0:
+        raise ValueError("gate.delta must be positive")
     return result
 
 
@@ -50,11 +52,14 @@ def gate_suffix(gate=None):
     if gate["mode"] == "constant":
         return "_gate_constant" + number(gate["value"])
     suffix = f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
-    if gate["mode"] == "log_sigma_plateau":
+    if gate["mode"] in ("log_sigma_plateau", "spectral_cap"):
         # Shortest round-trip representations keep distinct bounds distinct.
         bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
                   .replace("-", "m").replace("+", "") for key in ("sigma_lo", "sigma_hi")]
-        suffix += f"_plateau_lo{bounds[0]}_hi{bounds[1]}"
+        kind = "plateau" if gate["mode"] == "log_sigma_plateau" else "cap"
+        suffix += f"_{kind}_lo{bounds[0]}_hi{bounds[1]}"
+        if gate["mode"] == "spectral_cap":
+            suffix += f"_d{number(gate['delta'])}"
     return suffix
 
 
@@ -101,16 +106,35 @@ class FourierGaussian(nn.Module):
         )
 
     def gate_value(self, sigma):
-        """Return [B,1,1,1] fixed coefficients, shared by target and score."""
+        """Gate coefficients shared by target and score.
+
+        Noise-only gates are [B,1,1,1]. spectral_cap uses [B,C,H,W] for
+        Fourier covariance and [B,C,1,1] for scalar covariance.
+        """
         return self._gate_weights(sigma)[0]
 
-    def _gate_weights(self, sigma):
+    def _gate_weights(self, sigma, prior=None):
         s = sigma[:, None, None, None]
-        if self.gate["mode"] in ("log_sigma", "log_sigma_plateau"):
+        if self.gate["mode"] in ("log_sigma", "log_sigma_plateau", "spectral_cap"):
             logit = self.gate["sharpness"] * (s.log() - math.log(self.gate["sigma_switch"]))
             # Compute 1-g separately: subtracting a rounded sigmoid loses the
             # residual near g=1, especially when the power spectrum is small.
             g, complement = torch.sigmoid(logit), torch.sigmoid(-logit)
+            if self.gate["mode"] == "spectral_cap":
+                lo, hi = self.gate["sigma_lo"], self.gate["sigma_hi"]
+                z = ((s.log() - math.log(lo)) / (math.log(hi) - math.log(lo))).clamp(0, 1)
+                ramp = z.square() * (3 - 2 * z)
+                ramp = torch.where(s <= lo, torch.zeros_like(ramp),
+                                   torch.where(s >= hi, torch.ones_like(ramp), ramp))
+                power = self.power[None] if prior is None else prior
+                # Square q*s together to avoid underflow of q^2 at high noise.
+                correction = ramp * ((complement * s) / (self.gate["delta"] * power.sqrt())).square()
+                root = (1 + correction).sqrt()
+                remaining = complement / root
+                # q*(1-1/root) = (q/root)*correction/(root+1): retain small
+                # corrections without subtracting two almost equal values.
+                g = g + remaining * (correction / (root + 1))
+                return g, remaining
             if self.gate["mode"] == "log_sigma_plateau":
                 lo, hi = self.gate["sigma_lo"], self.gate["sigma_hi"]
                 z = ((s.log() - math.log(lo)) / (math.log(hi) - math.log(lo))).clamp(0, 1)
@@ -131,7 +155,7 @@ class FourierGaussian(nn.Module):
     def _coefficients(self, sigma, prior):
         s = sigma[:, None, None, None]
         total = prior + s.square()
-        g, complement = self._gate_weights(sigma)
+        g, complement = self._gate_weights(sigma, prior)
         # Positive terms avoid cancellation when g~1 and sigma^2 >> prior.
         scale = (complement.square() + g * (1 + complement) * (prior / total)).sqrt()
         return g, complement, scale, total
@@ -198,6 +222,11 @@ class FourierGaussian(nn.Module):
             gaussian = -s * (y - a * self.mean[None]) / denom
             residual = scale * raw
             return g * gaussian + residual
+        if self.gate["mode"] == "spectral_cap":
+            # g_k is a FREQUENCY multiplier, not a pixelwise mask. Keep it
+            # inside the transform; old noise-only paths retain their rounding.
+            gaussian = -s * self.filter(y - a * self.mean[None], g / denom)
+            return gaussian + self.filter(raw, scale)
         gaussian = -s * self.filter(y - a * self.mean[None], denom.reciprocal())
         residual = self.filter(raw, scale)
         return g * gaussian + residual

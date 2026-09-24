@@ -71,12 +71,13 @@ class GMMArm:
     sharpness: float = 4.0
     sigma_lo: float = 0.8
     sigma_hi: float = 1.0
+    delta: float = 0.5
 
     @property
     def gate(self):
         return validate_gate(dict(mode=self.gate_mode, sigma_switch=self.sigma_switch,
                                   sharpness=self.sharpness, sigma_lo=self.sigma_lo,
-                                  sigma_hi=self.sigma_hi))
+                                  sigma_hi=self.sigma_hi, delta=self.delta))
 
 
 BASELINE_ARMS = (
@@ -104,6 +105,16 @@ def plateau_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=0.8, sigma
     return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
                   "normalized_residual", "log_sigma_plateau", sigma_switch, sharpness,
                   sigma_lo, sigma_hi)
+
+
+def spectral_cap_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=1.0, sigma_hi=2.0, delta=0.5):
+    if covariance not in ("scalar", "fourier"):
+        raise ValueError(covariance)
+    gate = dict(mode="spectral_cap", sigma_switch=sigma_switch, sharpness=sharpness,
+                sigma_lo=sigma_lo, sigma_hi=sigma_hi, delta=delta)
+    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
+                  "normalized_residual", "spectral_cap", sigma_switch, sharpness,
+                  sigma_lo, sigma_hi, delta)
 
 
 NOTEBOOK_ARMS = {arm.name: arm for arm in BASELINE_ARMS}

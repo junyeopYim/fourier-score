@@ -170,6 +170,10 @@ def plot_report(report, cfg, arms, summary, noise, *, figure_stem="gmm_gated_com
     appearances = {arm.name: (label, color, style)
                    for arm, label, color, style in zip(BASELINE_ARMS, labels, colors, styles)}
     for arm in arms:
+        if arm.gate_mode == "spectral_cap":
+            scalar = arm.parameterization == "scalar_gaussian"
+            appearances[arm.name] = ("Spectral " + ("Scalar" if scalar else "Fourier"),
+                                     "#6e9b28" if scalar else "#111111", "-")
         if arm.gate_mode in ("log_sigma", "log_sigma_plateau"):
             scalar = arm.parameterization == "scalar_gaussian"
             plateau = arm.gate_mode == "log_sigma_plateau"
@@ -177,7 +181,7 @@ def plot_report(report, cfg, arms, summary, noise, *, figure_stem="gmm_gated_com
                                      ("#2382c0" if scalar else "#c13958") if plateau else
                                      ("#18866c" if scalar else "#863daf"), "-")
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4.7))
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5.2 if len(arms) > 10 else 4.7))
     focus = max(cfg.spectrum_lambdas)
     for arm in arms:
         label, color, style = appearances[arm.name]
@@ -202,7 +206,7 @@ def plot_report(report, cfg, arms, summary, noise, *, figure_stem="gmm_gated_com
         ax.grid(alpha=.18)
     fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center",
                ncol=5 if len(arms) > 7 else 4, frameon=False)
-    fig.tight_layout(rect=(0, .13, 1, 1))
+    fig.tight_layout(rect=(0, .19 if len(arms) > 10 else .13, 1, 1))
     for extension in ("png", "svg", "pdf"):
         path = report / f"{figure_stem}.{extension}"
         fig.savefig(path, dpi=180, bbox_inches="tight")
