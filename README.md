@@ -307,6 +307,85 @@ uv run --locked python train.py -c configs/smoke.json \
 
 Use `fourier.gate.mode=tanh_sigma` for the tanh variant. See the
 [paired GMM experiment](#gmm-linear-and-tanh-gates) for their comparison.
+Those archived results concern sigma-coordinate schedules. A line that appears
+straight on a **log-sigma plot** requires the distinct design below.
+
+### Log-axis gate design
+
+The `linear_log_sigma` gate spans the whole noise interval and is straight on
+the logarithmic horizontal axis:
+
+$$
+g_L(\sigma)=\operatorname{clip}\!\left[
+\frac{\log(\sigma/0.1)}{\log(3/0.1)},0,1\right].
+$$
+
+For an S-shaped gate that stays near zero at low noise and joins an exact
+upper plateau smoothly, use `bounded_log_sigmoid`. Define
+
+$$
+z=\operatorname{clip}\!\left[
+\frac{\log(\sigma/\sigma_L)}{\log(\sigma_H/\sigma_L)},0,1\right],
+\qquad z_c=\frac{\log(\sigma_c/\sigma_L)}{\log(\sigma_H/\sigma_L)},
+$$
+
+$$
+g_S(\sigma)=\frac{[z(1-z_c)]^\kappa}
+{[z(1-z_c)]^\kappa+[(1-z)z_c]^\kappa},
+\qquad (\sigma_L,\sigma_c,\sigma_H,\kappa)=(0.1,0.75,1.5,2).
+$$
+
+This gives **exactly zero at $\sigma\leq0.1$, one-half at $\sigma=0.75$,
+and exactly one at $\sigma\geq1.5$**. Both plateau joins have zero slope for
+$\kappa>1$. Inside the interval, the same gate can be written as
+
+$$
+g_S=\operatorname{sigmoid}\!\left[\kappa(\operatorname{logit}z-\operatorname{logit}z_c)\right]
+=\frac{1+\tanh[\tfrac\kappa2(\operatorname{logit}z-\operatorname{logit}z_c)]}{2}.
+$$
+
+Thus sigmoid and tanh are equivalent expressions for this one S curve.
+It uses the logit of normalized log noise so that finite endpoints can be
+reached smoothly; it is distinct from the earlier plain log-sigma sigmoid.
+The implementation uses positive powers scaled by their largest base, avoiding
+endpoint logarithms and simultaneous underflow for steep curves.
+
+![A black log-linear ramp and a gold bounded sigmoid with smooth plateaus.](assets/log_gate_design/log_gate_design.svg)
+
+`sigma_lo` and `sigma_hi` control endpoints. For the S curve, `sigma_switch`
+sets the exact half-height noise and `sharpness` is $\kappa>1$; increasing it
+keeps the gate closer to zero/one for longer. The log-linear mode depends only
+on its bounds. These settings enter the appropriate checkpoint signatures.
+Both designs use the existing $c_k^2=(1-g)^2+g(2-g)P_k/(P_k+\sigma^2)$,
+the same Gaussian reference and normalized target, **one backbone and one
+normalized MSE, with no teacher**. Exact endpoints recover the Score/DSM and
+Fourier-normalized equations, respectively; this does not guarantee the
+predictions or score error of separately trained checkpoints.
+
+```bash
+uv run --locked python train.py -c configs/smoke.json \
+  --set loss.objective=normalized_residual \
+  --set fourier.gate.mode=linear_log_sigma \
+  --set fourier.gate.sigma_lo=0.1 --set fourier.gate.sigma_hi=3.0 --dry-run
+
+uv run --locked python train.py -c configs/smoke.json \
+  --set loss.objective=normalized_residual \
+  --set fourier.gate.mode=bounded_log_sigmoid \
+  --set fourier.gate.sigma_lo=0.1 --set fourier.gate.sigma_hi=1.5 \
+  --set fourier.gate.sigma_switch=0.75 --set fourier.gate.sharpness=2.0 --dry-run
+```
+
+This is a **design and implementation check**, not a new GMM performance
+comparison. The earlier Linear/Tanh results do not measure these corrected
+shapes. Regenerate the figure with
+`uv run --locked --extra figures python scripts/plot_log_gate_design.py`.
+The script also accepts endpoint, center and sharpness overrides and exports
+[sample values and settings](assets/log_gate_design/design.json),
+[curve data](assets/log_gate_design/curves.csv),
+[PNG](assets/log_gate_design/log_gate_design.png) and
+[PDF](assets/log_gate_design/log_gate_design.pdf).
+The [verification record](assets/log_gate_design/verification.json) covers loss,
+gradient, endpoint, checkpoint and sampling checks.
 
 Run the controlled GMM comparison with:
 

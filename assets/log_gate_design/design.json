@@ -1,0 +1,77 @@
+{
+  "status": "Gate design and implementation; no new performance experiment",
+  "axis": "log sigma",
+  "arms": [
+    {
+      "name": "fourier_gate_loglinear_lo0p1_hi3",
+      "parameterization": "fourier_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "linear_log_sigma",
+      "sigma_switch": 0.75,
+      "sharpness": 2.0,
+      "sigma_lo": 0.1,
+      "sigma_hi": 3.0,
+      "delta": 0.5
+    },
+    {
+      "name": "fourier_gate_logsigmoid_lo0p1_hi1p5_s0p75_p2",
+      "parameterization": "fourier_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "bounded_log_sigmoid",
+      "sigma_switch": 0.75,
+      "sharpness": 2.0,
+      "sigma_lo": 0.1,
+      "sigma_hi": 1.5,
+      "delta": 0.5
+    }
+  ],
+  "constraints": {
+    "backbones_per_model": 1,
+    "loss": "normalized_residual",
+    "teachers": false
+  },
+  "sample_values": [
+    {
+      "sigma": 0.1,
+      "linear": 0.0,
+      "sigmoid": 0.0
+    },
+    {
+      "sigma": 0.2,
+      "linear": 0.20379504709050617,
+      "sigmoid": 0.013811636073220047
+    },
+    {
+      "sigma": 0.3,
+      "linear": 0.3230075074711544,
+      "sigmoid": 0.05226032864518133
+    },
+    {
+      "sigma": 0.5,
+      "linear": 0.4731974454383393,
+      "sigmoid": 0.20254010370399292
+    },
+    {
+      "sigma": 0.75,
+      "linear": 0.5924099058189877,
+      "sigmoid": 0.5
+    },
+    {
+      "sigma": 1.0,
+      "linear": 0.6769924925288455,
+      "sigmoid": 0.7923810267050717
+    },
+    {
+      "sigma": 1.5,
+      "linear": 0.7962049529094938,
+      "sigmoid": 1.0
+    },
+    {
+      "sigma": 3.0,
+      "linear": 1.0,
+      "sigmoid": 1.0
+    }
+  ],
+  "sigmoid_tanh_equivalent": true,
+  "previous_sigma_linear_experiment_is_this_design": false
+}

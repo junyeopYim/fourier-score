@@ -126,6 +126,18 @@ def shaped_gate_arm(covariance, mode, sigma_switch=1.5, sharpness=4.0):
                   "normalized_residual", mode, sigma_switch, sharpness)
 
 
+def log_gate_arm(covariance, mode, *, sigma_lo=.1, sigma_hi=None, sigma_switch=.75, sharpness=2.):
+    """A straight log-noise ramp or an S curve with exact, smooth plateaus."""
+    if covariance not in ("scalar", "fourier") or mode not in ("linear_log_sigma", "bounded_log_sigmoid"):
+        raise ValueError((covariance, mode))
+    if sigma_hi is None:
+        sigma_hi = 3. if mode == "linear_log_sigma" else 1.5
+    gate = dict(mode=mode, sigma_lo=sigma_lo, sigma_hi=sigma_hi,
+                sigma_switch=sigma_switch, sharpness=sharpness)
+    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian", "normalized_residual",
+                  mode, sigma_switch, sharpness, sigma_lo, sigma_hi)
+
+
 NOTEBOOK_ARMS = {arm.name: arm for arm in BASELINE_ARMS}
 NOTEBOOK_ARMS.update({f"{covariance}_gated": gated_arm(covariance)
                      for covariance in ("scalar", "fourier")})

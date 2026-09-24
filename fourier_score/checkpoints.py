@@ -21,9 +21,12 @@ def resume_signature(cfg):
         c["fourier"].pop("gate", None)
     else:
         gate = c["fourier"]["gate"]
-        if gate["mode"] not in ("log_sigma_plateau", "spectral_cap"):
+        if gate["mode"] not in ("log_sigma_plateau", "spectral_cap", "linear_log_sigma", "bounded_log_sigmoid"):
             gate.pop("sigma_lo", None)
             gate.pop("sigma_hi", None)
+        if gate["mode"] == "linear_log_sigma":
+            gate.pop("sigma_switch", None)
+            gate.pop("sharpness", None)
         # Optional defaults must not change older active-gate signatures.
         if gate["mode"] != "spectral_cap":
             gate.pop("delta", None)

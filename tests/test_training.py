@@ -19,11 +19,15 @@ from fourier_score.config import validate
     ('fourier_gaussian','normalized_residual','spectral_cap'),
     ('fourier_gaussian','normalized_residual','linear_sigma'),
     ('fourier_gaussian','normalized_residual','tanh_sigma'),
+    ('fourier_gaussian','normalized_residual','linear_log_sigma'),
+    ('fourier_gaussian','normalized_residual','bounded_log_sigmoid'),
 ])
 def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     cfg['loss'].update(type=parameterization,objective=objective)
     if gated:
         cfg['fourier']['gate'].update(mode=gated,sigma_switch=.5)
+        if gated in ('linear_log_sigma', 'bounded_log_sigmoid'):
+            cfg['fourier']['gate'].update(sigma_lo=.1,sigma_hi=1.5,sharpness=2.)
     a=copy.deepcopy(cfg); a['name']='full'; a['trainer']['iterations']=4
     first=Trainer(a); first.train()
     b=copy.deepcopy(cfg); b['name']='split'; b['trainer']['iterations']=2
@@ -44,12 +48,12 @@ def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
         generated=sample_batch(last,loaded_cfg,2,torch.device('cpu'),torch.Generator().manual_seed(50))
         assert torch.isfinite(generated[0]).all()
         changed=copy.deepcopy(cfg)
-        changed['fourier']['gate']['sigma_switch']=1.
+        changed['fourier']['gate']['sigma_hi' if gated == 'linear_log_sigma' else 'sigma_switch']=1.
         with pytest.raises(ValueError,match='Resume config mismatch'):
             Trainer(changed,load_checkpoint(first.out/'last.pt'))
         with pytest.raises(ValueError,match='Inference cannot alter'):
             load_inference(first.out/'last.pt',['fourier.gate.sigma_switch=1.0'])
-        if gated in ('log_sigma_plateau', 'spectral_cap'):
+        if gated in ('log_sigma_plateau', 'spectral_cap', 'linear_log_sigma', 'bounded_log_sigmoid'):
             changed=copy.deepcopy(cfg)
             changed['fourier']['gate']['sigma_hi']=1.1
             with pytest.raises(ValueError,match='Resume config mismatch'):

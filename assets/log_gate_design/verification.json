@@ -1,0 +1,29 @@
+{
+  "checked_utc": "2026-09-24T06:13:05.137898+00:00",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 235,
+    "seconds": 16.79
+  },
+  "source_sha256": "f79717f3da852ffcde3ab8eea4997b3b44a3d0843e6cea040bde9afa145970a8",
+  "plot_script_sha256": "6deadae904e2a57d811f32d0d170908301e13138e091da0157d64d07f17ec349",
+  "contracts_checked": [
+    "linear in log noise",
+    "monotone gates with exact endpoints",
+    "S-curve center and flat endpoint slopes",
+    "sigmoid/tanh identity",
+    "independent weighted DSM loss and gradient equivalence",
+    "normalized target second moments",
+    "FP32 and FP64",
+    "FFT and matrix backends",
+    "extreme power and steepness",
+    "GMM and NCSN++ resume",
+    "inference and sampling"
+  ],
+  "image_model_cli_dry_runs": [
+    "linear_log_sigma",
+    "bounded_log_sigmoid"
+  ],
+  "figure_visually_inspected": "log_gate_design.png",
+  "full_gmm_performance_comparison_run": false
+}

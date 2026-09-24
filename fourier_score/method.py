@@ -27,9 +27,9 @@ def validate_gate(gate=None):
         raise ValueError("Invalid Gaussian gate configuration")
     result = {**GATE_DEFAULTS, **(gate or {})}
     if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau", "spectral_cap",
-                               "linear_sigma", "tanh_sigma"):
+                               "linear_sigma", "tanh_sigma", "linear_log_sigma", "bounded_log_sigmoid"):
         raise ValueError("gate.mode must be none, constant, log_sigma, log_sigma_plateau, "
-                         "spectral_cap, linear_sigma, or tanh_sigma")
+                         "spectral_cap, linear_sigma, tanh_sigma, linear_log_sigma, or bounded_log_sigmoid")
     for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi", "delta"):
         value = result[key]
         if type(value) not in (int, float) or not math.isfinite(value):
@@ -42,6 +42,11 @@ def validate_gate(gate=None):
         raise ValueError("gate requires 0 < sigma_lo < sigma_hi")
     if result["delta"] <= 0:
         raise ValueError("gate.delta must be positive")
+    if result["mode"] == "bounded_log_sigmoid":
+        if not result["sigma_lo"] < result["sigma_switch"] < result["sigma_hi"]:
+            raise ValueError("bounded gate requires sigma_lo < sigma_switch < sigma_hi")
+        if result["sharpness"] <= 1:
+            raise ValueError("bounded gate sharpness must exceed one for flat endpoint slopes")
     return result
 
 
@@ -53,6 +58,13 @@ def gate_suffix(gate=None):
         return ""
     if gate["mode"] == "constant":
         return "_gate_constant" + number(gate["value"])
+    if gate["mode"] in ("linear_log_sigma", "bounded_log_sigmoid"):
+        bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
+                  .replace("-", "m").replace("+", "") for key in ("sigma_lo", "sigma_hi")]
+        if gate["mode"] == "linear_log_sigma":
+            return f"_gate_loglinear_lo{bounds[0]}_hi{bounds[1]}"
+        return (f"_gate_logsigmoid_lo{bounds[0]}_hi{bounds[1]}"
+                f"_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}")
     suffix = f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
     if gate["mode"] in ("linear_sigma", "tanh_sigma"):
         return suffix + "_" + gate["mode"]
@@ -119,6 +131,22 @@ class FourierGaussian(nn.Module):
 
     def _gate_weights(self, sigma, prior=None):
         s = sigma[:, None, None, None]
+        if self.gate["mode"] in ("linear_log_sigma", "bounded_log_sigmoid"):
+            lo, hi = self.gate["sigma_lo"], self.gate["sigma_hi"]
+            span = math.log(hi) - math.log(lo)
+            z = ((s.log() - math.log(lo)) / span).clamp(0, 1)
+            z = torch.where(s <= lo, torch.zeros_like(z),
+                            torch.where(s >= hi, torch.ones_like(z), z))
+            if self.gate["mode"] == "linear_log_sigma":
+                return z, 1-z
+            center = (math.log(self.gate["sigma_switch"]) - math.log(lo)) / span
+            # sigmoid(p * (logit(z)-logit(center))) with exact flat plateaus.
+            # Positive powers avoid log(0) at endpoints; scaling by the larger
+            # term prevents simultaneous underflow even for steep transitions.
+            a, b = z * (1-center), (1-z) * center
+            common = torch.maximum(a, b)
+            a, b = (a/common).pow(self.gate["sharpness"]), (b/common).pow(self.gate["sharpness"])
+            return a/(a+b), b/(a+b)
         if self.gate["mode"] in ("linear_sigma", "tanh_sigma"):
             offset = s / self.gate["sigma_switch"] - 1
             if self.gate["mode"] == "linear_sigma":

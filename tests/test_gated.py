@@ -13,6 +13,9 @@ from fourier_score.loss import training_loss
 from fourier_score.method import FourierGaussian
 from fourier_score.spectral import conjugate_symmetrize
 
+GATE_MODES = ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma",
+              "linear_log_sigma", "bounded_log_sigmoid"]
+
 
 def inputs():
     rng = torch.Generator().manual_seed(91)
@@ -42,7 +45,7 @@ def test_gate_endpoints(covariance, value):
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
 @pytest.mark.parametrize("reduction", ["mean", "half_sum"])
 @pytest.mark.parametrize("backend", ["fft", "matmul"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
+@pytest.mark.parametrize("mode", GATE_MODES)
 def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction, backend, mode):
     stats, x, noise, raw, level = inputs()
     ref = FourierGaussian(stats, backend, covariance=covariance,
@@ -66,6 +69,13 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
         g = (s / .7 - .5).clamp(0, 1)
     elif mode == "tanh_sigma":
         g = .5 * (1 + torch.tanh(2 * (s / .7 - 1)))
+    elif mode in ("linear_log_sigma", "bounded_log_sigmoid"):
+        z = (torch.log(s/.25) / torch.log(torch.tensor(3., dtype=s.dtype))).clamp(0, 1)
+        g = z
+        if mode == "bounded_log_sigmoid":
+            center = torch.log(torch.tensor(.7/.25, dtype=s.dtype)) / torch.log(torch.tensor(3., dtype=s.dtype))
+            a, b = (z*(1-center)).pow(4), ((1-z)*center).pow(4)
+            g = a/(a+b)
     total = ref.power[None] + s.square()
     variance = (g.square() * s.square() * ref.power[None]
                 + (ref.power[None] + (1-g)*s.square()).square()) / total.square()
@@ -80,13 +90,14 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
+@pytest.mark.parametrize("mode", GATE_MODES)
 def test_nongaussian_target_second_moment(covariance, mode):
     # Finite population with exact covariance: signed scaled basis vectors.
     d = 16
     power = conjugate_symmetrize(torch.arange(1, d+1).reshape(1, 4, 4).float()) / d
     ref = FourierGaussian(dict(mean=torch.zeros_like(power), power=power), covariance=covariance,
-                          gate=dict(mode=mode, sigma_switch=.5, sigma_lo=.6, sigma_hi=.8)).double()
+                          gate=dict(mode=mode, sigma_switch=.7 if mode == "bounded_log_sigmoid" else .5,
+                                    sigma_lo=.6, sigma_hi=.8)).double()
     basis = torch.eye(d, dtype=torch.float64).reshape(d, 1, 4, 4) * d ** .5
     population = torch.cat([basis, -basis])
     clean = torch.fft.ifft2(torch.fft.fft2(population, norm="ortho") * power.double().sqrt(), norm="ortho").real
@@ -101,11 +112,12 @@ def test_nongaussian_target_second_moment(covariance, mode):
     torch.testing.assert_close(moment, torch.ones_like(moment), atol=2e-12, rtol=2e-12)
 
 
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
+@pytest.mark.parametrize("mode", GATE_MODES)
 def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mode):
     stats, x, noise, raw, level = inputs()
     stats["power"] = stats["power"].mean((-2, -1), keepdim=True).expand_as(stats["power"])
-    gate = dict(mode=mode, sigma_switch=1.5, sigma_lo=.25, sigma_hi=.75)
+    gate = dict(mode=mode, sigma_switch=.5 if mode == "bounded_log_sigmoid" else 1.5,
+                sigma_lo=.25, sigma_hi=.75)
     scalar = FourierGaussian(stats, covariance="scalar", gate=gate).double()
     fourier = FourierGaussian(stats, gate=gate).double()
     monkeypatch.setattr(scalar.filter, "forward", lambda *args: pytest.fail("Scalar used FFT"))
@@ -117,10 +129,11 @@ def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mod
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
+@pytest.mark.parametrize("mode", GATE_MODES)
 def test_gated_target_extreme_power_noise(covariance, mode):
     ref = FourierGaussian(dict(mean=torch.zeros(1, 4, 4), power=torch.full((1, 4, 4), 1e-12)),
-                          covariance=covariance, gate=dict(mode=mode)).float()
+                          covariance=covariance,
+                          gate=dict(mode=mode, sigma_switch=.9 if mode == "bounded_log_sigmoid" else 1.)).float()
     rng = torch.Generator().manual_seed(99)
     x = 1e-6 * torch.randn(3, 1, 4, 4, generator=rng)
     noise = torch.randn(x.shape, generator=rng)
@@ -297,6 +310,81 @@ def test_sigma_gate_names_and_resume_contract(cfg, mode):
     ignored = copy.deepcopy(cfg)
     ignored["fourier"]["gate"].update(sigma_lo=.1, sigma_hi=3., delta=.25)
     assert resume_signature(ignored) == resume_signature(cfg)
+
+
+@pytest.mark.parametrize("mode", ["linear_log_sigma", "bounded_log_sigmoid"])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_log_noise_design_shapes_and_endpoints(stats, mode, dtype):
+    import math
+    hi = 3. if mode == "linear_log_sigma" else 1.5
+    ref = FourierGaussian(stats, gate=dict(mode=mode, sigma_lo=.1, sigma_hi=hi,
+                                           sigma_switch=.75, sharpness=2.)).to(dtype)
+    sigma = torch.logspace(math.log10(.05), math.log10(5.), 500, dtype=dtype)
+    g, q = ref._gate_weights(sigma)
+    tol = 3e-6 if dtype == torch.float32 else 3e-14
+    torch.testing.assert_close(g+q, torch.ones_like(g), rtol=tol, atol=tol)
+    assert (g[1:] >= g[:-1]).all()
+    assert (g[sigma <= .1] == 0).all() and (q[sigma <= .1] == 1).all()
+    assert (g[sigma >= hi] == 1).all() and (q[sigma >= hi] == 0).all()
+    assert not list(ref.parameters())
+    if mode == "linear_log_sigma":
+        coordinates = torch.linspace(0, 1, 51, dtype=dtype)
+        noise = torch.exp(math.log(.1) + coordinates*math.log(30))
+        torch.testing.assert_close(ref.gate_value(noise).flatten(), coordinates, rtol=tol, atol=tol)
+    else:
+        center = torch.tensor([.75], dtype=dtype, requires_grad=True)
+        value = ref.gate_value(center)
+        derivative = torch.autograd.grad(value.sum(), center)[0]
+        u_c = math.log(.75/.1)/math.log(hi/.1)
+        expected_slope = 2/(4*u_c*(1-u_c)*.75*math.log(hi/.1))
+        torch.testing.assert_close(value, torch.full_like(value, .5), rtol=tol, atol=tol)
+        torch.testing.assert_close(derivative, torch.full_like(center, expected_slope), rtol=tol, atol=tol)
+        interior = sigma[(sigma > .1) & (sigma < hi)]
+        z = (interior.log()-math.log(.1))/math.log(hi/.1)
+        logits = 2*(torch.logit(z)-math.log(u_c/(1-u_c)))
+        torch.testing.assert_close(ref.gate_value(interior).flatten(), .5*(1+torch.tanh(logits/2)),
+                                   rtol=tol, atol=tol)
+
+
+def test_bounded_log_sigmoid_flat_endpoint_slopes_and_steepness(stats):
+    ref = FourierGaussian(stats, gate=dict(mode="bounded_log_sigmoid", sigma_lo=.1,
+                                           sigma_hi=1.5, sigma_switch=.75, sharpness=2.)).double()
+    sigma = torch.tensor([.1-1e-7, .1, .1+1e-7, 1.5-1e-7, 1.5, 1.5+1e-7],
+                         dtype=torch.float64, requires_grad=True)
+    derivative = torch.autograd.grad(ref.gate_value(sigma).sum(), sigma)[0]
+    torch.testing.assert_close(derivative, torch.zeros_like(derivative), atol=1e-5, rtol=0)
+    ref.gate["sharpness"] = 10000.
+    g, q = ref._gate_weights(torch.linspace(.01, 5., 1000, dtype=torch.float64))
+    assert torch.isfinite(g).all() and torch.isfinite(q).all()
+    torch.testing.assert_close(g+q, torch.ones_like(g), atol=3e-16, rtol=3e-16)
+
+
+@pytest.mark.parametrize("mode", ["linear_log_sigma", "bounded_log_sigmoid"])
+def test_log_gate_names_and_checkpoint_bounds(cfg, mode):
+    cfg["fourier"]["gate"].update(mode=mode, sigma_lo=.1, sigma_hi=1.5, sigma_switch=.75, sharpness=2.)
+    validate(cfg)
+    for key, value in [("sigma_lo", .2), ("sigma_hi", 2.)]:
+        changed = copy.deepcopy(cfg)
+        changed["fourier"]["gate"][key] = value
+        assert resume_signature(changed) != resume_signature(cfg)
+        assert experiment_name(changed) != experiment_name(cfg)
+    changed = copy.deepcopy(cfg)
+    changed["fourier"]["gate"].update(sigma_switch=1., sharpness=4.)
+    if mode == "linear_log_sigma":
+        assert resume_signature(changed) == resume_signature(cfg)
+        assert experiment_name(changed) == experiment_name(cfg)
+    else:
+        assert resume_signature(changed) != resume_signature(cfg)
+        assert experiment_name(changed) != experiment_name(cfg)
+
+
+@pytest.mark.parametrize("gate", [dict(sigma_switch=.1), dict(sigma_switch=1.5),
+                                 dict(sharpness=1.), dict(sharpness=.5)])
+def test_bounded_log_gate_rejects_invalid_center_or_slope(stats, gate):
+    config = dict(mode="bounded_log_sigmoid", sigma_lo=.1, sigma_hi=1.5, sigma_switch=.75, sharpness=2.)
+    config.update(gate)
+    with pytest.raises(ValueError, match="gate"):
+        FourierGaussian(stats, gate=config)
 
 
 @pytest.mark.parametrize("parameterization,process", [("score", "ve"), ("fourier_gaussian", "ddpm")])
