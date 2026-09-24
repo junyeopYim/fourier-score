@@ -1,0 +1,3 @@
+mode,sigma_lo,linear_hi,sigmoid_hi,sigma_switch,sharpness,selection
+linear_log_sigma,0.1,3.0,1.5,0.75,2.0,fixed
+bounded_log_sigmoid,0.1,3.0,1.5,0.75,2.0,fixed

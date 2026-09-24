@@ -1,0 +1,133 @@
+{
+  "checked_utc": "2026-09-24T06:26:13.789072+00:00",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 239,
+    "seconds": 22.69
+  },
+  "full_experiment": {
+    "new_training_runs": 36,
+    "reused_runs": 135,
+    "test_runs": 171,
+    "workers": 16,
+    "cpu_threads_per_job": 1,
+    "source_unchanged_after_training": true,
+    "source_sha256": "f79717f3da852ffcde3ab8eea4997b3b44a3d0843e6cea040bde9afa145970a8",
+    "runner_and_helper_hashes_match_protocol": true,
+    "baseline_validation_reproduction": "exact for all 135 reused checkpoints, including every noise bin",
+    "pairing_conditions": 9,
+    "paired_comparison_rows": 216,
+    "gradient_clipping_activated": false
+  },
+  "constraints": {
+    "backbones_per_model": 1,
+    "loss": "normalized_residual for new arms",
+    "teachers": false,
+    "auxiliary_losses": false,
+    "pretrained_initialization": false
+  },
+  "parameter_counts": {
+    "score": 102016,
+    "scalar_gaussian": 102016,
+    "fourier_gaussian": 102016,
+    "scalar_normalized": 102016,
+    "fourier_normalized": 102016,
+    "scalar_gate_s1p5_p4": 102016,
+    "fourier_gate_s1p5_p4": 102016,
+    "scalar_gate_s1p5_p4_plateau_lo0p8_hi1": 102016,
+    "fourier_gate_s1p5_p4_plateau_lo0p8_hi1": 102016,
+    "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5": 102016,
+    "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5": 102016,
+    "scalar_gate_s1p5_p4_linear_sigma": 102016,
+    "fourier_gate_s1p5_p4_linear_sigma": 102016,
+    "scalar_gate_s1p5_p4_tanh_sigma": 102016,
+    "fourier_gate_s1p5_p4_tanh_sigma": 102016,
+    "scalar_gate_loglinear_lo0p1_hi3": 102016,
+    "fourier_gate_loglinear_lo0p1_hi3": 102016,
+    "scalar_gate_logsigmoid_lo0p1_hi1p5_s0p75_p2": 102016,
+    "fourier_gate_logsigmoid_lo0p1_hi1p5_s0p75_p2": 102016
+  },
+  "matches_prior_design_proposal": true,
+  "proposal_sha256": "82dd0fdaffa0233b9153fee46d1e59fb1b9511e41f0836d1bad28a9b6a2874d7",
+  "curve_checks": [
+    {
+      "method": "fourier_gate_loglinear_lo0p1_hi3",
+      "n_points": 400,
+      "max_absolute_error_against_proposal": 6.666192997606402e-08
+    },
+    {
+      "method": "fourier_gate_logsigmoid_lo0p1_hi1p5_s0p75_p2",
+      "n_points": 400,
+      "max_absolute_error_against_proposal": 1.8888494124347233e-07
+    }
+  ],
+  "independent_test_banks": [
+    {
+      "spectrum_lambda": 0.0,
+      "current": "95f839d2e69fa107c0a0817fde1f958069548ac6d261121dc211b0a2c7370918",
+      "previous": {
+        "gmm_gated_comparison": [
+          "b5ec42f4115adb45598048e182a410f0fa715b618c58de650b8b75a45181b389"
+        ],
+        "gmm_plateau_comparison": [
+          "778eb5b26b189a6f7ed9a8438343b022b46c8042fd06405c9614c29f1d93cc3f"
+        ],
+        "gmm_spectral_comparison": [
+          "102948d2e2a56782ecdbf79546d47f94e6ab6f4d6ee8b70d815f3f08ac49182d"
+        ],
+        "gmm_gate_shape_comparison": [
+          "6ff80b4148c2d3a4f4d2aab73d4ce0a08c441e37c3960e43c374c8b88fd3c0fd"
+        ]
+      }
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "current": "350dc461a61721917e51bc6cb0ef3a822477149d4bdcd78e1782164fad914bd9",
+      "previous": {
+        "gmm_gated_comparison": [
+          "8b1bfd743c2b09c82ab70806ff5da2408f7e3d12e08e9b6ff6cc468430effed5"
+        ],
+        "gmm_plateau_comparison": [
+          "88351be3524f0d1a6f2da3737dd9067d0276a05387714e353ea6fabfaf4838db"
+        ],
+        "gmm_spectral_comparison": [
+          "d349905efc62a90eea2bac664f9f5986fd494291178fc83afc57293ee4a097dd"
+        ],
+        "gmm_gate_shape_comparison": [
+          "e8db6dd3970cb71e3c6f309cf983e1619e03706abdcf1d5a8bba78ae156d863b"
+        ]
+      }
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "current": "f3438da0e52514bf98a16bd9cacf844a3f9218b68ab34804fa4c91663fbae6d4",
+      "previous": {
+        "gmm_gated_comparison": [
+          "81fcfed3ae9bb3b7df80f507f95e10eeaf8250cb7cde4e1b78f05a5b0d271479"
+        ],
+        "gmm_plateau_comparison": [
+          "46cf2fc6b91e3fb0bbcbd7846bdf7e5ba961b460c224ebaac798984c4df2c528"
+        ],
+        "gmm_spectral_comparison": [
+          "759f979010a6d2646cc9a235950909de3018aa21e337992bff9551caa5151784"
+        ],
+        "gmm_gate_shape_comparison": [
+          "63fc33368b83979e08508d6257ca77c8db3da0ea0aa25177ace757ae15b689d5"
+        ]
+      }
+    }
+  ],
+  "smoke": {
+    "passed": true,
+    "resumed_with_workers": [
+      16,
+      2
+    ],
+    "summary_sha256": "14bba1f2e4f2485577bdddc6126b8f21622264d586453727edcdb0e9540490d8",
+    "resume_summary_identical": true
+  },
+  "figures_visually_inspected": [
+    "gmm_log_gate_comparison.png",
+    "gmm_log_gate_diagnostics.png"
+  ]
+}

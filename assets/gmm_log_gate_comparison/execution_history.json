@@ -1,0 +1,19 @@
+[
+  {
+    "started_utc": "2026-09-24T06:20:40.802895+00:00",
+    "workers": 16,
+    "provenance": {
+      "python": "3.11.15",
+      "torch": "2.14.0+cu130",
+      "numpy": "2.4.6",
+      "source_sha256": "f79717f3da852ffcde3ab8eea4997b3b44a3d0843e6cea040bde9afa145970a8",
+      "runner_sha256": "dded82fb9fc9b74a35571c6070f23d19c6fd8f2294cd2bc7554dee0b68c06393",
+      "comparison_helpers_sha256": "13609cc71a975c2031755e609ab9dd2f95233f580231dee61a78e45d662952e3",
+      "experiment_helpers_sha256": "eb48ab5a19ba1acd15f6a5ba0ec96cb6abcabd167bd18eb7c2715f60f28645e8",
+      "gate_shape_helpers_sha256": "28e5fe7543790a4aed729a6643f83c0a642bf164d4e10a5ca40ca1c8bf24e990",
+      "design_proposal_sha256": "82dd0fdaffa0233b9153fee46d1e59fb1b9511e41f0836d1bad28a9b6a2874d7",
+      "git_revision": "6c369a44d355f71acdcf3e0a3f0c8a1e01cfd784",
+      "git_dirty": true
+    }
+  }
+]

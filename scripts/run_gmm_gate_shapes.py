@@ -33,8 +33,8 @@ from scripts.run_gmm_plateau import (
 NEW_MODES = ("linear_sigma", "tanh_sigma")
 
 
-def reuse_directory(roots, lam, seed, arm):
-    if arm.gate_mode in NEW_MODES or not roots:
+def reuse_directory(roots, lam, seed, arm, *, new_modes=NEW_MODES):
+    if arm.gate_mode in new_modes or not roots:
         return None
     case_id = f"gmm_lambda{lam:g}".replace(".", "p")
     relative = Path(case_id) / f"{arm.name}_seed{seed}" / "checkpoint.pt"
@@ -44,20 +44,29 @@ def reuse_directory(roots, lam, seed, arm):
     return matches[0]
 
 
-def plot_diagnostics(report, cfg, arms, transition):
+def plot_diagnostics(report, cfg, arms, transition, *, gate_modes=None,
+                     figure_stem="gmm_gate_shape_diagnostics"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     family = MatchedMomentFamily(cfg, "gmm", max(cfg.spectrum_lambdas))
     selected = [a for a in arms if a.parameterization == "fourier_gaussian"
-                and a.objective == "normalized_residual"]
-    labels = ["Fourier normalized", "Sigmoid Fourier", "Plateau Fourier",
-              "Spectral Fourier", "Linear Fourier", "Tanh Fourier"]
-    colors = ["#d77b29", "#863daf", "#c13958", "#111111", "#703000", "#bc087e"]
+                and a.objective == "normalized_residual"
+                and (gate_modes is None or a.gate_mode in gate_modes)]
+    log_design = any(a.gate_mode == "linear_log_sigma" for a in selected)
+    appearances = dict(none=("Fourier normalized", "#d77b29"),
+                       log_sigma=("Sigmoid Fourier", "#863daf"),
+                       log_sigma_plateau=("Plateau Fourier", "#c13958"),
+                       spectral_cap=("Spectral Fourier", "#657078" if log_design else "#111111"),
+                       linear_sigma=("Linear Fourier", "#703000"),
+                       tanh_sigma=("Tanh Fourier", "#bc087e"),
+                       linear_log_sigma=("Log linear Fourier", "#111111"),
+                       bounded_log_sigmoid=("Bounded S Fourier", "#d8a000"))
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.7))
     sigma = torch.logspace(np.log10(cfg.sigma_min), np.log10(cfg.sigma_max), 400)
     profile = []
-    for arm, label, color in zip(selected, labels, colors):
+    for arm in selected:
+        label, color = appearances[arm.gate_mode]
         ref = make_model(family, arm, cfg.seeds[0]).reference
         gate, _, scale, total = ref._coefficients(sigma, ref.power[None])
         b = (ref.power[None] / total).sqrt()
@@ -89,7 +98,7 @@ def plot_diagnostics(report, cfg, arms, transition):
     fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=3, frameon=False)
     fig.tight_layout(rect=(0, .13, 1, 1))
     for extension in ("png", "svg", "pdf"):
-        path = report / f"gmm_gate_shape_diagnostics.{extension}"
+        path = report / f"{figure_stem}.{extension}"
         fig.savefig(path, dpi=180, bbox_inches="tight")
         if extension == "svg":
             path.write_text("\n".join(line.rstrip() for line in path.read_text().splitlines()) + "\n")
