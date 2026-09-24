@@ -418,6 +418,55 @@ checks continue to guard checkpoint compatibility.
 
 ## Reproduce the experiments
 
+### MNIST: remaining normalized and gated comparisons
+
+The MNIST runner covers the same 19 arms as the GMM comparison: Score / DSM,
+Scalar / DSM, Fourier / DSM, plus Scalar/Fourier versions of normalized,
+sigmoid, plateau, spectral cap, sigma-linear, sigma-tanh, log-linear and
+bounded S. It defaults to seed 0, 100,000 updates and sequential GPU jobs.
+New models use the fixed GMM gate settings with the MNIST preset's noise
+range and preprocessing; these settings have not been selected on MNIST.
+
+```bash
+# Inspect completion checks and the training queue without starting jobs.
+uv run --locked --extra metrics python scripts/run_mnist_remaining.py \
+  --device cuda --download --with-fid --dry-run
+
+# Train missing models, evaluate validation DSM, and sample 10,000 images for FID.
+uv run --locked --extra metrics python scripts/run_mnist_remaining.py \
+  --device cuda --download --with-fid
+```
+
+The runner searches `saved/` and `saved/recovered/` for compatible completed
+checkpoints, including the recovered Scalar / DSM control. A matching run name
+or training log alone is insufficient: the checkpoint must have the requested
+step, architecture, data split, seed, objective, gate, optimizer and training
+settings. Historical completed controls can be reused and their training
+source hashes are recorded. New training is written under
+`saved/mnist_remaining_100k/`, preserving earlier incomplete run directories.
+Repeating the command reuses completed models and resumes compatible `last.pt`
+checkpoints in the new study. Resume retains the trainer's source/environment
+checks. Keep the source and environment fixed during an interrupted study.
+
+All selected models are evaluated using the current code and EMA weights on
+the same 5,000 validation images: evaluation seed 17001, batch 128, 20 noise
+bins and four frequency bands. With `--with-fid`, the runner first exports the
+real validation images automatically, then generates 10,000 images per model
+with the preset's PC sampler (1,000 steps, batch 64, seed 17002). Completed
+samples are reused only when checkpoint hash, source, settings and image
+count match. Other sample directories are preserved under a timestamped name.
+Training loss values across DSM and normalized objectives are not the common
+comparison metric; use validation DSM and FID. This is held-out validation,
+not the official MNIST test set or an exact-score evaluation.
+
+Results accumulate in `saved/mnist_remaining_100k/summary.csv` and
+`summary.json`, with detailed metrics and images in its `evaluation/` folder.
+Omit `--with-fid` for training and DSM only; add it later to reuse trained
+models and generate images. Use `--seeds 0 1 2` for three paired seeds,
+`--only <arm names>` for a subset, or a new `--output` for another study.
+`--dry-run` lists all arm names. Training several models on one GPU proceeds
+sequentially; the runner does not start parallel GPU jobs.
+
 ### CIFAR-10: scalar versus Fourier covariance
 
 ```bash
