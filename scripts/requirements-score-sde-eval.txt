@@ -1,0 +1,10 @@
+# Keep this TensorFlow environment separate from the training environment.
+tensorflow[and-cuda]==2.21.0
+tf-keras==2.21.0
+tensorflow-gan==2.0.0
+tensorflow-hub==0.16.1
+tensorflow-probability==0.25.0
+numpy==2.2.6
+pillow==12.3.0
+# TF-Hub still imports pkg_resources, removed by newer setuptools.
+setuptools==80.9.0

@@ -83,10 +83,6 @@ def main(argv=None):
             args.batch_size,
             inception_score=False,
         )
-        result["warning"] = (
-            "The LDM paper also uses torch-fidelity. Exact values depend on its version, real split, preprocessing and sample count; re-evaluate all arms under one protocol."
-        )
-        json_write(result, args.output)
         print(json.dumps(result, indent=2))
         return
     changes = list(args.set)
@@ -181,7 +177,7 @@ def main(argv=None):
             )
             provenance = {
                 "weights": args.weights,
-                "reference": "public pretrained LDM; not a matched-budget arm",
+                "reference": "External pretrained LDM reference",
             }
         stage, first = load_first_stage(
             cfg["first_stage"]["checkpoint"], spec, device, expected

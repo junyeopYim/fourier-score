@@ -92,7 +92,6 @@ def evaluate_images(real, generated, output, device="cpu", batch_size=64, *, inc
         "generated": generated_manifest,
         "device": str(device),
         "batch_size": batch_size,
-        "warning": "Not directly interchangeable with original score-SDE TF-Hub/TF-GAN FID",
     }
     json_write(result, output)
     return result

@@ -215,6 +215,12 @@ updates and training time. To inspect available pretrained references, run
 `python scripts/download_ldm.py --list`. Score-SDE weights are converted with
 `scripts/import_score_sde.py`; its `--help` describes inference-only import.
 
+To re-evaluate existing CIFAR samples with the original TF-Hub/TF-GAN backend,
+use [`scripts/evaluate_score_sde.py`](scripts/evaluate_score_sde.py) in a separate
+TensorFlow environment. See [setup and protocol](scripts/README-score-sde-eval.md).
+This reads exactly 50,000 saved images and the official CIFAR reference statistics;
+it does not generate new samples.
+
 ## Understand the mechanism
 
 ![Forward noising and reverse denoising of an analytic Gaussian mixture, with stochastic and probability-flow trajectories.](assets/stochastic_process.svg)

@@ -67,8 +67,8 @@ def convert_model(model_name, input_dir="pretrained/score_sde", output=None):
         "upstream_folder": plan["official_folder"],
         "converter_sha256": file_info(Path(__file__))["sha256"],
         "weights": "EMA",
-        "scope": "Inference with the local sampler; not a matched from-scratch arm",
-        "buffer_policy": "Only a missing sigmas buffer is recreated from config; continuous Fourier conditioning does not use it",
+        "scope": "External pretrained reference with the local sampler",
+        "buffer_policy": "Missing sigmas buffers are restored from config; continuous Fourier conditioning uses sigma directly",
     }
     if target.exists():
         existing = load_checkpoint(target)
