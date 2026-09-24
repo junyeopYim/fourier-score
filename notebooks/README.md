@@ -3,7 +3,10 @@
 The [GMM notebook](gmm_fourier_residual.ipynb) studies residual score learning on
 Gaussian and mixture distributions with exactly matched population moments.
 It uses the repository's DSM objective and evaluates against the exact noisy
-joint score. A spectral sweep compares Scalar and Fourier Gaussian covariance.
+joint score. A spectral sweep compares Scalar and Fourier Gaussian covariance
+at fixed average power, including the flat-spectrum control ($\lambda=0$).
+This file is the canonical guide to running the notebook; the top-level
+README only summarizes it.
 
 The population, MLP and evaluation code are shared with
 [`fourier_score/gmm.py`](../fourier_score/gmm.py). The notebook retains its three
@@ -70,4 +73,6 @@ Results are saved under `saved/gmm_oracle/<preset>/<run_tag>/`:
 - Run settings and numerical checks.
 
 The [figure generation commands](../README.md#figures) produce the accompanying
-analytic illustrations.
+analytic illustrations. The GMM studies built on this notebook, comparing
+training objectives and noise gates, are reported in
+[reports/](../reports/README.md).

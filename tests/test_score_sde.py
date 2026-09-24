@@ -11,10 +11,9 @@ from fourier_score.evaluation import evaluate_checkpoint
 from fourier_score.model import build_model
 from scripts import download_score_sde as download
 from scripts import import_score_sde as importer
-from test_ldm_download_data import serve
 
 
-def test_verified_official_ema_roundtrip(cfg, tmp_path, monkeypatch):
+def test_verified_official_ema_roundtrip(cfg, tmp_path, monkeypatch, http_server):
     cfg["loss"]["type"] = "score"
     source = build_model(cfg).backbone
     parameters = dict(source.named_parameters())
@@ -41,7 +40,7 @@ def test_verified_official_ema_roundtrip(cfg, tmp_path, monkeypatch):
     checksum = hashlib.sha256(payload.getvalue()).hexdigest()
     model_name = "cifar10_ncsnpp_continuous"
     plan = download.download_plan(model_name, tmp_path)
-    with serve({"/checkpoint": payload.getvalue(), "/config": b"fixture config"}) as (base, calls):
+    with http_server({"/checkpoint": payload.getvalue(), "/config": b"fixture config"}) as (base, calls):
         plan["checkpoint_url"] = base + "/checkpoint"
         plan["config_sources"] = {"upstream/config.py": base + "/config"}
         monkeypatch.setattr(download, "download_plan", lambda *args: plan)

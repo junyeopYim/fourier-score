@@ -27,4 +27,9 @@ package = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-markers = ["mps: requires Apple MPS hardware", "cuda: requires NVIDIA CUDA hardware"]
+markers = [
+  "mps: requires Apple MPS hardware",
+  "cuda: requires NVIDIA CUDA hardware",
+  "slow: long CPU integration checks",
+  "golden_local: needs FOURIER_GOLDEN_ROOT (original checkout with real checkpoints and data)",
+]

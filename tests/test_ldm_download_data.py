@@ -1,11 +1,8 @@
 """Small real HTTP/ZIP/LMDB workflows; no public dataset downloads in pytest."""
 
-from contextlib import contextmanager
 import hashlib
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import io
 import json
-import threading
 import zipfile
 
 import numpy as np
@@ -13,40 +10,6 @@ import pytest
 from PIL import Image
 
 from scripts import download_ldm_data as download
-
-
-@contextmanager
-def serve(files):
-    calls = []
-
-    class Handler(BaseHTTPRequestHandler):
-        def do_GET(self):
-            start = int(self.headers.get("Range", "bytes=0-")[6:-1])
-            calls.append((self.path, start))
-            data = files[self.path]
-            self.send_response(206 if start else 200)
-            if start:
-                self.send_header(
-                    "Content-Range", f"bytes {start}-{len(data) - 1}/{len(data)}"
-                )
-            self.send_header("Content-Length", str(len(data) - start))
-            self.end_headers()
-            self.wfile.write(data[start:])
-
-        def log_message(self, *args):
-            pass
-
-    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
-    thread = threading.Thread(
-        target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True
-    )
-    thread.start()
-    try:
-        yield f"http://127.0.0.1:{server.server_port}", calls
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join()
 
 
 def splits(monkeypatch, data_dir, model, train, validation):
@@ -64,10 +27,10 @@ def splits(monkeypatch, data_dir, model, train, validation):
     return spec
 
 
-def test_http_resume_checksum_and_offline_reuse(tmp_path):
+def test_http_resume_checksum_and_offline_reuse(tmp_path, http_server):
     payload = b"dataset bytes" * 100
     target = tmp_path / "archive.zip"
-    with serve({"/archive.zip": payload}) as (base, calls):
+    with http_server({"/archive.zip": payload}) as (base, calls):
         url = base + "/archive.zip"
         partial = target.with_name(
             target.name + "." + hashlib.sha256(url.encode()).hexdigest()[:12] + ".part"
@@ -81,7 +44,9 @@ def test_http_resume_checksum_and_offline_reuse(tmp_path):
         download.acquire(url, target)
 
 
-def test_lsun_zip_preserves_original_keys_and_compvis_split(tmp_path, monkeypatch):
+def test_lsun_zip_preserves_original_keys_and_compvis_split(
+    tmp_path, monkeypatch, http_server
+):
     lmdb = pytest.importorskip("lmdb")
     data_dir = tmp_path / "data"
     spec = splits(
@@ -98,7 +63,7 @@ def test_lsun_zip_preserves_original_keys_and_compvis_split(tmp_path, monkeypatc
     bundle = io.BytesIO()
     with zipfile.ZipFile(bundle, "w") as archive:
         archive.write(database / "data.mdb", "church_outdoor_train_lmdb/data.mdb")
-    with serve({"/images.zip": bundle.getvalue()}) as (base, _):
+    with http_server({"/images.zip": bundle.getvalue()}) as (base, _):
         record = download.prepare_dataset(
             "lsun_churches", data_dir, url=base + "/images.zip"
         )
@@ -118,14 +83,16 @@ def test_lsun_zip_preserves_original_keys_and_compvis_split(tmp_path, monkeypatc
         download.prepare_dataset("lsun_churches", data_dir, url=base + "/images.zip")
 
 
-def test_ffhq_download_flattens_names_and_checks_publisher_md5(tmp_path, monkeypatch):
+def test_ffhq_download_flattens_names_and_checks_publisher_md5(
+    tmp_path, monkeypatch, http_server
+):
     pytest.importorskip("gdown")
     data_dir = tmp_path / "data"
     splits(monkeypatch, data_dir, "ffhq", ["00000.png", "00002.png"], ["00001.png"])
     payload = io.BytesIO()
     Image.new("RGB", (8, 8), (10, 50, 80)).save(payload, format="PNG")
     files = {"/image.png": payload.getvalue(), "/LICENSE.txt": b"fixture license"}
-    with serve(files) as (base, _):
+    with http_server(files) as (base, _):
         entries = {
             str(i): {
                 "image": {
