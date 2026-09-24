@@ -15,12 +15,13 @@ tag's hash can be resumed in a worktree at that tag.
 | Epoch | Git tag | Commit | `source_sha256` at the tag | Covers |
 |---|---|---|---|---|
 | 0 | `pre-template-refactor` | `48325d3` | `f79717f3da852ffcde3ab8eea4997b3b44a3d0843e6cea040bde9afa145970a8` | All runs, checkpoints and `assets/` results produced before the template refactor, including every study in these reports. The package changed during this history, so the earlier studies recorded [other hashes](#source-of-each-archived-study) |
+| 1 | `epoch-1` | `8e76031` | `d6d0c939e3a1c565aa25f0b520da7644c8643834568297ca83f55661a656502d` | Runs after the pytorch-template layout of `fourier_score/` (`model/`, `data_loader/`, `trainer/`, `gates.py`, `parse_config.py`, `provenance.py`). Numerics match epoch 0 bit for bit on the golden contracts and differential checks; epoch-0 checkpoints load here with a warning and resume only at `pre-template-refactor` |
 
 Later epochs add a row when a change to `fourier_score/` is merged. To print the
 hash of the current checkout:
 
 ```bash
-uv run --locked python -c "from fourier_score.utils import source_hash; print(source_hash())"
+uv run --locked python -c "from fourier_score.provenance import source_hash; print(source_hash())"
 ```
 
 ## What the hash guards
