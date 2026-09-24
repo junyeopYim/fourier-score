@@ -527,11 +527,11 @@ Numbers match bit for bit on the recording machine and within tolerance
 elsewhere (`FOURIER_GOLDEN_EXACT=1` or `0` forces either mode). Pointing
 `FOURIER_GOLDEN_ROOT` at a checkout with `saved/` and `pretrained/` adds real checkpoints (`-m golden_local`).
 
-A failing contract means observable behavior changed. In a refactor, fix the
-code. For an intended change, such as a new config file, gate mode or
-objective, re-record only the affected group in its own commit and explain why:
-`CUDA_VISIBLE_DEVICES= uv run --no-sync python tests/golden/record_goldens.py
---root . --allow-any-tree --group config`.
+Files under `configs/`, including `base.json`, are not frozen: contracts read
+epoch-0 copies in `tests/golden/configs/`, and `tests/test_configs.py` only checks
+that presets load. A failing contract means code behavior changed: in a refactor,
+fix the code; for an intended change such as a gate mode, re-record the affected
+group in its own commit (`CUDA_VISIBLE_DEVICES= uv run --no-sync python tests/golden/record_goldens.py --root . --allow-any-tree --group config`).
 
 Any edit under `fourier_score/` changes `source_sha256`: resume refuses older
 checkpoints and inference warns. Run long studies from a worktree pinned to a

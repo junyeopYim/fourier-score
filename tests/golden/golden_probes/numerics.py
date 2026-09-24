@@ -18,7 +18,9 @@ import re
 import subprocess
 import sys
 
-from golden_probes import file_sha256, json_digest, probe, resolve, symbol, tensor_digest
+from golden_probes import (
+    config_path, entrypoint, file_sha256, json_digest, probe, resolve, symbol, tensor_digest,
+)
 
 # New (planned) module paths first, epoch-0 paths last.
 CONFIG = ("fourier_score.parse_config", "fourier_score.config")
@@ -196,7 +198,7 @@ def smoke_cfg(ctx, *changes, save="runs", config="configs/smoke.json"):
         "backend.cpu_threads=1",
         "trainer.console=quiet",
     ]
-    return load_config(str(ctx.root / config), base + list(changes))
+    return load_config(str(config_path(config)), base + list(changes))
 
 
 def run_dir(save_dir):
@@ -245,9 +247,9 @@ def subprocess_env():
     return env
 
 
-def run_script(ctx, *args):
+def run_script(ctx, script, *args):
     result = subprocess.run(
-        [sys.executable, *map(str, args)],
+        entrypoint(ctx, script, *args),
         cwd=ctx.root,
         env=subprocess_env(),
         capture_output=True,
@@ -255,7 +257,7 @@ def run_script(ctx, *args):
     )
     if result.returncode:
         raise RuntimeError(
-            f"{args[0]} failed ({result.returncode}):\n{result.stdout}\n{result.stderr}"
+            f"{script} failed ({result.returncode}):\n{result.stdout}\n{result.stderr}"
         )
     return result.stdout
 
@@ -525,7 +527,7 @@ def sample_cli(ctx):
     ):
         out = ctx.tmp / f"samples_{variant}"
         stdout = run_script(
-            ctx, ctx.root / "sample.py", "-r", checkpoint, "-o", out,
+            ctx, "sample.py", "-r", checkpoint, "-o", out,
             "--num-samples", 5, "--batch-size", 2, "--steps", 3, "--device", "cpu", *extra,
         )
         settings = json.loads((out / "settings.json").read_text())
@@ -570,7 +572,7 @@ def evaluate_cli(ctx):
     _, run = train_smoke(ctx)
     output = ctx.tmp / "dsm.json"
     stdout = run_script(
-        ctx, ctx.root / "evaluate.py", "dsm", "-r", run / "last.pt", "-o", output, "--device", "cpu",
+        ctx, "evaluate.py", "dsm", "-r", run / "last.pt", "-o", output, "--device", "cpu",
     )
     result = json.loads(output.read_text())
     stripped = normalize(
@@ -596,7 +598,7 @@ def export_real(ctx):
     for split, extra in (("train", ()), ("validation", ("--limit", 3))):
         out = ctx.tmp / f"real_{split}"
         stdout = run_script(
-            ctx, ctx.root / "scripts/export_real.py", "-c", "configs/smoke.json",
+            ctx, "scripts/export_real.py", "-c", config_path("configs/smoke.json"),
             "--device", "cpu", "-o", out, "--split", split, *extra,
         )
         settings = normalize(json.loads((out / "settings.json").read_text()), ctx)

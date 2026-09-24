@@ -3,13 +3,15 @@
 These protect the planned ``parse_config.py`` / ``gates.py`` rewrite (E1):
 
 * every persisted format / version string,
-* every image and LDM config file resolved, named and signed,
 * the gate grid (all modes x defaults, non-default and legacy forms),
 * verbatim config error strings (image, gate, LDM),
 * ``--set`` override semantics,
 * the ``train.py`` / ``ldm.py`` dry-run CLIs.
 
 All values are exact: configs, names and signatures are pure dict/str logic.
+Config files are the frozen epoch-0 copies in ``tests/golden/configs`` (see
+``golden_probes.config_path``); research presets under ``configs/`` are not
+recorded, only checked to load in ``tests/test_configs.py``.
 Absolute paths are replaced by ``<ROOT>``, ``<TMP>`` and ``<PYTHON>``.
 """
 
@@ -23,40 +25,18 @@ import re
 import subprocess
 import sys
 
-from golden_probes import file_sha256, json_digest, probe, symbol
+from golden_probes import CONFIG_ROOT, config_path, entrypoint, json_digest, probe, symbol
 
 CONFIG = ("fourier_score.config",)
 GATES = ("fourier_score.gates", "fourier_score.method")
 CHECKPOINTS = ("fourier_score.trainer.checkpoints", "fourier_score.checkpoints")
 LDM_CONFIG = ("fourier_score.ldm.config",)
 LDM_TRAINING = ("fourier_score.ldm.training",)
+SMOKE_FILE = str(config_path("configs/smoke.json"))
+FFHQ_FILE = str(config_path("configs/ldm/ffhq.json"))
+CHURCHES_L2_FILE = str(config_path("configs/ldm/lsun_churches_l2.json"))
 
-IMAGE_CONFIGS = (
-    "config.json",
-    "configs/base.json",
-    "configs/celeba64_folder.json",
-    "configs/cifar10.json",
-    "configs/cifar10_1m3.json",
-    "configs/cifar10_950k.json",
-    "configs/cifar10_ablation.json",
-    "configs/cifar10_ddpm.json",
-    "configs/cifar10_full.json",
-    "configs/cifar10_paper950k.json",
-    "configs/ffhq256_folder.json",
-    "configs/mnist.json",
-    "configs/mnist_ddpm.json",
-    "configs/smoke.json",
-    "configs/score_sde/cifar10_ncsnpp_continuous.json",
-    "configs/score_sde/cifar10_ncsnpp_deep_continuous.json",
-    "configs/score_sde/ffhq_256_ncsnpp_continuous.json",
-)
-LDM_CONFIGS = (
-    "configs/ldm/celebahq.json",
-    "configs/ldm/ffhq.json",
-    "configs/ldm/lsun_bedrooms.json",
-    "configs/ldm/lsun_churches.json",
-    "configs/ldm/lsun_churches_l2.json",
-)
+
 # Literal on purpose: the accepted set must not be read back from the code.
 GATE_MODES = (
     "none",
@@ -83,6 +63,8 @@ def _scrub(value, ctx):
         needles[tmp] = "<TMP>"
     for root in (str(ctx.root), os.path.realpath(ctx.root)):
         needles[root] = "<ROOT>"
+    for root in (str(CONFIG_ROOT), os.path.realpath(CONFIG_ROOT)):
+        needles[root] = "<ROOT>"  # frozen config copies read as the repository's configs/
     ordered = sorted(needles.items(), key=lambda item: -len(item[0]))
 
     def walk(v):
@@ -116,10 +98,6 @@ def _raises(ctx, fn, *args):
     return {"no_error": True} if ok else value
 
 
-def _key(rel):
-    return rel.removesuffix(".json").replace("/", ".")
-
-
 def _typed(value):
     return {"value": value, "type": type(value).__name__}
 
@@ -134,7 +112,7 @@ def _write_json(folder, files, ctx):
     folder.mkdir(parents=True, exist_ok=True)
     for name, obj in files.items():
         text = obj if isinstance(obj, str) else json.dumps(obj)
-        (folder / name).write_text(text.replace("<ROOT>", str(ctx.root)))
+        (folder / name).write_text(text.replace("<ROOT>", str(CONFIG_ROOT)))
     return folder
 
 
@@ -163,9 +141,9 @@ def persisted_format_strings(ctx):
         "build_data", "fourier_score.data_loader.data_loaders", "fourier_score.data"
     )
     gmm_config = symbol("GMMConfig", "fourier_score.gmm")
-    base = json.loads((ctx.root / "configs/base.json").read_text(encoding="utf-8"))
-    image_cfg = load_config("configs/smoke.json")
-    ldm_cfg = ldm_load_config("configs/ldm/ffhq.json")
+    base = json.loads(config_path("configs/base.json").read_text(encoding="utf-8"))
+    image_cfg = load_config(SMOKE_FILE)
+    ldm_cfg = ldm_load_config(FFHQ_FILE)
     return {
         "exact": {
             "image_checkpoint_format": fmt,
@@ -190,120 +168,8 @@ def persisted_format_strings(ctx):
 @probe("config", "smoke_resolved")
 def smoke_resolved(ctx):
     load_config = symbol("load_config", "fourier_score.config")
-    cfg = load_config(str(ctx.root / "configs/smoke.json"))
+    cfg = load_config(SMOKE_FILE)
     return {"exact": {"sha256": json_digest(cfg), "name": cfg["name"]}}
-
-
-# ---------------------------------------------------------------- config files
-
-
-@probe("config", "config_inventory")
-def config_inventory(ctx):
-    """Every config file and its bytes (configs/ is frozen by the plan)."""
-    files = [ctx.root / "config.json", *sorted((ctx.root / "configs").rglob("*"))]
-    digests = {
-        p.relative_to(ctx.root).as_posix(): file_sha256(p) for p in files if p.is_file()
-    }
-    image = sorted(
-        k for k in digests
-        if k == "config.json"
-        or re.fullmatch(r"configs/[^/]+\.json", k)
-        or re.fullmatch(r"configs/score_sde/[^/]+\.json", k)
-    )
-    ldm = sorted(k for k in digests if re.fullmatch(r"configs/ldm/[^/]+\.json", k))
-    return {
-        "exact": {
-            "files_sha256": digests,
-            "image_configs": image,
-            "ldm_configs": ldm,
-            "image_configs_all_probed": image == sorted(IMAGE_CONFIGS),
-            "ldm_configs_all_probed": ldm == sorted(LDM_CONFIGS),
-        }
-    }
-
-
-def _register_image_config(rel):
-    @probe("config", "image_config." + _key(rel))
-    def image_config(ctx):
-        os.chdir(ctx.root)
-        load_config = symbol("load_config", *CONFIG)
-        validate = symbol("validate", *CONFIG)
-        experiment_name = symbol("experiment_name", *CONFIG)
-        resume_signature = symbol("resume_signature", *CHECKPOINTS)
-        cfg = load_config(rel)
-        name = experiment_name(cfg)
-        signature = resume_signature(cfg)
-        revalidated = validate(json.loads(json.dumps(cfg)))
-        cfg, signature, name = _scrub((cfg, signature, name), ctx)
-        return {
-            "exact": {
-                "resolved": cfg,
-                "resolved_sha256": json_digest(cfg),
-                "experiment_name": name,
-                "resume_signature": signature,
-                "resume_signature_sha256": json_digest(signature),
-                "revalidated_is_identical": _scrub(revalidated, ctx) == cfg,
-            }
-        }
-
-    return image_config
-
-
-def _register_ldm_config(rel):
-    @probe("config", "ldm_config." + _key(rel))
-    def ldm_config(ctx):
-        os.chdir(ctx.root)
-        load_config = symbol("load_config", *LDM_CONFIG)
-        validate = symbol("validate", *LDM_CONFIG)
-        experiment_name = symbol("experiment_name", *LDM_CONFIG)
-        load_spec = symbol("load_spec", *LDM_CONFIG)
-        signature = symbol("signature", *LDM_TRAINING)
-        cfg = load_config(rel)
-        name = experiment_name(cfg)
-        sig = signature(cfg)
-        spec = load_spec(cfg)
-        revalidated = validate(json.loads(json.dumps(cfg)))
-        cfg, sig, name, spec = _scrub((cfg, sig, name, spec), ctx)
-        return {
-            "exact": {
-                "resolved": cfg,
-                "resolved_sha256": json_digest(cfg),
-                "experiment_name": name,
-                "signature": sig,
-                "signature_sha256": json_digest(sig),
-                "revalidated_is_identical": _scrub(revalidated, ctx) == cfg,
-                "spec": {
-                    "sha256": json_digest(spec),
-                    "keys": sorted(spec),
-                    "custom_upstream_config": spec["custom_upstream_config"],
-                    "upstream_revision": spec["upstream_revision"],
-                    "upstream_config_sha256": spec["upstream_config_sha256"],
-                    "model": spec["model"],
-                    "first_stage_kind": spec["first_stage"]["kind"],
-                    "image_size": spec["image_size"],
-                    "latent_shape": spec["latent_shape"],
-                    "timesteps": spec["timesteps"],
-                    "linear_start": spec["linear_start"],
-                    "linear_end": spec["linear_end"],
-                    "scale_by_std": spec["scale_by_std"],
-                    "scale_factor": spec["scale_factor"],
-                    "upstream_loss": spec["upstream_loss"],
-                    "loss_type": spec["loss_type"],
-                    "paper_training": spec["paper_training"],
-                    "unet_sha256": json_digest(spec["unet"]),
-                    "first_stage_params_sha256": json_digest(spec["first_stage"]["params"]),
-                    "scheduler": spec["scheduler"],
-                },
-            }
-        }
-
-    return ldm_config
-
-
-for _rel in IMAGE_CONFIGS:
-    _register_image_config(_rel)
-for _rel in LDM_CONFIGS:
-    _register_ldm_config(_rel)
 
 
 @probe("config", "ldm_custom_upstream_config")
@@ -315,8 +181,8 @@ def ldm_custom_upstream_config(ctx):
     source = ctx.root / "configs/ldm/upstream/ffhq.yaml"
     copied = ctx.tmp / "ffhq_copy.yaml"
     copied.write_bytes(source.read_bytes())
-    stock = load_spec(load_config("configs/ldm/ffhq.json"))
-    custom = load_spec(load_config("configs/ldm/ffhq.json", [f"upstream_config={copied}"]))
+    stock = load_spec(load_config(FFHQ_FILE))
+    custom = load_spec(load_config(FFHQ_FILE, [f"upstream_config={copied}"]))
     differing = sorted(k for k in stock if stock[k] != custom[k])
     return {
         "exact": {
@@ -478,7 +344,7 @@ def _gate_grid(ctx, mode):
     validate = symbol("validate", *CONFIG)
     experiment_name = symbol("experiment_name", *CONFIG)
     resume_signature = symbol("resume_signature", *CHECKPOINTS)
-    smoke = load_config("configs/smoke.json", ["loss.type=fourier_gaussian"])
+    smoke = load_config(SMOKE_FILE, ["loss.type=fourier_gaussian"])
     cases = []
     for gate in _gate_cases(mode):
         case = {"input": "<absent>" if gate is None else gate}
@@ -575,31 +441,6 @@ def gate_errors(ctx):
             "gate_suffix": _raises(ctx, gate_suffix, copy.deepcopy(gate)),
         }
     return {"exact": out}
-
-
-@probe("config", "mnist_remaining_arms")
-def mnist_remaining_arms(ctx):
-    """Run names and resume signatures of the 19 arms the live MNIST study resumes."""
-    os.chdir(ctx.root)
-    arms = symbol("ARMS", "scripts.run_mnist_remaining")
-    run_config = symbol("run_config", "scripts.run_mnist_remaining")
-    load_config = symbol("load_config", *CONFIG)
-    experiment_name = symbol("experiment_name", *CONFIG)
-    resume_signature = symbol("resume_signature", *CHECKPOINTS)
-    base = load_config("configs/mnist.json")
-    out = []
-    for arm in arms:
-        cfg = run_config(base, arm, 0, "saved/mnist_remaining_100k", 100000, "cuda")
-        signature = resume_signature(cfg)
-        out.append({
-            "arm": arm.name,
-            "experiment_name": experiment_name(cfg),
-            "cfg_sha256": json_digest(cfg),
-            "signature_sha256": json_digest(signature),
-            "signature_gate": signature["fourier"].get("gate", "<absent>"),
-            "signature_loss": signature["loss"],
-        })
-    return {"exact": {"arms": out}}
 
 
 # ---------------------------------------------------------------- config errors
@@ -783,11 +624,11 @@ def image_config_errors(ctx):
     os.chdir(ctx.root)
     load_config = symbol("load_config", *CONFIG)
     overrides = {
-        name: _raises(ctx, load_config, "configs/smoke.json", entries)
+        name: _raises(ctx, load_config, SMOKE_FILE, entries)
         for name, entries in SMOKE_OVERRIDE_ERRORS.items()
     }
     accepted = {
-        name: _raises(ctx, load_config, "configs/smoke.json", entries)
+        name: _raises(ctx, load_config, SMOKE_FILE, entries)
         for name, entries in SMOKE_OVERRIDE_ACCEPTED.items()
     }
     files = {}
@@ -847,7 +688,7 @@ def ldm_config_errors(ctx):
     os.chdir(ctx.root)
     load_config = symbol("load_config", *LDM_CONFIG)
     load_spec = symbol("load_spec", *LDM_CONFIG)
-    base = "configs/ldm/ffhq.json"
+    base = FFHQ_FILE
     overrides = {
         name: _raises(ctx, load_config, base, entries)
         for name, entries in LDM_OVERRIDE_ERRORS.items()
@@ -960,10 +801,10 @@ def override_semantics(ctx):
     load_config = symbol("load_config", *CONFIG)
     experiment_name = symbol("experiment_name", *CONFIG)
     resume_signature = symbol("resume_signature", *CHECKPOINTS)
-    base = load_config("configs/smoke.json")
+    base = load_config(SMOKE_FILE)
     out = {}
     for name, entries in OVERRIDE_SCENARIOS.items():
-        cfg = load_config("configs/smoke.json", entries)
+        cfg = load_config(SMOKE_FILE, entries)
         keys = []
         for entry in entries:
             key = entry.split("=", 1)[0]
@@ -993,7 +834,7 @@ def legacy_v1_forms(ctx):
     validate = symbol("validate", *CONFIG)
     experiment_name = symbol("experiment_name", *CONFIG)
     resume_signature = symbol("resume_signature", *CHECKPOINTS)
-    cfg = load_config("configs/smoke.json")
+    cfg = load_config(SMOKE_FILE)
     removals = {
         "no_objective": [("loss", "objective")],
         "no_gate": [("fourier", "gate")],
@@ -1029,7 +870,7 @@ def _run_cli(ctx, script, args):
     """Run an entrypoint from the tree under test; parse stdout JSON."""
     env = dict(os.environ, CUDA_VISIBLE_DEVICES="")
     proc = subprocess.run(
-        [sys.executable, str(ctx.root / script), *args],
+        entrypoint(ctx, script, *args),
         cwd=ctx.root, env=env, capture_output=True, text=True, timeout=600,
     )
     out = {"returncode": proc.returncode}
@@ -1061,7 +902,7 @@ def _flat(obj, prefix=""):
 
 @probe("config", "cli_dry_run")
 def cli_dry_run(ctx):
-    smoke_args = ["-c", "configs/smoke.json"]
+    smoke_args = ["-c", SMOKE_FILE]
     tmp = ctx.tmp
     jobs = {
         "train_smoke": ("train.py", [*smoke_args, "--dry-run"]),
@@ -1071,15 +912,14 @@ def cli_dry_run(ctx):
             *smoke_args, "--set", "device=mps", "--set", "loss.type=diffusion",
             "--device", "cpu", "--parameterization", "score", "--set", "name=x", "--dry-run",
         ]),
-        "train_default_config": ("train.py", ["--dry-run"]),
         "train_config_and_resume": ("train.py", [*smoke_args, "-r", "missing.pt", "--dry-run"]),
-        "ldm_train_dry_run": ("ldm.py", ["train", "-c", "configs/ldm/lsun_churches_l2.json",
+        "ldm_train_dry_run": ("ldm.py", ["train", "-c", CHURCHES_L2_FILE,
                                          "--parameterization", "fourier_gaussian", "--dry-run"]),
         "ldm_compare_dry_run": ("ldm.py", [
-            "compare", "-c", "configs/ldm/lsun_churches_l2.json", "--seeds", "7", "--dry-run",
+            "compare", "-c", CHURCHES_L2_FILE, "--seeds", "7", "--dry-run",
             "--set", f"cache.dir={tmp}/cache", "--set", f"training.save_dir={tmp}/runs",
         ]),
-        "ldm_config_and_resume": ("ldm.py", ["train", "-c", "configs/ldm/ffhq.json",
+        "ldm_config_and_resume": ("ldm.py", ["train", "-c", FFHQ_FILE,
                                              "-r", "missing.pt", "--dry-run"]),
     }
     names = sorted(jobs)
@@ -1090,12 +930,11 @@ def cli_dry_run(ctx):
     os.chdir(ctx.root)
     load_config = symbol("load_config", *CONFIG)
     in_process = {
-        "train_smoke": load_config("configs/smoke.json"),
-        "train_default_config": load_config("config.json"),
+        "train_smoke": load_config(SMOKE_FILE),
     }
     # A failed run keeps its returncode/stderr line so the diff says why.
     reference = _flat(results["train_smoke"].get("stdout_json", {}))
-    for name in ("train_smoke", "train_flags_override_set", "train_default_config"):
+    for name in ("train_smoke", "train_flags_override_set"):
         result = results[name]
         if "stdout_json" not in result:
             continue

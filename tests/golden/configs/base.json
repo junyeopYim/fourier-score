@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "name": "auto",
+  "seed": 42,
+  "device": "auto",
+  "arch": {
+    "type": "NCSNpp",
+    "args": {
+      "nf": 128,
+      "ch_mult": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "num_res_blocks": 4,
+      "attn_resolutions": [
+        16
+      ],
+      "dropout": 0.1,
+      "resamp_with_conv": true,
+      "conditional": true,
+      "fir": true,
+      "fir_kernel": [
+        1,
+        3,
+        3,
+        1
+      ],
+      "skip_rescale": true,
+      "resblock_type": "biggan",
+      "progressive": "none",
+      "progressive_input": "residual",
+      "progressive_combine": "sum",
+      "embedding_type": "fourier",
+      "fourier_scale": 16.0,
+      "init_scale": 0.0,
+      "nonlinearity": "swish"
+    }
+  },
+  "data_loader": {
+    "type": "ImageDataLoader",
+    "args": {
+      "dataset": "cifar10",
+      "root": "data",
+      "image_size": 32,
+      "channels": 3,
+      "centered": false,
+      "random_flip": true,
+      "download": false,
+      "validation_size": 5000,
+      "split_seed": 2026,
+      "batch_size": 128,
+      "num_workers": 0,
+      "synthetic_size": 64,
+      "crop_size": null
+    }
+  },
+  "process": {
+    "type": "ve",
+    "sigma_min": 0.01,
+    "sigma_max": 50.0,
+    "num_scales": 1000,
+    "t_min": 1e-05,
+    "beta_start": 0.0001,
+    "beta_end": 0.02
+  },
+  "loss": {
+    "type": "fourier_gaussian",
+    "objective": "dsm",
+    "reduction": "half_sum"
+  },
+  "fourier": {
+    "gate": {
+      "mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "value": 1.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0,
+      "delta": 0.5
+    },
+    "power_floor": 0.0001,
+    "stats_batch_size": 256,
+    "cache_dir": "data/stats"
+  },
+  "optimizer": {
+    "type": "Adam",
+    "args": {
+      "lr": 0.0002,
+      "betas": [
+        0.9,
+        0.999
+      ],
+      "eps": 1e-08,
+      "weight_decay": 0.0
+    }
+  },
+  "trainer": {
+    "iterations": 1300001,
+    "save_dir": "saved",
+    "save_every": 10000,
+    "snapshot_every": 50000,
+    "log_every": 50,
+    "console": "human",
+    "progress_every_seconds": 5.0,
+    "eval_every": 2000,
+    "warmup": 5000,
+    "grad_clip": 1.0,
+    "ema_decay": 0.999,
+    "microbatch_size": null,
+    "tensorboard": false
+  },
+  "backend": {
+    "precision": "fp32",
+    "tf32": false,
+    "cpu_threads": 4,
+    "spectral_transform": "auto"
+  },
+  "sampling": {
+    "method": "pc",
+    "steps": 1000,
+    "batch_size": 64,
+    "num_samples": 64,
+    "seed": 17002,
+    "corrector_steps": 1,
+    "snr": 0.16,
+    "denoise": true,
+    "clip_denoised": false
+  },
+  "evaluation": {
+    "batch_size": 128,
+    "max_images": 1024,
+    "seed": 17001,
+    "noise_bins": 10,
+    "frequency_bins": 0
+  }
+}

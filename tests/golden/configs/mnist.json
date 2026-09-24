@@ -1,0 +1,39 @@
+{
+  "extends": "base.json",
+  "seed": 0,
+  "data_loader": {
+    "args": {
+      "dataset": "mnist",
+      "channels": 1,
+      "centered": true,
+      "random_flip": false
+    }
+  },
+  "arch": {
+    "args": {
+      "nf": 32,
+      "ch_mult": [
+        1,
+        2,
+        2
+      ],
+      "num_res_blocks": 2,
+      "attn_resolutions": [
+        8
+      ]
+    }
+  },
+  "loss": {
+    "reduction": "mean"
+  },
+  "trainer": {
+    "iterations": 100000,
+    "warmup": 500,
+    "save_every": 10000,
+    "snapshot_every": 10000,
+    "eval_every": 2000
+  },
+  "evaluation": {
+    "max_images": 5000
+  }
+}

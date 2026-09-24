@@ -33,7 +33,7 @@ import shutil
 import warnings
 
 import golden_probes as gp
-from golden_probes import file_sha256, json_digest, probe, shapes, symbol, tensor_digest
+from golden_probes import config_path, file_sha256, json_digest, probe, shapes, symbol, tensor_digest
 
 GROUP = "local"
 STORED_CONFIGS_KEY = f"{GROUP}.stored_configs"
@@ -155,7 +155,7 @@ def _mnist_overrides(ctx, cache_dir, save_dir):
 
 def _mnist_config(ctx, overrides=()):
     load_config = symbol("load_config", *CONFIG)
-    return load_config(str(ctx.root / "configs" / "mnist.json"), list(overrides))
+    return load_config(str(config_path("configs/mnist.json")), list(overrides))
 
 
 def _mnist_identity(ctx):

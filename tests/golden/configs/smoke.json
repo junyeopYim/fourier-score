@@ -1,0 +1,60 @@
+{
+  "extends": "base.json",
+  "seed": 0,
+  "data_loader": {
+    "args": {
+      "dataset": "synthetic",
+      "channels": 1,
+      "centered": true,
+      "random_flip": false,
+      "image_size": 8,
+      "batch_size": 2,
+      "validation_size": 4,
+      "synthetic_size": 16
+    }
+  },
+  "arch": {
+    "args": {
+      "nf": 8,
+      "ch_mult": [
+        1,
+        2
+      ],
+      "num_res_blocks": 1,
+      "attn_resolutions": [
+        4
+      ],
+      "dropout": 0.0
+    }
+  },
+  "process": {
+    "sigma_max": 2.0,
+    "num_scales": 16
+  },
+  "fourier": {
+    "stats_batch_size": 4
+  },
+  "loss": {
+    "reduction": "mean"
+  },
+  "trainer": {
+    "iterations": 3,
+    "warmup": 0,
+    "save_every": 1,
+    "snapshot_every": 3,
+    "log_every": 1,
+    "eval_every": 2
+  },
+  "sampling": {
+    "steps": 4,
+    "batch_size": 2,
+    "num_samples": 4,
+    "corrector_steps": 0,
+    "method": "heun"
+  },
+  "evaluation": {
+    "batch_size": 2,
+    "max_images": 4,
+    "noise_bins": 4
+  }
+}

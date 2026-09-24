@@ -49,7 +49,10 @@ import sys
 import tempfile
 import warnings
 
-from golden_probes import floats, json_digest, payload_writer, probe, shapes, symbol, tensor_digest
+from golden_probes import (
+    config_path, entrypoint, floats, json_digest, payload_writer, probe, shapes, symbol,
+    tensor_digest,
+)
 
 GROUP = "checkpoint"
 
@@ -183,7 +186,7 @@ def copy_without_optimizer(src, dst):
 def train_pixel(ctx, work, arm):
     """``train.py -c configs/smoke.json`` in a subprocess; returns the run dir."""
     command = [
-        sys.executable, str(ctx.root / "train.py"), "-c", str(ctx.root / "configs/smoke.json"),
+        *entrypoint(ctx, "train.py"), "-c", str(config_path("configs/smoke.json")),
         "--device", "cpu", "--set", f"trainer.save_dir={work / 'runs'}",
         "--set", f"fourier.cache_dir={work / 'stats'}", "--set", "backend.cpu_threads=1",
         *PIXEL_ARMS[arm],
@@ -780,7 +783,7 @@ def state_dict_keys(ctx):
     reference = None
     for name in ("score", *(n for n in variants if n != "score")):
         overrides = variants[name]
-        cfg = load_config(str(ctx.root / "configs/smoke.json"), [*base, *overrides])
+        cfg = load_config(str(config_path("configs/smoke.json")), [*base, *overrides])
         a = cfg["data_loader"]["args"]
         model = build_model(cfg, placeholder_stats(a["channels"], a["image_size"]), "cpu")
         ema = EMAClass(model, cfg["trainer"]["ema_decay"])

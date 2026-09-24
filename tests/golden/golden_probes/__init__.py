@@ -18,6 +18,10 @@ Rules for probe authors:
   within tolerance elsewhere (see :func:`compare`).
 * Use ``ctx.root`` for repository paths and ``ctx.tmp`` for outputs.  Never
   write into ``ctx.root`` and never touch ``ctx.golden_root`` except to read.
+* Read config files through :func:`config_path` (frozen epoch-0 copies in
+  ``tests/golden/configs``) and launch entry points through
+  :func:`entrypoint`.  Probes run with ``base.json`` frozen the same way, so
+  adding or editing files under ``configs/`` never changes a golden.
 
 Environment:
 
@@ -42,10 +46,13 @@ import math
 import os
 from pathlib import Path
 import platform
+import sys
 import tempfile
 
 GOLDEN_DIR = Path(__file__).resolve().parents[1]
 PAYLOAD_DIR = GOLDEN_DIR / "payloads"
+# Holds configs/: epoch-0 copies of the config files the probes read.
+CONFIG_ROOT = GOLDEN_DIR
 EPOCH0_TAG = "pre-template-refactor"
 EPOCH0_SOURCE_SHA256 = "f79717f3da852ffcde3ab8eea4997b3b44a3d0843e6cea040bde9afa145970a8"
 GROUPS = ("config", "checkpoint", "numerics", "gmm", "local")
@@ -316,9 +323,54 @@ def deterministic():
         torch.random.set_rng_state(state[2])
 
 
+def config_path(rel):
+    """The frozen epoch-0 copy of a config file, e.g. ``configs/smoke.json``."""
+    return CONFIG_ROOT / rel
+
+
+def _freeze_base(config, root):
+    # Epoch-0 config.py reads ROOT / "configs/base.json" inline; later code keeps BASE.
+    config.ROOT = root
+    if hasattr(config, "BASE"):
+        config.BASE = root / "configs/base.json"
+
+
+@contextmanager
+def frozen_configs():
+    """Resolve every config chain onto the frozen ``base.json`` schema and defaults."""
+    config = importlib.import_module("fourier_score.config")
+    saved = {k: getattr(config, k) for k in ("ROOT", "BASE") if hasattr(config, k)}
+    _freeze_base(config, CONFIG_ROOT)
+    try:
+        yield
+    finally:
+        for k, v in saved.items():
+            setattr(config, k, v)
+
+
+_BOOTSTRAP = """
+import runpy, sys
+from pathlib import Path
+root, frozen, script = sys.argv[1:4]
+sys.path[:0] = [str(Path(script).parent), root]
+import fourier_score.config as config
+config.ROOT = Path(frozen)
+if hasattr(config, "BASE"):
+    config.BASE = Path(frozen) / "configs/base.json"
+sys.argv = [script, *sys.argv[4:]]
+runpy.run_path(script, run_name="__main__")
+"""
+
+
+def entrypoint(ctx, script, *args):
+    """argv running ``ctx.root / script`` like ``python script``, with base.json frozen."""
+    return [sys.executable, "-c", _BOOTSTRAP, str(ctx.root), str(CONFIG_ROOT),
+            str(ctx.root / script), *map(str, args)]
+
+
 def run(key, ctx):
     item = PROBES[key]
-    with deterministic():
+    with deterministic(), frozen_configs():
         scratch = Path(tempfile.mkdtemp(prefix=item.name + ".", dir=ctx.tmp))
         local = Context(ctx.root, scratch, ctx.payload_dir, ctx.golden_root, ctx.recording)
         result = item.fn(local)
@@ -332,7 +384,7 @@ def write_payloads(group, ctx):
     for key, item in sorted(WRITERS.items()):
         if item.group != group or (item.local and ctx.golden_root is None):
             continue
-        with deterministic():
+        with deterministic(), frozen_configs():
             item.fn(ctx)
 
 
