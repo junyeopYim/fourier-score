@@ -33,7 +33,7 @@ residual scale, determined by fixed training-data moments.
 
 | Experiment | Question or observation | Status |
 |---|---|---|
-| MNIST | The two Gaussian parameterizations gave similar FID in the exploratory run. | Preliminary single-run observation. |
+| MNIST | The two Gaussian parameterizations gave similar FID in the exploratory run. | Preliminary single-run observation; the [19-arm normalized and gated comparison](#mnist-remaining-normalized-and-gated-comparisons) is in progress. |
 | CIFAR-10 | Does frequency-dependent covariance help relative to scalar covariance? | Three paired seeds × two Gaussian arms, 950K updates; results pending. |
 | LSUN Churches | Is the construction also useful in the latent space of a fixed autoencoder? | Three paired seeds × two Gaussian arms, target 500K updates; results pending. |
 | Matched-moment Gaussian / GMM | Can the residual learn structure beyond an exactly known Gaussian reference? | Reproducible synthetic mechanism experiment with an analytic true score. |
@@ -337,6 +337,25 @@ TensorFlow environment. See [setup and protocol](scripts/README-score-sde-eval.m
 This reads exactly 50,000 saved images and the official CIFAR reference statistics;
 it does not generate new samples.
 
+### GMM mechanism studies
+
+The [GMM studies](#understand-the-mechanism) run on CPU through `experiments/`,
+with the flags given in each report. The smoke preset finishes in seconds.
+
+```bash
+uv run --locked --extra figures python -m experiments list
+uv run --locked --extra figures python -m experiments gmm gated \
+  --preset smoke --seeds 42 --output saved/gmm_gated_smoke
+uv run --locked --extra figures python -m experiments gmm plateau \
+  --preset smoke --seeds 42 --reuse-baselines saved/gmm_gated_smoke \
+  --output saved/gmm_plateau_smoke
+```
+
+Later studies audit reused controls bit for bit (`--reuse-baselines`). The
+original flags plus `--stage report --report <dir>` rebuild tables and figures
+without training; [experiments/README.md](experiments/README.md) covers stages,
+provenance and adding a study.
+
 ## Understand the mechanism
 
 ![Forward noising and reverse denoising of an analytic Gaussian mixture, with stochastic and probability-flow trajectories.](assets/stochastic_process.svg)
@@ -477,27 +496,14 @@ assets/                            Public figures, synthetic arrays and result t
 its `base/` classes are intentionally absent, as the pixel and latent trainers
 share no loop yet.
 
-`fourier_score/` holds the numerics. Its Python files define the
-`source_sha256` recorded in checkpoints and GMM runs, and it never imports
-`experiments/`, `scripts/` or `tests/`. `experiments/` orchestrates multi-run studies:
-`python -m experiments list` shows the registered studies and
-`python -m experiments gmm <name>` runs one. The `scripts/run_gmm_*.py`
-launchers quoted in the reports remain as thin wrappers around it.
-[Reports](reports/README.md) hold the full write-ups, and
-[provenance](reports/provenance.md) maps source hashes to Git tags and explains
-how to resume runs recorded under an earlier source.
+`fourier_score/` holds the numerics that define `source_sha256` and never
+imports `experiments/`, `scripts/` or `tests/`. The `scripts/run_gmm_*.py`
+launchers quoted in the reports are thin wrappers around `experiments/`.
+[Provenance](reports/provenance.md) maps source hashes to Git tags.
 
 Each run saves its configuration, metrics, training checkpoints and EMA
 snapshots under `saved/`. Generated images are stored with their sampling
 settings. `docs/` holds local research notes and is excluded from Git.
-
-```bash
-uv run --locked --all-extras python -m pytest -q
-uv run --locked --extra notebooks python scripts/check_notebooks.py
-```
-
-The CI workflow checks numerical behavior and notebook execution on CPU. See
-the [development notes below](#development) for source navigation and debugging.
 
 ## Development
 
@@ -509,14 +515,29 @@ Start with `fourier_score/model/reference.py` for the Gaussian adapter,
 
 ```bash
 uv sync --locked --all-extras
+uv run --no-sync python -m pytest -q
 uv run --no-sync python scripts/doctor.py --device cpu
 uv run --no-sync python scripts/check_notebooks.py --execute
 ```
 
-Use `--dry-run` to inspect configs and `--help` for each command's options.
-Reduce microbatch size to fit device memory while keeping the effective batch
-fixed. Resume a run with `train.py -r <checkpoint>` in its original environment.
-Give each experiment a distinct run name.
+CI runs these checks on CPU. `tests/contracts/` compares the code with values
+recorded in `tests/golden/` at the epoch-0 tag: configs, run names, resume
+signatures, checkpoint keys, short trajectories, samplers and the GMM chain.
+Numbers match bit for bit on the recording machine and within tolerance
+elsewhere (`FOURIER_GOLDEN_EXACT=1` or `0` forces either mode). Pointing
+`FOURIER_GOLDEN_ROOT` at a checkout with `saved/` and `pretrained/` adds real checkpoints (`-m golden_local`).
+
+A failing contract means observable behavior changed. In a refactor, fix the
+code. For an intended change, such as a new config file, gate mode or
+objective, re-record only the affected group in its own commit and explain why:
+`CUDA_VISIBLE_DEVICES= uv run --no-sync python tests/golden/record_goldens.py
+--root . --allow-any-tree --group config`.
+
+Any edit under `fourier_score/` changes `source_sha256`: resume refuses older
+checkpoints and inference warns. Run long studies from a worktree pinned to a
+tag, and add an epoch to [provenance](reports/provenance.md) when such a change
+lands. Use `--dry-run` and `--help` to inspect commands, a distinct run name per
+experiment, and smaller microbatches at a fixed effective batch to fit memory.
 
 ## References and attribution
 
