@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fourier_score.config import add_config_args, from_args
-from fourier_score.data import build_data
+from fourier_score.data_loader.data_loaders import build_data
 from fourier_score.images import write_png
 from fourier_score.utils import json_write
 
@@ -20,7 +20,7 @@ def main():
     p.add_argument("--split", choices=["train", "validation"], default="train")
     p.add_argument("--limit", type=int)
     a = p.parse_args()
-    cfg = from_args(a)
+    cfg, _ = from_args(p, a)
     bundle = build_data(cfg)
     ds = bundle.train if a.split == "train" else bundle.validation
     if a.limit is not None:

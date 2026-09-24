@@ -117,7 +117,7 @@ residual coordinates.
 `diffusion` is an additional epsilon-prediction sign convention. In the latent
 path, $y=\alpha_t z+\sigma_t\epsilon$ replaces $\mu$ by $\alpha_t\mu$ and $P_k$
 by $\alpha_t^2P_k$; the common adapter returns total epsilon. The first stage
-stays frozen. The [method implementation](fourier_score/method.py) and
+stays frozen. The [method implementation](fourier_score/model/reference.py) and
 [GMM notebook](notebooks/gmm_fourier_residual.ipynb) give the corresponding
 reference and residual calculations.
 
@@ -238,7 +238,9 @@ source hashes are recorded. New training is written under
 `saved/mnist_remaining_100k/`, preserving earlier incomplete run directories.
 Repeating the command reuses completed models and resumes compatible `last.pt`
 checkpoints in the new study. Resume retains the trainer's source/environment
-checks. Keep the source and environment fixed during an interrupted study.
+checks. Keep the source and environment fixed during an interrupted study: a
+study started before the template refactor continues from a worktree at its
+[epoch-0 tag](reports/provenance.md#resume-or-re-evaluate-an-epoch-0-run).
 
 All selected models are evaluated using the current code and EMA weights on
 the same 5,000 validation images: evaluation seed 17001, batch 128, 20 noise
@@ -445,8 +447,20 @@ The [synthetic arrays](assets/diagnostics_data.npz) can be read with
 train.py / sample.py / evaluate.py   Pixel training, inference and metrics
 ldm.py                             Native latent pipeline
 configs/                           Versioned experimental protocols
-fourier_score/                     Method, statistics, trainers and samplers
-  backbones/                       Attributed NCSN++ implementation
+fourier_score/                     Numerical package covered by source_sha256
+  provenance.py                    Repository root, source hash and file digests (stdlib only)
+  parse_config.py                  Config inheritance, overrides, type checks, CLI flags, from_args
+  config.py                        Pixel config schema, validation and run names
+  gates.py                         Objective names and the noise-gate table
+  utils.py                         Device, RNG and checkpoint/JSON I/O helpers
+  images.py                        PNG writing and preview grids
+  evaluation.py                    Checkpoint DSM evaluation and FID/IS of image folders
+  logger.py                        metrics.jsonl, TensorBoard and console progress
+  gmm.py                           Matched-moment GMM, toy score models and oracle metrics
+  model/                           Shared diffusion numerics; pixel adapter, sampler, DSM metrics
+  data_loader/                     Datasets, splits, resumable batch streams and statistics
+  trainer/                         Pixel trainer, checkpoint format and resume signature, EMA
+  backbones/                       Attributed NCSN++, vendored (template model/backbones role)
   ldm/                             Frozen-first-stage latent implementation
 experiments/                       Orchestration of multi-run studies
   gmm/                             GMM study registry, pipeline and report export
@@ -457,6 +471,11 @@ tests/                             Numerical and end-to-end regression checks
 reports/                           Experiment reports, gate equations and provenance
 assets/                            Public figures, synthetic arrays and result tables
 ```
+
+`model/`, `data_loader/`, `trainer/`, `logger.py`, `parse_config.py` and
+`utils.py` fill the slots of [pytorch-template](https://github.com/victoresque/pytorch-template);
+its `base/` classes are intentionally absent, as the pixel and latent trainers
+share no loop yet.
 
 `fourier_score/` holds the numerics. Its Python files define the
 `source_sha256` recorded in checkpoints and GMM runs, and it never imports
@@ -482,10 +501,11 @@ the [development notes below](#development) for source navigation and debugging.
 
 ## Development
 
-Start with `fourier_score/method.py` for the Gaussian adapter,
-`statistics.py` for training-only moments, and `model.py` / `loss.py` for the
-pixel objectives. Pixel training and samplers are in `training.py` and
-`diffusion.py`; native latent equivalents live under `fourier_score/ldm/`.
+Start with `fourier_score/model/reference.py` for the Gaussian adapter,
+`data_loader/statistics.py` for training-only moments, and `model/model.py` /
+`model/loss.py` for the pixel objectives. Pixel training is in
+`trainer/trainer.py`, the noise process in `model/process.py` and samplers in
+`model/sampling.py`; native latent equivalents live under `fourier_score/ldm/`.
 
 ```bash
 uv sync --locked --all-extras

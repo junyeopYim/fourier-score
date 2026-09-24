@@ -2,14 +2,14 @@
 
 import time
 from pathlib import Path
-from fourier_score.ema import EMA
-from fourier_score.checkpoints import FORMAT, resume_signature
+from fourier_score.trainer.ema import EMA
+from fourier_score.trainer.checkpoints import FORMAT, resume_signature
 import torch
-from fourier_score.data import BatchStream
-from fourier_score.data import build_data, prepare_stats
-from fourier_score.model import build_model, architecture_report, weight_hash
-from fourier_score.loss import training_loss
-from fourier_score.evaluation import evaluate_dsm
+from fourier_score.data_loader.data_loaders import BatchStream, build_data
+from fourier_score.data_loader.statistics import prepare_stats
+from fourier_score.model.model import build_model, architecture_report, weight_hash
+from fourier_score.model.loss import training_loss
+from fourier_score.model.metric import evaluate_dsm
 from fourier_score.utils import (
     configure_runtime,
     seed_all,
@@ -19,9 +19,10 @@ from fourier_score.utils import (
     environment,
     json_write,
     source_hash,
+    synchronize,
 )
-from fourier_score.logging import ExperimentLogger
-from fourier_score.logging import ConsoleProgress, duration, format_metrics
+from fourier_score.logger import ExperimentLogger
+from fourier_score.logger import ConsoleProgress, duration, format_metrics
 from fourier_score.config import experiment_name
 
 
@@ -304,10 +305,7 @@ class Trainer:
         Excludes downtime between sessions and the write of this checkpoint.
         Synchronize only at reporting/checkpoint boundaries, not every update.
         """
-        if self.device.type == "cuda":
-            torch.cuda.synchronize(self.device)
-        elif self.device.type == "mps":
-            torch.mps.synchronize()
+        synchronize(self.device)
         return self._previous_wall_seconds + time.perf_counter() - self._session_started
 
     def optimize(self):

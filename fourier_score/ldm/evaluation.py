@@ -7,13 +7,12 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader, Subset
 
-from fourier_score.evaluation import frequency_band_sums, radial_frequency_bands
+from fourier_score.model.metric import frequency_band_sums, radial_frequency_bands
 from fourier_score.images import preview_grid, write_png
-from fourier_score.utils import environment, isolated_rng, json_write
+from fourier_score.utils import environment, isolated_rng, json_write, synchronize
 
 from .data import LatentDataset, draw_latents
 from .model import sample_latents
-from .training import synchronize
 
 
 @torch.no_grad()

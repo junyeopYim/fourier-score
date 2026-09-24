@@ -9,9 +9,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import torch
 
-from fourier_score.checkpoints import FORMAT
 from fourier_score.config import load_config
-from fourier_score.model import architecture_report, build_model
+from fourier_score.model.model import architecture_report, build_model
+from fourier_score.trainer.checkpoints import FORMAT
 from fourier_score.utils import ROOT, atomic_save, environment, load_checkpoint, source_hash
 from scripts.download_ldm import file_info
 from scripts.download_score_sde import MODELS, download_plan, verify_bundle

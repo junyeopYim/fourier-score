@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from fourier_score.parse_config import CustomArgs, add_options, cli_overrides, from_args
+from fourier_score.provenance import file_sha256
 from fourier_score.utils import ROOT, configure_runtime, json_write, load_checkpoint
 
 from .config import (
@@ -19,11 +21,40 @@ from .config import (
 )
 
 
+DEFAULT_CONFIG = ROOT / "configs/ldm/ffhq.json"
+DEVICE = CustomArgs(["--device"], "device")
+# Per-command flags that expand into --set entries after DEVICE.
+OPTIONS = {
+    "train": [
+        CustomArgs(
+            ["--parameterization"], "parameterization", choices=PARAMETERIZATIONS
+        )
+    ],
+    "sample": [
+        CustomArgs(["--num-samples"], "sampling.num_samples", type=int),
+        CustomArgs(["--batch-size"], "sampling.batch_size", type=int),
+        CustomArgs(["--steps"], "sampling.steps", type=int),
+    ],
+}
+
+
+def resumed(path, changes):
+    """train: the checkpoint's config with ``changes``."""
+    state = load_checkpoint(path)
+    return validate(override(state["config"], changes)), state
+
+
+def trained(path, changes):
+    """sample/evaluate: ``load_trained``'s (model, cfg, device, state)."""
+    from .training import load_trained
+
+    return load_trained(path, changes)
+
+
 def config_args(parser):
     parser.add_argument("-c", "--config")
     parser.add_argument("--set", action="append", default=[])
-    parser.add_argument("--device")
-    return parser
+    return add_options(parser, [DEVICE])
 
 
 def main(argv=None):
@@ -34,7 +65,7 @@ def main(argv=None):
         p.add_argument("--dry-run", action="store_true")
         if command == "train":
             p.add_argument("-r", "--resume")
-            p.add_argument("--parameterization", choices=PARAMETERIZATIONS)
+            add_options(p, OPTIONS["train"])
         if command == "compare":
             p.add_argument("--seeds", nargs="+", type=int, default=[42, 43, 44])
             p.add_argument(
@@ -49,9 +80,7 @@ def main(argv=None):
     group.add_argument("--pretrained", action="store_true")
     p.add_argument("-o", "--output", required=True)
     p.add_argument("--weights", choices=("ema", "raw"), default="ema")
-    p.add_argument("--num-samples", type=int)
-    p.add_argument("--batch-size", type=int)
-    p.add_argument("--steps", type=int)
+    add_options(p, OPTIONS["sample"])
     p = config_args(commands.add_parser("evaluate"))
     p.add_argument("-r", "--resume", required=True)
     p.add_argument("-o", "--output", required=True)
@@ -85,30 +114,22 @@ def main(argv=None):
         )
         print(json.dumps(result, indent=2))
         return
-    changes = list(args.set)
-    if args.device:
-        changes.append("device=" + args.device)
-    if getattr(args, "parameterization", None):
-        changes.append("parameterization=" + args.parameterization)
-    if args.command == "sample":
-        for key in ("num_samples", "batch_size", "steps"):
-            if getattr(args, key) is not None:
-                changes.append(f"sampling.{key}={getattr(args, key)}")
     resume = getattr(args, "resume", None)
-    if resume and args.config:
-        parser.error("--resume uses the checkpoint config; do not also supply --config")
-    if args.command in ("sample", "evaluate") and resume:
-        from .training import load_trained
-
-        model, cfg, device, state = load_trained(resume, changes)
+    inference = bool(resume) and args.command in ("sample", "evaluate")
+    loaded = from_args(
+        parser,
+        args,
+        [DEVICE, *OPTIONS.get(args.command, [])],
+        load_config,
+        DEFAULT_CONFIG,
+        trained if inference else resumed,
+        "--resume uses the checkpoint config; do not also supply --config",
+    )
+    if inference:
+        model, cfg, device, state = loaded
         spec = state["spec"]
     else:
-        state = load_checkpoint(resume) if resume else None
-        cfg = (
-            validate(override(state["config"], changes))
-            if state
-            else load_config(args.config or ROOT / "configs/ldm/ffhq.json", changes)
-        )
+        cfg, state = loaded
         spec = load_spec(cfg)
     if getattr(args, "dry_run", False) or args.command == "inspect":
         if args.command == "compare":
@@ -151,7 +172,7 @@ def main(argv=None):
             subprocess.run(job["argv"], check=True)
     elif args.command == "sample":
         from .evaluation import generate
-        from .first_stage import file_sha256, load_first_stage
+        from .first_stage import load_first_stage
         from .model import load_public_denoiser
 
         if resume:
@@ -208,7 +229,7 @@ def main(argv=None):
 
         from .data import image_splits
         from .evaluation import empty_output, reconstruct
-        from .first_stage import file_sha256, load_first_stage
+        from .first_stage import load_first_stage
 
         ds = image_splits(cfg, spec)[args.split]
         provenance = {
@@ -267,11 +288,10 @@ def comparison_commands(args, cfg):
                 str(ROOT / "ldm.py"),
                 "train",
                 "-c",
-                str(Path(args.config or ROOT / "configs/ldm/ffhq.json").resolve()),
+                str(Path(args.config or DEFAULT_CONFIG).resolve()),
             ]
             for change in [
-                *args.set,
-                *(["device=" + args.device] if args.device else []),
+                *cli_overrides(args, [DEVICE]),
                 f"seed={seed}",
                 f"parameterization={parameterization}",
                 "name=" + name,

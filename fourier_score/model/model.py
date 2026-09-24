@@ -12,9 +12,9 @@ import json
 import torch
 from torch import nn
 from fourier_score.backbones.ncsnpp import NCSNpp
-from fourier_score.method import FourierGaussian
-from fourier_score.method import OBJECTIVES, GAUSSIAN_OBJECTIVES
-from fourier_score.diffusion import NoiseProcess
+from fourier_score.model.reference import FourierGaussian
+from fourier_score.gates import OBJECTIVES, GAUSSIAN_OBJECTIVES
+from fourier_score.model.process import NoiseProcess
 
 
 def backbone_config(cfg):
@@ -68,7 +68,6 @@ def weight_hash(backbone):
 class GenerativeModel(nn.Module):
     def __init__(self, cfg, stats=None):
         super().__init__()
-        self.cfg = copy.deepcopy(cfg)
         self.process = NoiseProcess(cfg["process"])
         self.objective = cfg["loss"]["type"]
         if self.objective not in OBJECTIVES:

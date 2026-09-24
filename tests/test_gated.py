@@ -6,12 +6,12 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from fourier_score.checkpoints import resume_signature
 from fourier_score.config import experiment_name, validate
-from fourier_score.diffusion import NoiseLevel, NoiseProcess
-from fourier_score.loss import training_loss
-from fourier_score.method import FourierGaussian
-from fourier_score.spectral import conjugate_symmetrize
+from fourier_score.model.loss import training_loss
+from fourier_score.model.process import NoiseLevel, NoiseProcess
+from fourier_score.model.reference import FourierGaussian
+from fourier_score.model.spectral import conjugate_symmetrize
+from fourier_score.trainer.checkpoints import resume_signature
 
 GATE_MODES = ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma",
               "linear_log_sigma", "bounded_log_sigmoid"]

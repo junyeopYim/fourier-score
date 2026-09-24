@@ -329,6 +329,40 @@ def test_training_resume_and_ema_decode_end_to_end(latent_experiment, tmp_path):
 
 
 @pytest.mark.parametrize("latent_experiment", ["AutoencoderKL"], indirect=True)
+@pytest.mark.parametrize("source_change", ["edited", "missing"])
+def test_checkpoint_keeps_startup_source_when_checkout_changes(
+    latent_experiment, monkeypatch, source_change
+):
+    cfg, spec = latent_experiment
+    prepare_cache(cfg, spec, torch.device("cpu"), progress=lambda _: None)
+    trainer = Trainer(cfg, spec)
+    startup_hash = trainer.env["source_sha256"]
+    trainer.train_step(trainer.stream.next_batch())
+
+    def changed_source_hash():
+        if source_change == "missing":
+            raise FileNotFoundError("Source file moved while training was running")
+        return "0" * 64
+
+    monkeypatch.setattr("fourier_score.ldm.training.source_hash", changed_source_hash)
+    try:
+        trainer.save(snapshot=True)
+    finally:
+        trainer.console.close()
+    checkpoint = load_checkpoint(trainer.out / "last.pt")
+    snapshot = load_checkpoint(trainer.out / f"ema_{trainer.step:09d}.pt")
+    for state in (checkpoint, snapshot):
+        assert state["step"] == 1
+        assert state["source_sha256"] == startup_hash
+        assert state["source_sha256"] == state["environment"]["source_sha256"]
+
+    # Freezing save-time provenance must not bypass the resume source guard.
+    if source_change == "edited":
+        with pytest.raises(ValueError, match="same source revision"):
+            Trainer(cfg, spec, checkpoint)
+
+
+@pytest.mark.parametrize("latent_experiment", ["AutoencoderKL"], indirect=True)
 def test_public_ema_selection_and_strict_native_keys(latent_experiment, tmp_path):
     _cfg, spec = latent_experiment
     model = Denoiser(spec)

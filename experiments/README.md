@@ -95,9 +95,10 @@ command.
 ## Adding a GMM gate experiment
 
 1. **Gate (numerics, changes `source_sha256`).** Implement the mode in
-   `fourier_score` (gate weights, validation, name suffix, signature handling
-   and an arm factory in `fourier_score/gmm.py`) with its tests. Nothing in
-   `experiments/` is needed for this step.
+   `fourier_score` (a `GATES` row in `fourier_score/gates.py` and its weights
+   in `FourierGaussian._gate_weights`) with its tests. Its arms are
+   `gate_arm(covariance, mode, **params)` from `fourier_score/gmm.py`; no new
+   factory is needed. Nothing in `experiments/` is needed for this step.
 2. **Suite.** In `gmm/registry.py` append
    `SUITES["<name>"] = (*SUITES["log_gates"], *new default arms)`; the new
    experiment's controls are the previous suite, in order.

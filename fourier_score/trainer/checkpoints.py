@@ -4,7 +4,8 @@ import copy
 import warnings
 import torch
 from fourier_score.config import validate, apply_overrides
-from fourier_score.model import build_model
+from fourier_score.gates import gate_signature_pops
+from fourier_score.model.model import build_model
 from fourier_score.utils import load_checkpoint, configure_runtime, source_hash
 
 
@@ -16,20 +17,13 @@ def resume_signature(cfg):
     # Missing objective in v1 checkpoints means DSM; retain their signatures.
     if c["loss"].get("objective", "dsm") == "dsm":
         c["loss"].pop("objective", None)
-    # Adding disabled-gate defaults must preserve pre-gate v1 signatures.
-    if c["fourier"].get("gate", {}).get("mode", "none") == "none":
+    # Gate keys newer than, or unread by, a mode stay out of its signature (gates.GATES).
+    pops = gate_signature_pops(c["fourier"].get("gate", {}))
+    if pops is None:
         c["fourier"].pop("gate", None)
     else:
-        gate = c["fourier"]["gate"]
-        if gate["mode"] not in ("log_sigma_plateau", "spectral_cap", "linear_log_sigma", "bounded_log_sigmoid"):
-            gate.pop("sigma_lo", None)
-            gate.pop("sigma_hi", None)
-        if gate["mode"] == "linear_log_sigma":
-            gate.pop("sigma_switch", None)
-            gate.pop("sharpness", None)
-        # Optional defaults must not change older active-gate signatures.
-        if gate["mode"] != "spectral_cap":
-            gate.pop("delta", None)
+        for key in pops:
+            c["fourier"]["gate"].pop(key, None)
     for k in ("name", "device", "evaluation", "sampling"):
         c.pop(k)
     for k in (

@@ -20,11 +20,11 @@ from functools import lru_cache
 import json
 from pathlib import Path
 
+import numpy as np
 import torch
 
 from fourier_score.gmm import (
-    GMMArm, MatchedMomentFamily, evaluate_model, make_bank, make_model, select_gate, tensor_state_hash,
-    train_arm,
+    GMMArm, MatchedMomentFamily, evaluate_model, make_bank, make_model, tensor_state_hash, train_arm,
 )
 from fourier_score.utils import json_write
 from experiments.common import (
@@ -153,6 +153,42 @@ def verify_pairing(results, cfg, arms):
                 raise ValueError("Unpaired validation banks")
             checks.append(check)
     return checks
+
+
+def select_gate(results, switches):
+    """Choose ONE gate for both covariances using final-step validation only.
+
+    Average equally over both covariances, all planned spectra and all seeds.
+    All candidates must cover the same complete set of training conditions.
+    """
+    groups = {}
+    conditions = set()
+    for result in results:
+        arm = result["arm"]
+        if not result["completed"]:
+            raise ValueError("Model selection requires completed runs")
+        if arm["gate_mode"] != "log_sigma":
+            continue
+        key = (result["spectrum_lambda"], result["seed"], arm["parameterization"])
+        conditions.add(key)
+        values = groups.setdefault(arm["sigma_switch"], {})
+        if key in values:
+            raise ValueError("Duplicate gate validation condition")
+        metric = result["validation"][-1]
+        if metric["split"] != "validation" or metric["step"] != result["step"]:
+            raise ValueError("Gate selection requires final-step validation")
+        values[key] = metric["score_error"]
+    if set(groups) != set(switches) or not conditions:
+        raise ValueError("Missing gate candidates")
+    rows = []
+    for switch in switches:
+        if set(groups[switch]) != conditions:
+            raise ValueError("Unpaired gate validation conditions")
+        rows.append(dict(sigma_switch=switch, n_runs=len(conditions),
+                         validation_score_error=float(np.mean(list(groups[switch].values())))))
+    chosen = min(rows, key=lambda row: (row["validation_score_error"], row["sigma_switch"]))
+    return dict(sigma_switch=chosen["sigma_switch"], candidates=rows,
+                criterion="Mean final EMA validation scaled-score MSE across both covariances, spectra and seeds")
 
 
 def test_selected(cfg, output, results, arms):

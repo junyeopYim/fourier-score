@@ -6,77 +6,8 @@ Read this file with the method section in README.md. The loss is selected separa
 import math
 import torch
 from torch import nn
-from fourier_score.spectral import SpectralFilter, conjugate_symmetrize
-
-
-GAUSSIAN_OBJECTIVES = {
-    "scalar_gaussian": {"covariance": "scalar"},
-    "fourier_gaussian": {"covariance": "fourier"},
-}
-OBJECTIVES = ("score", "diffusion", *GAUSSIAN_OBJECTIVES)
-# Score and diffusion are sign conventions, so only one is in the main ablation.
-COMPARISON_OBJECTIVES = ("score", *GAUSSIAN_OBJECTIVES)
-
-GATE_DEFAULTS = {"mode": "none", "sigma_switch": 1.0, "sharpness": 4.0, "value": 1.0,
-                 "sigma_lo": 0.8, "sigma_hi": 1.0, "delta": 0.5}
-
-
-def validate_gate(gate=None):
-    """A disabled gate means the original reference coefficient g=1."""
-    if gate is not None and (not isinstance(gate, dict) or set(gate) - GATE_DEFAULTS.keys()):
-        raise ValueError("Invalid Gaussian gate configuration")
-    result = {**GATE_DEFAULTS, **(gate or {})}
-    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau", "spectral_cap",
-                               "linear_sigma", "tanh_sigma", "linear_log_sigma", "bounded_log_sigmoid"):
-        raise ValueError("gate.mode must be none, constant, log_sigma, log_sigma_plateau, "
-                         "spectral_cap, linear_sigma, tanh_sigma, linear_log_sigma, or bounded_log_sigmoid")
-    for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi", "delta"):
-        value = result[key]
-        if type(value) not in (int, float) or not math.isfinite(value):
-            raise ValueError(f"gate.{key} must be finite")
-    if result["sigma_switch"] <= 0 or result["sharpness"] <= 0:
-        raise ValueError("gate.sigma_switch and gate.sharpness must be positive")
-    if not 0 <= result["value"] <= 1:
-        raise ValueError("gate.value must be between zero and one")
-    if not 0 < result["sigma_lo"] < result["sigma_hi"]:
-        raise ValueError("gate requires 0 < sigma_lo < sigma_hi")
-    if result["delta"] <= 0:
-        raise ValueError("gate.delta must be positive")
-    if result["mode"] == "bounded_log_sigmoid":
-        if not result["sigma_lo"] < result["sigma_switch"] < result["sigma_hi"]:
-            raise ValueError("bounded gate requires sigma_lo < sigma_switch < sigma_hi")
-        if result["sharpness"] <= 1:
-            raise ValueError("bounded gate sharpness must exceed one for flat endpoint slopes")
-    return result
-
-
-def gate_suffix(gate=None):
-    gate = validate_gate(gate)
-    def number(value):
-        return format(value, ".17g").replace(".", "p").replace("-", "m").replace("+", "")
-    if gate["mode"] == "none":
-        return ""
-    if gate["mode"] == "constant":
-        return "_gate_constant" + number(gate["value"])
-    if gate["mode"] in ("linear_log_sigma", "bounded_log_sigmoid"):
-        bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
-                  .replace("-", "m").replace("+", "") for key in ("sigma_lo", "sigma_hi")]
-        if gate["mode"] == "linear_log_sigma":
-            return f"_gate_loglinear_lo{bounds[0]}_hi{bounds[1]}"
-        return (f"_gate_logsigmoid_lo{bounds[0]}_hi{bounds[1]}"
-                f"_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}")
-    suffix = f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
-    if gate["mode"] in ("linear_sigma", "tanh_sigma"):
-        return suffix + "_" + gate["mode"]
-    if gate["mode"] in ("log_sigma_plateau", "spectral_cap"):
-        # Shortest round-trip representations keep distinct bounds distinct.
-        bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
-                  .replace("-", "m").replace("+", "") for key in ("sigma_lo", "sigma_hi")]
-        kind = "plateau" if gate["mode"] == "log_sigma_plateau" else "cap"
-        suffix += f"_{kind}_lo{bounds[0]}_hi{bounds[1]}"
-        if gate["mode"] == "spectral_cap":
-            suffix += f"_d{number(gate['delta'])}"
-    return suffix
+from fourier_score.gates import validate_gate
+from fourier_score.model.spectral import SpectralFilter, conjugate_symmetrize
 
 
 class FourierGaussian(nn.Module):

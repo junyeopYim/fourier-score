@@ -20,11 +20,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from fourier_score.checkpoints import FORMAT, resume_signature
 from fourier_score.config import apply_overrides, experiment_name, load_config, validate
 from fourier_score.gmm import (
     BASELINE_ARMS, gated_arm, log_gate_arm, plateau_arm, shaped_gate_arm, spectral_cap_arm,
 )
+from fourier_score.trainer.checkpoints import FORMAT, resume_signature
 from fourier_score.utils import json_write, load_checkpoint, source_hash
 
 

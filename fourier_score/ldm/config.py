@@ -2,13 +2,17 @@
 
 import copy
 import hashlib
-import json
 import math
 from pathlib import Path
 
-from fourier_score.config import deep_merge
-from fourier_score.method import GAUSSIAN_OBJECTIVES
-from fourier_score.utils import ROOT
+from fourier_score.gates import GAUSSIAN_OBJECTIVES
+from fourier_score.parse_config import (
+    apply_overrides,
+    check_types,
+    deep_merge,
+    read_with_extends,
+)
+from fourier_score.provenance import ROOT
 
 from .dataset_sources import DATASETS
 
@@ -99,29 +103,17 @@ def defaults(model):
 
 
 def override(cfg, entries):
-    cfg = copy.deepcopy(cfg)
-    for entry in entries:
-        if "=" not in entry:
-            raise ValueError(f"Expected key=value: {entry}")
-        path, raw = entry.split("=", 1)
-        try:
-            value = json.loads(raw)
-        except json.JSONDecodeError:
-            value = raw
-        obj = cfg
-        parts = path.split(".")
-        for part in parts[:-1]:
-            if part not in obj or not isinstance(obj[part], dict):
-                raise ValueError(f"Unknown LDM configuration key: {path}")
-            obj = obj[part]
-        if parts[-1] not in obj:
-            raise ValueError(f"Unknown LDM configuration key: {path}")
-        obj[parts[-1]] = value
-    return cfg
+    return apply_overrides(
+        cfg,
+        entries,
+        malformed="Expected key=value: {entry}",
+        unknown="Unknown LDM configuration key: {path}",
+    )
 
 
 def validate(cfg):
-    cfg = deep_merge(defaults(cfg["model"]), cfg)
+    reference = defaults(cfg["model"])
+    cfg = deep_merge(reference, cfg)
     if cfg["schema_version"] != "fourier-ldm-v1":
         raise ValueError("Not an LDM experiment config")
     if cfg["protocol"] not in ("upstream", "l2"):
@@ -137,20 +129,7 @@ def validate(cfg):
     if cfg["backend"]["spectral_transform"] not in ("auto", "fft", "matmul", "cpu"):
         raise ValueError("Invalid spectral transform")
 
-    def walk(ref, obj, path=""):
-        for key, value in obj.items():
-            expected = ref[key]
-            label = f"{path}.{key}"
-            if isinstance(expected, dict):
-                walk(expected, value, label)
-            elif expected is not None:
-                valid = type(value) is type(expected)
-                if type(expected) is float:
-                    valid = type(value) in (int, float) and math.isfinite(value)
-                if not valid:
-                    raise ValueError(f"Invalid type/value: {label}")
-
-    walk(defaults(cfg["model"]), cfg)
+    check_types(reference, cfg, invalid="Invalid type/value: .{path}", nonfinite=None)
     for section, names in {
         "cache": ("batch_size",),
         "backend": ("cpu_threads",),
@@ -226,18 +205,12 @@ def experiment_name(cfg):
 
 
 def load_config(path, overrides=()):
-    def read(p, seen=()):
-        p = Path(p).resolve()
-        if p in seen:
-            raise ValueError("Configuration inheritance cycle")
-        obj = json.loads(p.read_text())
-        parent = obj.pop("extends", None)
-        if parent:
-            base = read(p.parent / parent, (*seen, p))
-            return deep_merge(base, obj)
-        return deep_merge(defaults(obj.get("model", "ffhq")), obj)
-
-    return validate(override(read(path), overrides))
+    cfg = read_with_extends(
+        path,
+        lambda _, obj: defaults(obj.get("model", "ffhq")),
+        cycle="Configuration inheritance cycle",
+    )
+    return validate(override(cfg, overrides))
 
 
 def load_spec(cfg):

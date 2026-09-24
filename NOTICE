@@ -17,11 +17,12 @@ attributes fadel/pytorch_ema and TensorFlow moving-average code:
 https://github.com/fadel/pytorch_ema
 https://github.com/tensorflow/tensorflow/blob/r1.13/tensorflow/python/training/moving_averages.py
 
-Project roles, JSON configuration and BaseModel/BaseTrainer/BaseDataLoader
-organization are based on the design of victoresque/pytorch-template:
+Project roles (model/, data_loader/, trainer/, logger, parse_config, utils)
+and JSON configuration follow the design of victoresque/pytorch-template:
 https://github.com/victoresque/pytorch-template
-The generic template's LeNet, classifier trainer and configuration classes
-are not copied. The image-generation infrastructure is newly implemented.
+The generic template's Base* classes, LeNet, classifier trainer and
+configuration classes are neither copied nor used. The image-generation
+infrastructure is newly implemented.
 
 No pretrained weights, datasets, Inception weights or Python wheels are
 redistributed. This is a research implementation, not a claim of reproducing

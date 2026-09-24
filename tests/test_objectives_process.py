@@ -1,9 +1,9 @@
 import copy
 import pytest
 import torch
-from fourier_score.model import build_model
-from fourier_score.loss import training_loss
-from fourier_score.diffusion import sample_batch
+from fourier_score.model.model import build_model
+from fourier_score.model.loss import training_loss
+from fourier_score.model.sampling import sample_batch
 
 
 def test_score_epsilon_algebraic_equivalence(cfg,stats):

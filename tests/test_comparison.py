@@ -1,6 +1,6 @@
 import copy
 import pytest
-from fourier_score.method import COMPARISON_OBJECTIVES
+from fourier_score.gates import COMPARISON_OBJECTIVES
 from fourier_score.config import experiment_name
 from scripts.run_comparison import comparison_runs,check_outputs
 

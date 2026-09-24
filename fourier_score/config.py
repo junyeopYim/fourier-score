@@ -6,15 +6,39 @@ Data / output paths are relative to the current working directory.
 """
 
 from __future__ import annotations
-import argparse
 import copy
 import json
 import math
-from pathlib import Path
 from string import Formatter
-from fourier_score.method import GAUSSIAN_OBJECTIVES, OBJECTIVES, validate_gate, gate_suffix
+from fourier_score import parse_config
+from fourier_score.gates import GAUSSIAN_OBJECTIVES, OBJECTIVES, validate_gate, gate_suffix
+from fourier_score.parse_config import (
+    CustomArgs,
+    add_options,
+    check_types,
+    deep_merge,
+    read_with_extends,
+)
+from fourier_score.provenance import ROOT
 
-ROOT = Path(__file__).resolve().parents[1]
+BASE = ROOT / "configs/base.json"
+ALIASES = {"parameterization": "loss.type"}
+CLI_OPTIONS = (
+    CustomArgs(["--device"], "device", help="auto/cpu/cuda[:index]/mps"),
+    CustomArgs(
+        ["--parameterization"],
+        "parameterization",
+        choices=OBJECTIVES,
+        help="Output parameterization; select loss.objective separately with --set",
+    ),
+)
+DOWNLOAD = CustomArgs(
+    ["--download"],
+    "data_loader.args.download",
+    action="store_true",
+    help="Download MNIST/CIFAR-10 if missing",
+)
+RESUME_CONFLICT = "Resume uses checkpoint config; use --set for allowed changes"
 
 
 def normalize_parameterization(obj: dict) -> dict:
@@ -31,87 +55,19 @@ def normalize_parameterization(obj: dict) -> dict:
     return obj
 
 
-def deep_merge(base: dict, patch: dict, prefix: str = "") -> dict:
-    out = copy.deepcopy(base)
-    for key, value in patch.items():
-        path = f"{prefix}.{key}" if prefix else key
-        if key not in out:
-            raise ValueError(f"Unknown configuration key: {path}")
-        if isinstance(out[key], dict):
-            if not isinstance(value, dict):
-                raise ValueError(f"{path} must be an object")
-            out[key] = deep_merge(out[key], value, path)
-        else:
-            out[key] = value
-    return out
-
-
-def _read(path: Path, stack: tuple = ()) -> dict:
-    path = path.resolve()
-    if path in stack:
-        raise ValueError(f"Configuration inheritance cycle: {path}")
-    obj = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(obj, dict):
-        raise ValueError("Configuration must be a JSON object")
-    obj = normalize_parameterization(obj)
-    parent = obj.pop("extends", None)
-    if parent is None:
-        if path == (ROOT / "configs/base.json").resolve():
-            return obj
-        defaults = json.loads((ROOT / "configs/base.json").read_text())
-    else:
-        if not isinstance(parent, str):
-            raise ValueError("extends must be one JSON filename")
-        defaults = _read(path.parent / parent, stack + (path,))
-    return deep_merge(defaults, obj)
+def _defaults(path=None, obj=None):
+    """base.json, the root of every chain (which itself inherits nothing)."""
+    return None if path == BASE.resolve() else json.loads(BASE.read_text())
 
 
 def apply_overrides(cfg: dict, overrides: list[str]) -> dict:
-    cfg = copy.deepcopy(cfg)
-    for entry in overrides:
-        if "=" not in entry:
-            raise ValueError(f"Expected key=value, got {entry!r}")
-        path, raw = entry.split("=", 1)
-        if path == "parameterization":
-            path = "loss.type"
-        try:
-            value = json.loads(raw)
-        except json.JSONDecodeError:
-            value = raw
-        parts = path.split(".")
-        parent = cfg
-        for key in parts[:-1]:
-            if key not in parent or not isinstance(parent[key], dict):
-                raise ValueError(f"Unknown configuration key: {path}")
-            parent = parent[key]
-        if parts[-1] not in parent:
-            raise ValueError(f"Unknown configuration key: {path}")
-        parent[parts[-1]] = value
-    return cfg
+    return parse_config.apply_overrides(cfg, overrides, ALIASES)
 
 
 def validate(cfg: dict) -> dict:
-    defaults = json.loads((ROOT / "configs/base.json").read_text())
+    defaults = _defaults()
     cfg = deep_merge(defaults, normalize_parameterization(cfg))
-
-    def shape(ref, obj, prefix=""):
-        for k, v in ref.items():
-            w = obj[k]
-            p = f"{prefix}.{k}" if prefix else k
-            if isinstance(v, dict):
-                shape(v, w, p)
-            elif v is not None:
-                good = (
-                    type(w) is type(v)
-                    if not isinstance(v, float)
-                    else type(w) in (int, float)
-                )
-                if not good:
-                    raise ValueError(f"{p}: invalid type {type(w).__name__}")
-            if isinstance(w, float) and not math.isfinite(w):
-                raise ValueError(f"{p} must be finite")
-
-    shape(defaults, cfg)
+    check_types(defaults, cfg)
 
     def choice(path, options):
         x = cfg
@@ -287,7 +243,8 @@ def validate(cfg: dict) -> dict:
 
 
 def load_config(path="config.json", overrides=()) -> dict:
-    return validate(apply_overrides(_read(Path(path)), list(overrides)))
+    cfg = read_with_extends(path, _defaults, normalize_parameterization)
+    return validate(apply_overrides(cfg, list(overrides)))
 
 
 def experiment_name(cfg):
@@ -302,22 +259,14 @@ def experiment_name(cfg):
     return name + gate_suffix(cfg["fourier"].get("gate"))
 
 
-def add_config_args(parser: argparse.ArgumentParser):
+def add_config_args(parser, options=CLI_OPTIONS):
     parser.add_argument("-c", "--config", default="config.json")
     parser.add_argument("--set", action="append", default=[], metavar="KEY=VALUE")
-    parser.add_argument("--device", default=None, help="auto/cpu/cuda[:index]/mps")
-    parser.add_argument(
-        "--parameterization",
-        choices=OBJECTIVES,
-        help="Output parameterization; select loss.objective separately with --set",
+    return add_options(parser, options)
+
+
+def from_args(parser, args, options=CLI_OPTIONS, resume=None):
+    """(cfg, checkpoint or None); ``resume(path, changes)`` loads a ``-r`` checkpoint."""
+    return parse_config.from_args(
+        parser, args, options, load_config, "config.json", resume, RESUME_CONFLICT
     )
-    return parser
-
-
-def from_args(args):
-    changes = list(args.set)
-    if args.device is not None:
-        changes.append("device=" + args.device)
-    if args.parameterization is not None:
-        changes.append("parameterization=" + args.parameterization)
-    return load_config(args.config, changes)

@@ -6,9 +6,9 @@ import io
 import pytest
 import torch
 
-from fourier_score.checkpoints import load_inference
 from fourier_score.evaluation import evaluate_checkpoint
-from fourier_score.model import build_model
+from fourier_score.model.model import build_model
+from fourier_score.trainer.checkpoints import load_inference
 from scripts import download_score_sde as download
 from scripts import import_score_sde as importer
 

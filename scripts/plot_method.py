@@ -86,7 +86,7 @@ def make_figure():
     label(.168, .485, r"$\sigma_t s_\theta=h_\theta$", 12)
 
     # (b) A fixed analytic branch and a learned residual branch. The latter is
-    # scaled in the Fourier basis before addition, exactly as in method.py.
+    # scaled in the Fourier basis before addition, exactly as in model/reference.py.
     label(.645, .806, r"$(y,t)$", 11)
     line([(.451, .772), (.828, .772)], MUTED, .75)
     line([(.645, .786), (.645, .772)], MUTED, .75)

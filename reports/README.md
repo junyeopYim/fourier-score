@@ -37,7 +37,8 @@ after the loss comparison gives its reproduction command near the end.
 Every result above belongs to provenance epoch 0, the history up to tag
 `pre-template-refactor`. [provenance.md](provenance.md) lists the epochs, the
 source hash each study recorded, and how to resume or re-evaluate runs from an
-earlier epoch.
+earlier epoch; [path-map.json](path-map.json) maps epoch-0 file paths to the
+current layout.
 
 ## Adding a report
 

@@ -3,15 +3,15 @@
 import argparse
 import copy
 import json
-import torch
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fourier_score.config import add_config_args, from_args
-from fourier_score.model import build_model, architecture_report, weight_hash
-from fourier_score.method import OBJECTIVES
+from fourier_score.data_loader.statistics import placeholder_stats
+from fourier_score.model.model import build_model, architecture_report, weight_hash
+from fourier_score.gates import OBJECTIVES
 from fourier_score.utils import seed_all, json_write
 
 
@@ -19,10 +19,10 @@ def main():
     parser = add_config_args(argparse.ArgumentParser(description=__doc__))
     parser.add_argument("-o", "--output")
     args = parser.parse_args()
-    cfg = from_args(args)
+    cfg, _ = from_args(parser, args)
     d = cfg["data_loader"]["args"]
     shape = (d["channels"], d["image_size"], d["image_size"])
-    stats = {"mean": torch.zeros(shape), "power": torch.ones(shape)}
+    stats = placeholder_stats(shape)
     result = {}
     # No data loading; fake positive statistics are ONLY for architecture audit.
     for objective in OBJECTIVES:

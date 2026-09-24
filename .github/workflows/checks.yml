@@ -19,6 +19,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+          # Epoch-0 equivalence contracts read tag pre-template-refactor.
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
         with:
           version: "0.11.8"

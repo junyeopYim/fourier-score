@@ -2,11 +2,11 @@ import copy
 import json
 import pytest
 import torch
-from fourier_score.training import Trainer
-from fourier_score.data import build_data,prepare_stats
-from fourier_score.data import BatchStream
+from fourier_score.trainer.trainer import Trainer
+from fourier_score.data_loader.data_loaders import BatchStream, build_data
+from fourier_score.data_loader.statistics import prepare_stats
 from fourier_score.utils import load_checkpoint
-from fourier_score.checkpoints import load_inference
+from fourier_score.trainer.checkpoints import load_inference
 from fourier_score.config import validate
 
 
@@ -44,7 +44,7 @@ def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     assert loaded_cfg['loss']['objective']==objective
     assert loaded_cfg['fourier']['gate']==cfg['fourier']['gate']
     if gated:
-        from fourier_score.diffusion import sample_batch
+        from fourier_score.model.sampling import sample_batch
         generated=sample_batch(last,loaded_cfg,2,torch.device('cpu'),torch.Generator().manual_seed(50))
         assert torch.isfinite(generated[0]).all()
         changed=copy.deepcopy(cfg)
@@ -82,7 +82,7 @@ def test_checkpoint_keeps_startup_source_when_checkout_changes(cfg, monkeypatch,
             raise FileNotFoundError('Source file moved while training was running')
         return '0' * 64
 
-    monkeypatch.setattr('fourier_score.training.source_hash', changed_source_hash)
+    monkeypatch.setattr('fourier_score.trainer.trainer.source_hash', changed_source_hash)
     try:
         trainer.save(snapshot=True)
     finally:
@@ -150,7 +150,7 @@ def test_prefetch_cursor_resume(cfg):
 
 def test_cumulative_time_excludes_resume_downtime(cfg,monkeypatch):
     clock={'now':10.}
-    monkeypatch.setattr('fourier_score.training.time.perf_counter',lambda:clock['now'])
+    monkeypatch.setattr('fourier_score.trainer.trainer.time.perf_counter',lambda:clock['now'])
     first=Trainer(cfg)
     clock['now']=17.
     first.save(snapshot=True); first.log.close()

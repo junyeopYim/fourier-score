@@ -93,6 +93,11 @@ runner study record the package hash of the commit that added the study:
 | [Linear and tanh gates](gmm/linear-tanh-gates.md) | `f40484c3…` | `4c9c3b5` |
 | [Log-axis gates](gmm/log-axis-gates.md) | `f79717f3…` (the tag's hash) | `6c369a4` to `48325d3` |
 
+Archived results name files by their paths at the time, such as the loss
+comparison's per-file hashes. [path-map.json](path-map.json) gives the current
+location of every file that the template refactor moved or split, with its
+SHA-256 at the tag.
+
 A later study reuses earlier checkpoints only after reproducing their
 configuration, initialization, final EMA digest and every validation noise bin
 exactly (its `checkpoint_audit.json`), not by matching hashes, so one audit can

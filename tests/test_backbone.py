@@ -1,8 +1,8 @@
 import copy
 import torch
-from fourier_score.model import build_model,architecture_report,weight_hash,backbone_config
+from fourier_score.model.model import build_model,architecture_report,weight_hash,backbone_config
 from fourier_score.backbones.ncsnpp import NCSNpp
-from fourier_score.method import OBJECTIVES
+from fourier_score.gates import OBJECTIVES
 
 
 def test_identical_architecture_and_initialization(cfg,stats):

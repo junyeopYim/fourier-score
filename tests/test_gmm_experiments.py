@@ -4,6 +4,7 @@ Archived protocols and the smoke chain are checked by tests/contracts/test_contr
 """
 
 import ast
+from dataclasses import asdict
 import hashlib
 import json
 import os
@@ -13,10 +14,11 @@ import sys
 
 import pytest
 
-from fourier_score.gmm import log_gate_arm
+from fourier_score.gmm import gated_arm, log_gate_arm
 from experiments.__main__ import gmm_parser, main
 from experiments.common import file_sha256, open_protocol, orchestration_provenance
 from experiments.gmm import pipeline, registry
+from experiments.gmm.pipeline import select_gate
 from experiments.gmm.registry import EXPERIMENTS, SUITES
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -142,6 +144,21 @@ def test_new_spec_needs_no_stub_and_keeps_the_modern_defaults(monkeypatch, capsy
 
 def test_forbidden_test_banks_match_epoch0_runners():
     assert {name: registry.forbidden_test_banks(EXPERIMENTS[name]) for name in FORBIDDEN} == FORBIDDEN
+
+
+def test_gate_selection_uses_validation_and_one_shared_switch():
+    results = []
+    for switch in (.5, 1.):
+        for covariance in ("scalar", "fourier"):
+            arm = gated_arm(covariance, switch)
+            results.append(dict(arm=asdict(arm), completed=True, step=4, spectrum_lambda=1., seed=42,
+                                validation=[dict(split="validation", step=4, score_error=2-switch)],
+                                test=dict(score_error=switch)))
+    selection = select_gate(results, [.5, 1.])
+    assert selection["sigma_switch"] == 1.
+    assert selection["candidates"][0]["n_runs"] == 2
+    with pytest.raises(ValueError, match="Unpaired"):
+        select_gate(results[:-1], [.5, 1.])
 
 
 def copy(value):

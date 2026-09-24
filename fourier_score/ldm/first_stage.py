@@ -1,21 +1,14 @@
 """Frozen native KL/VQ first stages; no Lightning or perceptual-loss dependency."""
 
-import hashlib
 import math
 from pathlib import Path
 
 import torch
 from torch import nn
 
+from fourier_score.provenance import file_sha256
+
 from .upstream.model import Decoder, Encoder
-
-
-def file_sha256(path):
-    digest = hashlib.sha256()
-    with open(path, "rb") as source:
-        for block in iter(lambda: source.read(8 * 1024 * 1024), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def read_state(path):

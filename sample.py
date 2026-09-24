@@ -1,15 +1,22 @@
 """Generate EMA PNGs + sharded uint8 NHWC NPZ + protocol metadata."""
 
 import argparse
-import hashlib
 from pathlib import Path
 import time
 import numpy as np
 import torch
-from fourier_score.checkpoints import load_inference
+from fourier_score.trainer.checkpoints import load_inference
 from fourier_score.images import write_png, preview_grid
+from fourier_score.parse_config import CustomArgs, add_options, cli_overrides
+from fourier_score.provenance import file_sha256
 from fourier_score.utils import json_write, environment
-from fourier_score.diffusion import sample_batch
+from fourier_score.model.sampling import sample_batch
+
+SAMPLING = [
+    CustomArgs(["--num-samples"], "sampling.num_samples", type=int),
+    CustomArgs(["--batch-size"], "sampling.batch_size", type=int),
+    CustomArgs(["--steps"], "sampling.steps", type=int),
+]
 
 
 def main():
@@ -18,26 +25,16 @@ def main():
     parser.add_argument("-o", "--output", required=True)
     parser.add_argument("--set", action="append", default=[])
     parser.add_argument("--device")
-    parser.add_argument("--num-samples", type=int)
-    parser.add_argument("--batch-size", type=int)
-    parser.add_argument("--steps", type=int)
-    args = parser.parse_args()
-    for name in ("num_samples", "batch_size", "steps"):
-        value = getattr(args, name)
-        if value is not None:
-            args.set.append(f"sampling.{name}={value}")
-    model, cfg, device, ckpt = load_inference(args.resume, args.set, args.device)
+    args = add_options(parser, SAMPLING).parse_args()
+    changes = cli_overrides(args, SAMPLING)
+    model, cfg, device, ckpt = load_inference(args.resume, changes, args.device)
     out = Path(args.output)
     if out.exists() and any(out.iterdir()):
         raise FileExistsError(f"Output must be empty: {out}")
     (out / "png").mkdir(parents=True, exist_ok=True)
-    h = hashlib.sha256()
-    with open(args.resume, "rb") as f:
-        for block in iter(lambda: f.read(8 * 1024 * 1024), b""):
-            h.update(block)
     settings = {
         "complete": False,
-        "checkpoint_sha256": h.hexdigest(),
+        "checkpoint_sha256": file_sha256(args.resume),
         "checkpoint_step": ckpt["step"],
         "training_wall_seconds": ckpt.get("training_wall_seconds"),
         "weights": "EMA",

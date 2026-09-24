@@ -1,7 +1,7 @@
 import torch
-from fourier_score.spectral import SpectralFilter,conjugate_symmetrize
-from fourier_score.method import FourierGaussian
-from fourier_score.statistics import estimate_stats
+from fourier_score.model.spectral import SpectralFilter,conjugate_symmetrize
+from fourier_score.model.reference import FourierGaussian
+from fourier_score.data_loader.statistics import estimate_stats
 
 def test_filter_value_and_gradient():
     shape, backend = (7,9), 'matmul'

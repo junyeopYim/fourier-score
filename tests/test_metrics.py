@@ -2,8 +2,8 @@ import copy
 import math
 import pytest
 import torch
-from fourier_score.evaluation import evaluate_dsm,frequency_band_sums,radial_frequency_bands
-from fourier_score.training import Trainer
+from fourier_score.model.metric import evaluate_dsm,frequency_band_sums,radial_frequency_bands
+from fourier_score.trainer.trainer import Trainer
 from fourier_score.utils import capture_rng
 
 

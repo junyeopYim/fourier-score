@@ -8,9 +8,9 @@ from pathlib import Path
 
 import torch
 
-from fourier_score.data import BatchStream
-from fourier_score.logging import ConsoleProgress
-from fourier_score.model import weight_hash
+from fourier_score.data_loader.data_loaders import BatchStream
+from fourier_score.logger import ConsoleProgress
+from fourier_score.model.model import weight_hash
 from fourier_score.utils import (
     atomic_save,
     capture_rng,
@@ -21,10 +21,12 @@ from fourier_score.utils import (
     restore_rng,
     seed_all,
     source_hash,
+    synchronize,
 )
 
 from .config import experiment_name, lr_multiplier, override, validate
 from .data import LatentDataset, draw_latents, open_cache
+from .evaluation import evaluate_latents
 from .model import Denoiser, ema_scope
 from .upstream.ema import LitEma
 
@@ -49,13 +51,6 @@ def signature(cfg):
     result["cache"].pop("num_workers")
     result["cache"].pop("batch_size")
     return result
-
-
-def synchronize(device):
-    if device.type == "cuda":
-        torch.cuda.synchronize(device)
-    elif device.type == "mps":
-        torch.mps.synchronize()
 
 
 class Trainer:
@@ -198,7 +193,8 @@ class Trainer:
             "step": self.step,
             "stats": self.stats,
             "cache": self.cache,
-            "source_sha256": source_hash(),
+            # Startup fingerprint: the process keeps running the code it loaded.
+            "source_sha256": self.env["source_sha256"],
             "environment": self.env,
             "initial_unet_sha256": self.initial_hash,
             "training_wall_seconds": self.wall_seconds(),
@@ -229,8 +225,6 @@ class Trainer:
             )
 
     def train(self):
-        from .evaluation import evaluate_latents
-
         options = self.cfg["training"]
         window, window_time, window_steps = 0.0, 0.0, 0
 

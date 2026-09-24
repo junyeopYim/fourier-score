@@ -9,11 +9,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from fourier_score.config import load_config
-from fourier_score.model import build_model
-from fourier_score.method import OBJECTIVES
-from fourier_score.loss import training_loss
-from fourier_score.spectral import SpectralFilter, conjugate_symmetrize
-from fourier_score.diffusion import sample_batch
+from fourier_score.data_loader.statistics import placeholder_stats
+from fourier_score.model.model import build_model
+from fourier_score.gates import OBJECTIVES
+from fourier_score.model.loss import training_loss
+from fourier_score.model.spectral import SpectralFilter, conjugate_symmetrize
+from fourier_score.model.sampling import sample_batch
 from fourier_score.utils import (
     configure_runtime,
     seed_all,
@@ -36,9 +37,7 @@ def run(device="auto", spectral="auto"):
         c = copy.deepcopy(cfg)
         c["loss"]["type"] = lossname
         seed_all(123, dev)
-        model = build_model(
-            c, {"mean": torch.zeros(1, 8, 8), "power": torch.ones(1, 8, 8)}, dev
-        )
+        model = build_model(c, placeholder_stats((1, 8, 8)), dev)
         gen = torch.Generator().manual_seed(123)
         x = torch.randn(2, 1, 8, 8, generator=gen).to(dev)
         lev = model.process.sample(2, dev, gen)

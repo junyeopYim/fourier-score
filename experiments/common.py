@@ -5,7 +5,6 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor
 import csv
 from datetime import datetime, timezone
-import hashlib
 import json
 import multiprocessing
 import os
@@ -16,21 +15,14 @@ import subprocess
 import numpy as np
 import torch
 
-from fourier_score.utils import ROOT, json_write, source_hash
+from fourier_score.provenance import ROOT, file_sha256, source_hash
+from fourier_score.utils import json_write
 
 PACKAGE = Path(__file__).resolve().parent
 # The only provenance that enters a checkpoint signature (fourier_score.gmm.train_arm).
 NUMERICS = ("python", "torch", "numpy", "source_sha256")
 # Provenance an existing protocol keeps on resume (see open_protocol).
 RESUMABLE = ("git_revision", "git_dirty", "orchestration_sha256")
-
-
-def file_sha256(path):
-    digest = hashlib.sha256()
-    with open(path, "rb") as stream:
-        for block in iter(lambda: stream.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def relative(path):

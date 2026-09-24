@@ -1,0 +1,175 @@
+{
+  "description": "Where each epoch-0 file that moved or split now lives. sha256 is the file at the tag; archived runs and reports record these old paths.",
+  "tag": "pre-template-refactor",
+  "commit": "48325d3aeee7242cd5cd7f9aef19f21979e3d558",
+  "paths": {
+    "fourier_score/checkpoints.py": {
+      "sha256": "8f72fb621e49022553c7ab5a03a0d4bede6e790b12693fda62a80328628d22e7",
+      "now": {
+        "fourier_score/trainer/checkpoints.py": "whole file"
+      }
+    },
+    "fourier_score/config.py": {
+      "sha256": "c0f3219dc69a560c11c3bdf2a650ea466a9af3bfddac6c227a73394d251394af",
+      "now": {
+        "fourier_score/config.py": "pixel schema, validation, run names and CLI options",
+        "fourier_score/parse_config.py": "extends reader, overrides, type checks and from_args"
+      }
+    },
+    "fourier_score/data.py": {
+      "sha256": "a1dab0624a70ef816800198d7fe7a5cfeb68c0523d36064b1403585ad178a148",
+      "now": {
+        "fourier_score/data_loader/data_loaders.py": "datasets, splits, cursor sampler and batch stream",
+        "fourier_score/data_loader/statistics.py": "statistics identity and cache"
+      }
+    },
+    "fourier_score/diffusion.py": {
+      "sha256": "0ca9ac53551f483c3b6f4f1cf4a4413046bacc97a6b86de307a6e0a7207a522a",
+      "now": {
+        "fourier_score/model/process.py": "noise processes",
+        "fourier_score/model/sampling.py": "samplers (sample_batch)"
+      }
+    },
+    "fourier_score/ema.py": {
+      "sha256": "63df7f2a19a5e714da895227c277de76913fc8201f0f9e77fb81ba649aa858c6",
+      "now": {
+        "fourier_score/trainer/ema.py": "whole file"
+      }
+    },
+    "fourier_score/evaluation.py": {
+      "sha256": "b1f3c7ab3e86e5f6d6a3c700be9f31d21f0d0d1dfb9f263d5d12e4e1d53c4c97",
+      "now": {
+        "fourier_score/evaluation.py": "checkpoint DSM evaluation and image-folder FID/IS",
+        "fourier_score/model/metric.py": "evaluate_dsm and radial frequency bands"
+      }
+    },
+    "fourier_score/gmm.py": {
+      "sha256": "d1ad4bad99decb9aec2e7f63c21e82d0f1f71f6864d946e945851952a58345b0",
+      "now": {
+        "fourier_score/gmm.py": "everything except select_gate",
+        "experiments/gmm/pipeline.py": "select_gate"
+      }
+    },
+    "fourier_score/ldm/data.py": {
+      "sha256": "87d9240c0e8fba41e931740c204c85f3ef7f46ca225d8c84a8c5ae33b60b9911",
+      "now": {
+        "fourier_score/ldm/data.py": "everything except digest_json",
+        "fourier_score/provenance.py": "digest_json"
+      }
+    },
+    "fourier_score/ldm/first_stage.py": {
+      "sha256": "b00be074bcb0259b12aa72050942435ec4a066e5e03e6013915ba85c46bb1aa2",
+      "now": {
+        "fourier_score/ldm/first_stage.py": "everything except file_sha256",
+        "fourier_score/provenance.py": "file_sha256"
+      }
+    },
+    "fourier_score/ldm/training.py": {
+      "sha256": "75dc2d2c0206927d7a074c5b473a2cbc52e6e38118f145949353f1afc84244cc",
+      "now": {
+        "fourier_score/ldm/training.py": "everything except synchronize",
+        "fourier_score/utils.py": "synchronize"
+      }
+    },
+    "fourier_score/logging.py": {
+      "sha256": "45b39efe047e4c713dae2ef059b6892556f4a64b03258297b4eeaafd90e1da3b",
+      "now": {
+        "fourier_score/logger.py": "whole file"
+      }
+    },
+    "fourier_score/loss.py": {
+      "sha256": "53cdf0b9aa7e06524e191a3b5f8edfb5f8deb2acde3ff4f255b7d935c7bca9a8",
+      "now": {
+        "fourier_score/model/loss.py": "whole file"
+      }
+    },
+    "fourier_score/method.py": {
+      "sha256": "532a1113c8481099213466a29beddc5719f70ec940883e95d8815889a66e72d0",
+      "now": {
+        "fourier_score/model/reference.py": "FourierGaussian",
+        "fourier_score/gates.py": "objective names, GATE_DEFAULTS, validate_gate and gate_suffix"
+      }
+    },
+    "fourier_score/model.py": {
+      "sha256": "5b73e1070c4af48ef2e72e263d0af457b59aa0feba2effe71138eaaf9b331526",
+      "now": {
+        "fourier_score/model/model.py": "whole file"
+      }
+    },
+    "fourier_score/spectral.py": {
+      "sha256": "fefa6add33add12d2da92d4e37c94bf569ae987b10ff78770350a54b3eee1135",
+      "now": {
+        "fourier_score/model/spectral.py": "whole file"
+      }
+    },
+    "fourier_score/statistics.py": {
+      "sha256": "554aa3d42068776c2d5ba298cdd098983907df169096f56474f3e92fb95e392d",
+      "now": {
+        "fourier_score/data_loader/statistics.py": "whole file"
+      }
+    },
+    "fourier_score/training.py": {
+      "sha256": "7a13c089a7f80c3ce37a100923da758fb100b1c396749460ae7b17d88f0ec26a",
+      "now": {
+        "fourier_score/trainer/trainer.py": "whole file"
+      }
+    },
+    "fourier_score/utils.py": {
+      "sha256": "70093935c37dbc7feae5f5f599fa565582425b7b9832b96b528193a841eab31f",
+      "now": {
+        "fourier_score/utils.py": "everything except ROOT and source_hash",
+        "fourier_score/provenance.py": "ROOT and source_hash"
+      }
+    },
+    "scripts/run_gmm_comparison.py": {
+      "sha256": "13609cc71a975c2031755e609ab9dd2f95233f580231dee61a78e45d662952e3",
+      "now": {
+        "scripts/run_gmm_comparison.py": "launcher for `python -m experiments gmm gated`",
+        "experiments/gmm/registry.py": "study definition",
+        "experiments/gmm/pipeline.py": "training, evaluation, selection and checkpoint audit",
+        "experiments/gmm/report.py": "tables and figures",
+        "experiments/common.py": "protocol, provenance and table helpers"
+      }
+    },
+    "scripts/run_gmm_gate_shapes.py": {
+      "sha256": "28e5fe7543790a4aed729a6643f83c0a642bf164d4e10a5ca40ca1c8bf24e990",
+      "now": {
+        "scripts/run_gmm_gate_shapes.py": "launcher for `python -m experiments gmm gate_shapes`",
+        "experiments/gmm/registry.py": "study definition",
+        "experiments/gmm/pipeline.py": "training, evaluation, selection and checkpoint audit",
+        "experiments/gmm/report.py": "tables and figures",
+        "experiments/common.py": "protocol, provenance and table helpers"
+      }
+    },
+    "scripts/run_gmm_log_gates.py": {
+      "sha256": "dded82fb9fc9b74a35571c6070f23d19c6fd8f2294cd2bc7554dee0b68c06393",
+      "now": {
+        "scripts/run_gmm_log_gates.py": "launcher for `python -m experiments gmm log_gates`",
+        "experiments/gmm/registry.py": "study definition",
+        "experiments/gmm/pipeline.py": "training, evaluation, selection and checkpoint audit",
+        "experiments/gmm/report.py": "tables and figures",
+        "experiments/common.py": "protocol, provenance and table helpers"
+      }
+    },
+    "scripts/run_gmm_plateau.py": {
+      "sha256": "eb48ab5a19ba1acd15f6a5ba0ec96cb6abcabd167bd18eb7c2715f60f28645e8",
+      "now": {
+        "scripts/run_gmm_plateau.py": "launcher for `python -m experiments gmm plateau`",
+        "experiments/gmm/registry.py": "study definition",
+        "experiments/gmm/pipeline.py": "training, evaluation, selection and checkpoint audit",
+        "experiments/gmm/report.py": "tables and figures",
+        "experiments/common.py": "protocol, provenance and table helpers"
+      }
+    },
+    "scripts/run_gmm_spectral_gate.py": {
+      "sha256": "dfc616de3617cf9c260d14b9820b982dd6a39c6d0c006fcf06ce4ad42da28f37",
+      "now": {
+        "scripts/run_gmm_spectral_gate.py": "launcher for `python -m experiments gmm spectral`",
+        "experiments/gmm/registry.py": "study definition",
+        "experiments/gmm/pipeline.py": "training, evaluation, selection and checkpoint audit",
+        "experiments/gmm/report.py": "tables and figures",
+        "experiments/common.py": "protocol, provenance and table helpers"
+      }
+    }
+  }
+}

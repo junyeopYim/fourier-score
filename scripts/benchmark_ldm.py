@@ -22,8 +22,8 @@ from fourier_score.ldm.config import (
     load_spec,
 )
 from fourier_score.ldm.data import prepare_cache
-from fourier_score.ldm.training import Trainer, synchronize
-from fourier_score.utils import ROOT, configure_runtime, json_write, source_hash
+from fourier_score.ldm.training import Trainer
+from fourier_score.utils import ROOT, configure_runtime, json_write, synchronize
 
 SCRIPT_SHA256 = hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
@@ -119,7 +119,7 @@ def benchmark(cfg, spec, output, steps, warmup):
         "config": cfg,
         "spec": spec,
         "environment": trainer.env,
-        "source_sha256": source_hash(),
+        "source_sha256": trainer.env["source_sha256"],
         "benchmark_script_sha256": SCRIPT_SHA256,
         "timing_scope": "Synchronized optimizer updates on a repeated data subset: cached data access, forward/backward, AdamW and LitEma. Evaluation, checkpoint writes, downloads and encoding are outside the timing window.",
         "checkpoint_saved": False,

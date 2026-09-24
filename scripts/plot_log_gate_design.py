@@ -18,7 +18,7 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from fourier_score.gmm import log_gate_arm
-from fourier_score.method import FourierGaussian
+from fourier_score.model.reference import FourierGaussian
 from experiments.common import pyplot, save_figure
 
 

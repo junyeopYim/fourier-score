@@ -8,6 +8,7 @@ import threading
 import pytest
 import torch
 from fourier_score.config import load_config
+from fourier_score.data_loader.statistics import placeholder_stats
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 # Golden contract probes (tests/golden/golden_probes) are shared with the recorder.
@@ -24,7 +25,7 @@ def cfg(tmp_path):
 
 @pytest.fixture
 def stats():
-    return {'mean':torch.zeros(1,8,8),'power':torch.ones(1,8,8)}
+    return placeholder_stats((1, 8, 8))
 
 
 @pytest.fixture

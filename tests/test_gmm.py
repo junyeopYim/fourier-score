@@ -1,14 +1,15 @@
 """Independent oracle, paired resume, and validation-only model selection."""
 
 from dataclasses import asdict, replace
+import json
 import math
 
 import pytest
 import torch
 
 from fourier_score.gmm import (
-    GMMConfig, MatchedMomentFamily, bank_seed, gated_arm, make_bank,
-    make_model, plateau_arm, spectral_cap_arm, shaped_gate_arm, log_gate_arm, select_gate, train_arm,
+    GMMConfig, MatchedMomentFamily, bank_seed, gate_arm, gated_arm, make_bank,
+    make_model, plateau_arm, spectral_cap_arm, shaped_gate_arm, log_gate_arm, train_arm,
 )
 
 
@@ -47,6 +48,23 @@ def test_bank_version_changes_evaluation_only():
                                changed.sample_cpu(8, torch.Generator().manual_seed(42)), atol=0, rtol=0)
 
 
+def test_gate_arm_builds_the_legacy_arms_and_rejects_ungated_modes():
+    def text(arm):
+        return json.dumps(asdict(arm), sort_keys=True)
+    assert text(gate_arm("scalar", "log_sigma")) == text(gated_arm("scalar"))
+    assert text(gate_arm("fourier", "spectral_cap", sigma_switch=1.5, sigma_lo=1.0, sigma_hi=2.0)) == \
+        text(spectral_cap_arm("fourier"))
+    assert text(gate_arm("fourier", "bounded_log_sigmoid", sigma_lo=.1, sigma_hi=1.5, sigma_switch=.75,
+                         sharpness=2.)) == text(log_gate_arm("fourier", "bounded_log_sigmoid"))
+    assert gate_arm("fourier", "linear_sigma", sigma_switch=2.).name == "fourier_gate_s2_p4_linear_sigma"
+    for covariance, mode in (("diagonal", "log_sigma"), ("fourier", "none"), ("fourier", "constant"),
+                             ("fourier", "sigmoid")):
+        with pytest.raises(ValueError):
+            gate_arm(covariance, mode)
+    with pytest.raises(TypeError):
+        gate_arm("fourier", "log_sigma", value=.5)
+
+
 @pytest.mark.parametrize("arm", [gated_arm("fourier", .5), plateau_arm("fourier"), spectral_cap_arm("fourier"),
                                  shaped_gate_arm("fourier", "linear_sigma"), shaped_gate_arm("fourier", "tanh_sigma"),
                                  log_gate_arm("fourier", "linear_log_sigma"), log_gate_arm("fourier", "bounded_log_sigmoid")])
@@ -65,21 +83,6 @@ def test_gmm_gate_resume_matches_uninterrupted(tmp_path, arm):
     assert "test" not in full
     with pytest.raises(ValueError, match="mismatch"):
         train_arm(family, arm, 42, validation, tmp_path / "split", {"test": "different"})
-
-
-def test_gate_selection_uses_validation_and_one_shared_switch():
-    results = []
-    for switch in (.5, 1.):
-        for covariance in ("scalar", "fourier"):
-            arm = gated_arm(covariance, switch)
-            results.append(dict(arm=asdict(arm), completed=True, step=4, spectrum_lambda=1., seed=42,
-                                validation=[dict(split="validation", step=4, score_error=2-switch)],
-                                test=dict(score_error=switch)))
-    selection = select_gate(results, [.5, 1.])
-    assert selection["sigma_switch"] == 1.
-    assert selection["candidates"][0]["n_runs"] == 2
-    with pytest.raises(ValueError, match="Unpaired"):
-        select_gate(results[:-1], [.5, 1.])
 
 
 @pytest.mark.parametrize("arm", [gated_arm("fourier"), plateau_arm("fourier"), spectral_cap_arm("fourier"),

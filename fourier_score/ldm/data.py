@@ -13,18 +13,13 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 
-from fourier_score.statistics import estimate_stats
+from fourier_score.data_loader.statistics import estimate_stats
+from fourier_score.provenance import digest_json, file_sha256
 from fourier_score.utils import atomic_save, json_write, load_checkpoint
 
-from .first_stage import file_sha256, load_first_stage, sample_posterior
+from .first_stage import load_first_stage, sample_posterior
 
 CACHE_FORMAT = "fourier-ldm-cache-v1"
-
-
-def digest_json(value):
-    return hashlib.sha256(
-        json.dumps(value, sort_keys=True, allow_nan=False).encode()
-    ).hexdigest()
 
 
 class ImageList(Dataset):

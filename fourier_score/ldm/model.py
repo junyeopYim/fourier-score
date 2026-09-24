@@ -7,7 +7,8 @@ import numpy as np
 import torch
 from torch import nn
 
-from fourier_score.method import GAUSSIAN_OBJECTIVES, FourierGaussian
+from fourier_score.gates import GAUSSIAN_OBJECTIVES
+from fourier_score.model.reference import FourierGaussian
 
 from .first_stage import read_state
 from .upstream.openaimodel import UNetModel

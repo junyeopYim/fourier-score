@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from fourier_score.config import load_config, apply_overrides, validate, experiment_name
-from fourier_score.method import OBJECTIVES, COMPARISON_OBJECTIVES
+from fourier_score.gates import OBJECTIVES, COMPARISON_OBJECTIVES
 
 
 def comparison_runs(config, changes=(), objectives=COMPARISON_OBJECTIVES, seeds=None):
@@ -95,7 +95,8 @@ def main():
     if not a.dry_run:
         check_outputs(runs)
         # Prepare once so every arm starts with the same statistics cache.
-        from fourier_score.data import build_data, prepare_stats
+        from fourier_score.data_loader.data_loaders import build_data
+        from fourier_score.data_loader.statistics import prepare_stats
 
         cfg = runs[0]["config"]
         prepare_stats(cfg, build_data(cfg))

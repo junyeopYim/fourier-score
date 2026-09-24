@@ -17,10 +17,11 @@ import numpy as np
 import torch
 from torch import nn
 
-from fourier_score.diffusion import NoiseLevel, NoiseProcess
-from fourier_score.loss import training_loss
-from fourier_score.method import FourierGaussian, GAUSSIAN_OBJECTIVES, gate_suffix, validate_gate
-from fourier_score.spectral import conjugate_symmetrize
+from fourier_score.gates import GAUSSIAN_OBJECTIVES, gate_suffix, validate_gate
+from fourier_score.model.loss import training_loss
+from fourier_score.model.process import NoiseLevel, NoiseProcess
+from fourier_score.model.reference import FourierGaussian
+from fourier_score.model.spectral import conjugate_symmetrize
 from fourier_score.utils import atomic_save, json_write
 
 @dataclass(frozen=True)
@@ -89,41 +90,36 @@ BASELINE_ARMS = (
 )
 
 
-def gated_arm(covariance, sigma_switch=1.0, sharpness=4.0):
+def gate_arm(covariance, mode, **params):
+    """A normalized-residual Gaussian arm named by its gate; params are GMMArm gate fields."""
     if covariance not in ("scalar", "fourier"):
         raise ValueError(covariance)
-    gate = dict(mode="log_sigma", sigma_switch=sigma_switch, sharpness=sharpness)
-    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
-                  "normalized_residual", "log_sigma", sigma_switch, sharpness)
+    if mode in ("none", "constant"):
+        raise ValueError(mode)
+    return GMMArm(covariance + gate_suffix(dict(mode=mode, **params)), covariance + "_gaussian",
+                  "normalized_residual", mode, **params)
+
+
+# Legacy factories: their defaults and passed keys fix the recorded arm strings.
+def gated_arm(covariance, sigma_switch=1.0, sharpness=4.0):
+    return gate_arm(covariance, "log_sigma", sigma_switch=sigma_switch, sharpness=sharpness)
 
 
 def plateau_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=0.8, sigma_hi=1.0):
-    if covariance not in ("scalar", "fourier"):
-        raise ValueError(covariance)
-    gate = dict(mode="log_sigma_plateau", sigma_switch=sigma_switch, sharpness=sharpness,
-                sigma_lo=sigma_lo, sigma_hi=sigma_hi)
-    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
-                  "normalized_residual", "log_sigma_plateau", sigma_switch, sharpness,
-                  sigma_lo, sigma_hi)
+    return gate_arm(covariance, "log_sigma_plateau", sigma_switch=sigma_switch, sharpness=sharpness,
+                    sigma_lo=sigma_lo, sigma_hi=sigma_hi)
 
 
 def spectral_cap_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=1.0, sigma_hi=2.0, delta=0.5):
-    if covariance not in ("scalar", "fourier"):
-        raise ValueError(covariance)
-    gate = dict(mode="spectral_cap", sigma_switch=sigma_switch, sharpness=sharpness,
-                sigma_lo=sigma_lo, sigma_hi=sigma_hi, delta=delta)
-    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
-                  "normalized_residual", "spectral_cap", sigma_switch, sharpness,
-                  sigma_lo, sigma_hi, delta)
+    return gate_arm(covariance, "spectral_cap", sigma_switch=sigma_switch, sharpness=sharpness,
+                    sigma_lo=sigma_lo, sigma_hi=sigma_hi, delta=delta)
 
 
 def shaped_gate_arm(covariance, mode, sigma_switch=1.5, sharpness=4.0):
     """Sigma-linear and sigma-tanh gates, with matched center and local slope."""
     if covariance not in ("scalar", "fourier") or mode not in ("linear_sigma", "tanh_sigma"):
         raise ValueError((covariance, mode))
-    gate = dict(mode=mode, sigma_switch=sigma_switch, sharpness=sharpness)
-    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
-                  "normalized_residual", mode, sigma_switch, sharpness)
+    return gate_arm(covariance, mode, sigma_switch=sigma_switch, sharpness=sharpness)
 
 
 def log_gate_arm(covariance, mode, *, sigma_lo=.1, sigma_hi=None, sigma_switch=.75, sharpness=2.):
@@ -132,10 +128,8 @@ def log_gate_arm(covariance, mode, *, sigma_lo=.1, sigma_hi=None, sigma_switch=.
         raise ValueError((covariance, mode))
     if sigma_hi is None:
         sigma_hi = 3. if mode == "linear_log_sigma" else 1.5
-    gate = dict(mode=mode, sigma_lo=sigma_lo, sigma_hi=sigma_hi,
-                sigma_switch=sigma_switch, sharpness=sharpness)
-    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian", "normalized_residual",
-                  mode, sigma_switch, sharpness, sigma_lo, sigma_hi)
+    return gate_arm(covariance, mode, sigma_lo=sigma_lo, sigma_hi=sigma_hi,
+                    sigma_switch=sigma_switch, sharpness=sharpness)
 
 
 NOTEBOOK_ARMS = {arm.name: arm for arm in BASELINE_ARMS}
@@ -567,39 +561,3 @@ def train_arm(family, arm, seed, validation, output, provenance, *, stop_after=N
     print(f"{family.case_id} {arm.name} seed={seed} steps={cfg.steps} "
           f"validation={state['validation'][-1]['score_error']:.6f}", flush=True)
     return state
-
-
-def select_gate(results, switches):
-    """Choose ONE gate for both covariances using final-step validation only.
-
-    Average equally over both covariances, all planned spectra and all seeds.
-    All candidates must cover the same complete set of training conditions.
-    """
-    groups = {}
-    conditions = set()
-    for result in results:
-        arm = result["arm"]
-        if not result["completed"]:
-            raise ValueError("Model selection requires completed runs")
-        if arm["gate_mode"] != "log_sigma":
-            continue
-        key = (result["spectrum_lambda"], result["seed"], arm["parameterization"])
-        conditions.add(key)
-        values = groups.setdefault(arm["sigma_switch"], {})
-        if key in values:
-            raise ValueError("Duplicate gate validation condition")
-        metric = result["validation"][-1]
-        if metric["split"] != "validation" or metric["step"] != result["step"]:
-            raise ValueError("Gate selection requires final-step validation")
-        values[key] = metric["score_error"]
-    if set(groups) != set(switches) or not conditions:
-        raise ValueError("Missing gate candidates")
-    rows = []
-    for switch in switches:
-        if set(groups[switch]) != conditions:
-            raise ValueError("Unpaired gate validation conditions")
-        rows.append(dict(sigma_switch=switch, n_runs=len(conditions),
-                         validation_score_error=float(np.mean(list(groups[switch].values())))))
-    chosen = min(rows, key=lambda row: (row["validation_score_error"], row["sigma_switch"]))
-    return dict(sigma_switch=chosen["sigma_switch"], candidates=rows,
-                criterion="Mean final EMA validation scaled-score MSE across both covariances, spectra and seeds")

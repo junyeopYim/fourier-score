@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 import contextlib
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -11,8 +10,7 @@ import random
 import tempfile
 import numpy as np
 import torch
-
-ROOT = Path(__file__).resolve().parents[1]
+from fourier_score.provenance import ROOT, source_hash
 
 
 def resolve_device(name="auto"):
@@ -36,6 +34,13 @@ def resolve_device(name="auto"):
     ):
         raise RuntimeError("CUDA device index out of range")
     return device
+
+
+def synchronize(device):
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    elif device.type == "mps":
+        torch.mps.synchronize()
 
 
 def configure_runtime(cfg):
@@ -141,15 +146,6 @@ def json_write(obj, path):
     finally:
         if os.path.exists(tmp):
             os.unlink(tmp)
-
-
-def source_hash():
-    paths = list((ROOT / "fourier_score").rglob("*.py"))
-    h = hashlib.sha256()
-    for p in sorted(paths):
-        h.update(str(p.relative_to(ROOT)).encode())
-        h.update(p.read_bytes())
-    return h.hexdigest()
 
 
 def environment(device, cfg):

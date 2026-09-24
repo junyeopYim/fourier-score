@@ -1,8 +1,18 @@
-"""Estimate training-only image means and Fourier power spectra."""
+"""Estimate, identify and cache training-only image means and Fourier power spectra.
+
+Random horizontal flips are performed in the trainer; for statistics their
+expectation is computed exactly by including both flips.
+"""
+
+import hashlib
+import json
+from pathlib import Path
 
 import torch
+from torch.utils.data import DataLoader
 
-from fourier_score.spectral import conjugate_symmetrize
+from fourier_score.model.spectral import conjugate_symmetrize
+from fourier_score.utils import atomic_save, load_checkpoint
 
 
 @torch.no_grad()
@@ -66,3 +76,56 @@ def estimate_stats(batches, floor: float = 1e-4, *, posterior_variance=False) ->
         "floor": float(floor),
         "floored_fraction": float((raw < floor).double().mean()),
     }
+
+
+def stats_identity(meta):
+    h = hashlib.sha256()
+    for k in sorted(meta):
+        v = meta[k]
+        h.update(k.encode())
+        h.update(
+            v.numpy().tobytes()
+            if torch.is_tensor(v)
+            else json.dumps(v, sort_keys=True).encode()
+        )
+    return h.hexdigest()
+
+
+def prepare_stats(cfg, bundle, stored=None, force=False):
+    identity = stats_identity(bundle.metadata)
+    if stored is not None:
+        if stored.get("identity") != identity:
+            raise ValueError("Checkpoint data/split/preprocessing/statistics mismatch")
+        return stored
+    path = Path(cfg["fourier"]["cache_dir"]) / (identity + ".pt")
+    if path.exists() and not force:
+        obj = load_checkpoint(path)
+        if obj.get("identity") != identity:
+            raise ValueError("Corrupted statistics cache identity")
+        return obj
+    a = cfg["data_loader"]["args"]
+    loader = DataLoader(
+        bundle.train,
+        batch_size=cfg["fourier"]["stats_batch_size"],
+        shuffle=False,
+        num_workers=a["num_workers"],
+        multiprocessing_context="spawn" if a["num_workers"] else None,
+        generator=torch.Generator().manual_seed(a["split_seed"]),
+    )
+
+    def batches():
+        for x in loader:
+            yield x
+            if a["random_flip"]:
+                yield x.flip(-1)
+
+    stats = estimate_stats(batches(), cfg["fourier"]["power_floor"])
+    stats.update(bundle.metadata)
+    stats["identity"] = identity
+    atomic_save(stats, path)
+    return stats
+
+
+def placeholder_stats(shape):
+    """Zero mean, unit power: builds a model without data, never trains one."""
+    return {"mean": torch.zeros(shape), "power": torch.ones(shape)}

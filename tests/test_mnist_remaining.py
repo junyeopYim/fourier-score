@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 import torch
 
-from fourier_score.checkpoints import FORMAT
 from fourier_score.config import experiment_name, load_config
+from fourier_score.trainer.checkpoints import FORMAT
 from fourier_score.utils import source_hash
 from scripts.run_mnist_remaining import ARMS, completed_checkpoint, plan_run, run_config
 
