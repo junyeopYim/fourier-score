@@ -98,7 +98,8 @@ def test_selected(cfg, output, results, arms):
     return tested
 
 
-def export_report(report, cfg, provenance, results, tested, selection, pairing, arms):
+def export_report(report, cfg, provenance, results, tested, selection, pairing, arms,
+                  *, figure_stem="gmm_gated_comparison"):
     report.mkdir(parents=True, exist_ok=True)
     per_seed, noise, frequency, curves = [], [], [], []
     for result in tested:
@@ -154,11 +155,11 @@ def export_report(report, cfg, provenance, results, tested, selection, pairing, 
                    test_observations_per_spectrum=cfg.n_noise_levels * cfg.test_per_noise,
                    arms=[asdict(a) for a in arms], summary=summary, paired=paired, pairing_checks=pairing)
     json_write(payload, report / "summary.json")
-    plot_report(report, cfg, arms, summary, noise)
+    plot_report(report, cfg, arms, summary, noise, figure_stem=figure_stem)
     return payload
 
 
-def plot_report(report, cfg, arms, summary, noise):
+def plot_report(report, cfg, arms, summary, noise, *, figure_stem="gmm_gated_comparison"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -166,10 +167,20 @@ def plot_report(report, cfg, arms, summary, noise):
               "Fourier / normalized", "Gated Scalar", "Gated Fourier"]
     colors = ["#777777", "#3178ad", "#d77b29", "#3178ad", "#d77b29", "#18866c", "#863daf"]
     styles = [":", "--", "--", "-", "-", "-", "-"]
+    appearances = {arm.name: (label, color, style)
+                   for arm, label, color, style in zip(BASELINE_ARMS, labels, colors, styles)}
+    for arm in arms:
+        if arm.gate_mode in ("log_sigma", "log_sigma_plateau"):
+            scalar = arm.parameterization == "scalar_gaussian"
+            plateau = arm.gate_mode == "log_sigma_plateau"
+            appearances[arm.name] = (("Plateau " if plateau else "Gated ") + ("Scalar" if scalar else "Fourier"),
+                                     ("#2382c0" if scalar else "#c13958") if plateau else
+                                     ("#18866c" if scalar else "#863daf"), "-")
     plt.rcParams.update({"font.size": 10, "axes.spines.top": False, "axes.spines.right": False})
     fig, axes = plt.subplots(1, 2, figsize=(12, 4.7))
     focus = max(cfg.spectrum_lambdas)
-    for arm, label, color, style in zip(arms, labels, colors, styles):
+    for arm in arms:
+        label, color, style = appearances[arm.name]
         rows = [r for r in summary if r["method"] == arm.name]
         axes[0].errorbar([r["spectrum_lambda"] for r in rows], [r["score_error_mean"] for r in rows],
                          yerr=[r["score_error_sd"] or 0 for r in rows], label=label,
@@ -189,10 +200,11 @@ def plot_report(report, cfg, arms, summary, noise):
     axes[1].minorticks_off()
     for ax in axes:
         ax.grid(alpha=.18)
-    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center", ncol=4, frameon=False)
+    fig.legend(*axes[0].get_legend_handles_labels(), loc="lower center",
+               ncol=5 if len(arms) > 7 else 4, frameon=False)
     fig.tight_layout(rect=(0, .13, 1, 1))
     for extension in ("png", "svg", "pdf"):
-        path = report / f"gmm_gated_comparison.{extension}"
+        path = report / f"{figure_stem}.{extension}"
         fig.savefig(path, dpi=180, bbox_inches="tight")
         if extension == "svg":
             path.write_text("\n".join(line.rstrip() for line in path.read_text().splitlines()) + "\n")

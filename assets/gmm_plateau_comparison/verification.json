@@ -1,0 +1,94 @@
+{
+  "checked_utc": "2026-09-24T05:25:48.151276+00:00",
+  "tests": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 125,
+    "seconds": 18.41
+  },
+  "full_experiment": {
+    "new_training_runs": 18,
+    "reused_runs": 63,
+    "test_runs": 81,
+    "workers": 12,
+    "cpu_threads_per_job": 1,
+    "source_unchanged_after_training": true,
+    "source_sha256": "a69a635a93ae36be5ef81e5ad50274975c22845f178ba57e48dbbd0bc7245a0a",
+    "baseline_validation_reproduction": "exact for all 63 reused checkpoints, including every noise bin",
+    "pairing_conditions": 9,
+    "gradient_clipping_activated": false
+  },
+  "gate_check": {
+    "sigmas": [
+      0.10000000149011612,
+      0.800000011920929,
+      0.8999999761581421,
+      1.0,
+      1.166298747062683,
+      3.0
+    ],
+    "values": [
+      1.9752691514440812e-05,
+      0.07485243678092957,
+      0.5942896604537964,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "complements": [
+      0.9999802112579346,
+      0.925147533416748,
+      0.405710369348526,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "low_matches_sigmoid_exactly": true,
+    "high_is_exactly_one": true
+  },
+  "parameter_counts": {
+    "score": 102016,
+    "scalar_gaussian": 102016,
+    "fourier_gaussian": 102016,
+    "scalar_normalized": 102016,
+    "fourier_normalized": 102016,
+    "scalar_gate_s1p5_p4": 102016,
+    "fourier_gate_s1p5_p4": 102016,
+    "scalar_gate_s1p5_p4_plateau_lo0p8_hi1": 102016,
+    "fourier_gate_s1p5_p4_plateau_lo0p8_hi1": 102016
+  },
+  "independent_test_banks": [
+    {
+      "spectrum_lambda": 0.0,
+      "previous": "b5ec42f4115adb45598048e182a410f0fa715b618c58de650b8b75a45181b389",
+      "current": "778eb5b26b189a6f7ed9a8438343b022b46c8042fd06405c9614c29f1d93cc3f"
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "previous": "8b1bfd743c2b09c82ab70806ff5da2408f7e3d12e08e9b6ff6cc468430effed5",
+      "current": "88351be3524f0d1a6f2da3737dd9067d0276a05387714e353ea6fabfaf4838db"
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "previous": "81fcfed3ae9bb3b7df80f507f95e10eeaf8250cb7cde4e1b78f05a5b0d271479",
+      "current": "46cf2fc6b91e3fb0bbcbd7846bdf7e5ba961b460c224ebaac798984c4df2c528"
+    }
+  ],
+  "smoke": {
+    "passed": true,
+    "resumed_with_workers": [
+      12,
+      2
+    ],
+    "summary_sha256": "43c86eef73d663c1f69ac4b8fad1c5013c272dfa930b5d01b65aebfbdd0be27e",
+    "resume_summary_identical": true
+  },
+  "image_model_cli_dry_run": {
+    "passed": true,
+    "config": "configs/smoke.json",
+    "mode": "log_sigma_plateau"
+  },
+  "figures_visually_inspected": [
+    "gmm_plateau_comparison.png",
+    "gmm_plateau_transition.png"
+  ]
+}

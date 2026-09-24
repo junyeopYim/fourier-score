@@ -69,11 +69,14 @@ class GMMArm:
     gate_mode: str = "none"
     sigma_switch: float = 1.0
     sharpness: float = 4.0
+    sigma_lo: float = 0.8
+    sigma_hi: float = 1.0
 
     @property
     def gate(self):
         return validate_gate(dict(mode=self.gate_mode, sigma_switch=self.sigma_switch,
-                                  sharpness=self.sharpness))
+                                  sharpness=self.sharpness, sigma_lo=self.sigma_lo,
+                                  sigma_hi=self.sigma_hi))
 
 
 BASELINE_ARMS = (
@@ -91,6 +94,16 @@ def gated_arm(covariance, sigma_switch=1.0, sharpness=4.0):
     gate = dict(mode="log_sigma", sigma_switch=sigma_switch, sharpness=sharpness)
     return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
                   "normalized_residual", "log_sigma", sigma_switch, sharpness)
+
+
+def plateau_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=0.8, sigma_hi=1.0):
+    if covariance not in ("scalar", "fourier"):
+        raise ValueError(covariance)
+    gate = dict(mode="log_sigma_plateau", sigma_switch=sigma_switch, sharpness=sharpness,
+                sigma_lo=sigma_lo, sigma_hi=sigma_hi)
+    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
+                  "normalized_residual", "log_sigma_plateau", sigma_switch, sharpness,
+                  sigma_lo, sigma_hi)
 
 
 NOTEBOOK_ARMS = {arm.name: arm for arm in BASELINE_ARMS}
@@ -291,7 +304,7 @@ def bank_seed(family, split: str) -> int:
 
 
 @torch.no_grad()
-def make_bank(family: MatchedMomentFamily, split: str) -> OracleBank:
+def make_bank(family: MatchedMomentFamily, split: str, *, sigmas=None) -> OracleBank:
     CFG = family.cfg
     PROCESS = NoiseProcess(process_config(CFG))
     if split not in ("validation", "test"):
@@ -300,11 +313,21 @@ def make_bank(family: MatchedMomentFamily, split: str) -> OracleBank:
     generator = torch.Generator().manual_seed(bank_seed(family, split))
     entries = []
     digest = hashlib.sha256()
-    # Midpoint quadrature in log sigma.
-    t_grid = (torch.arange(CFG.n_noise_levels, dtype=torch.float32) + 0.5) / CFG.n_noise_levels
+    # Default: unchanged midpoint quadrature in log sigma. An explicit grid is
+    # for separate diagnostics, never pooled into the primary aggregate metric.
+    if sigmas is None:
+        t_grid = (torch.arange(CFG.n_noise_levels, dtype=torch.float32) + 0.5) / CFG.n_noise_levels
+    else:
+        sigmas = torch.as_tensor(sigmas, dtype=torch.float32)
+        if (sigmas.ndim != 1 or not len(sigmas) or not torch.isfinite(sigmas).all()
+                or (sigmas < CFG.sigma_min).any() or (sigmas > CFG.sigma_max).any()
+                or not (sigmas[1:] > sigmas[:-1]).all()):
+            raise ValueError("Diagnostic sigmas must be finite, increasing and within the trained range")
+        t_grid = (sigmas.log() - math.log(CFG.sigma_min)) / PROCESS.log_ratio
     for noise_bin, t in enumerate(t_grid):
         coordinate = torch.full((n,), float(t))
-        level = PROCESS.level(coordinate)
+        level = (PROCESS.level(coordinate) if sigmas is None else
+                 NoiseLevel(torch.ones(n), torch.full((n,), float(sigmas[noise_bin])), coordinate))
         clean = family.sample_cpu(n, generator)
         noise = torch.randn(clean.shape, generator=generator)
         y = PROCESS.perturb(clean, level, noise)  # input is exactly the FP32 value seen by the model

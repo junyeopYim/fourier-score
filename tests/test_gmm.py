@@ -8,7 +8,7 @@ import torch
 
 from fourier_score.gmm import (
     GMMConfig, MatchedMomentFamily, bank_seed, gated_arm, make_bank,
-    make_model, select_gate, train_arm,
+    make_model, plateau_arm, select_gate, train_arm,
 )
 
 
@@ -47,10 +47,10 @@ def test_bank_version_changes_evaluation_only():
                                changed.sample_cpu(8, torch.Generator().manual_seed(42)), atol=0, rtol=0)
 
 
-def test_gmm_gate_resume_matches_uninterrupted(tmp_path):
+@pytest.mark.parametrize("arm", [gated_arm("fourier", .5), plateau_arm("fourier")])
+def test_gmm_gate_resume_matches_uninterrupted(tmp_path, arm):
     cfg = small_config()
     family = MatchedMomentFamily(cfg, "gmm", 1.)
-    arm = gated_arm("fourier", .5)
     validation = make_bank(family, "validation")
     provenance = {"test": "resume"}
     full = train_arm(family, arm, 42, validation, tmp_path / "full", provenance)
@@ -88,3 +88,19 @@ def test_toy_backbone_unchanged_between_arms():
         torch.testing.assert_close(tensor, gated.backbone.state_dict()[name], atol=0, rtol=0)
     assert gated.embedding == "fourier"
     assert gated.loss_objective == "normalized_residual"
+
+
+def test_explicit_diagnostic_grid_uses_exact_sigma_and_independent_bank():
+    cfg = small_config()
+    family = MatchedMomentFamily(cfg, "gmm", 1.)
+    bank = make_bank(family, "test", sigmas=[.8, .9, 1.])
+    assert bank.n_observations == 3 * cfg.test_per_noise
+    assert [e["sigma"] for e in bank.entries] == torch.tensor([.8, .9, 1.]).tolist()
+    assert bank.fingerprint != make_bank(family, "test").fingerprint
+    for entry in bank.entries:
+        sigma = torch.full((cfg.test_per_noise,), entry["sigma"], dtype=torch.float64)
+        _, score = family.log_prob_and_score(entry["y"].double(), torch.ones_like(sigma), sigma)
+        torch.testing.assert_close(entry["oracle_scaled"], sigma[:, None, None, None] * score)
+    for grid in ([], [.9, .8], [.8, .8], [.01, .8], [float("nan")]):
+        with pytest.raises(ValueError, match="Diagnostic sigmas"):
+            make_bank(family, "test", sigmas=grid)

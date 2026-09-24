@@ -17,7 +17,8 @@ OBJECTIVES = ("score", "diffusion", *GAUSSIAN_OBJECTIVES)
 # Score and diffusion are sign conventions, so only one is in the main ablation.
 COMPARISON_OBJECTIVES = ("score", *GAUSSIAN_OBJECTIVES)
 
-GATE_DEFAULTS = {"mode": "none", "sigma_switch": 1.0, "sharpness": 4.0, "value": 1.0}
+GATE_DEFAULTS = {"mode": "none", "sigma_switch": 1.0, "sharpness": 4.0, "value": 1.0,
+                 "sigma_lo": 0.8, "sigma_hi": 1.0}
 
 
 def validate_gate(gate=None):
@@ -25,9 +26,9 @@ def validate_gate(gate=None):
     if gate is not None and (not isinstance(gate, dict) or set(gate) - GATE_DEFAULTS.keys()):
         raise ValueError("Invalid Gaussian gate configuration")
     result = {**GATE_DEFAULTS, **(gate or {})}
-    if result["mode"] not in ("none", "constant", "log_sigma"):
-        raise ValueError("gate.mode must be none, constant, or log_sigma")
-    for key in ("sigma_switch", "sharpness", "value"):
+    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau"):
+        raise ValueError("gate.mode must be none, constant, log_sigma, or log_sigma_plateau")
+    for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi"):
         value = result[key]
         if type(value) not in (int, float) or not math.isfinite(value):
             raise ValueError(f"gate.{key} must be finite")
@@ -35,6 +36,8 @@ def validate_gate(gate=None):
         raise ValueError("gate.sigma_switch and gate.sharpness must be positive")
     if not 0 <= result["value"] <= 1:
         raise ValueError("gate.value must be between zero and one")
+    if not 0 < result["sigma_lo"] < result["sigma_hi"]:
+        raise ValueError("gate requires 0 < sigma_lo < sigma_hi")
     return result
 
 
@@ -46,7 +49,13 @@ def gate_suffix(gate=None):
         return ""
     if gate["mode"] == "constant":
         return "_gate_constant" + number(gate["value"])
-    return f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
+    suffix = f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
+    if gate["mode"] == "log_sigma_plateau":
+        # Shortest round-trip representations keep distinct bounds distinct.
+        bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
+                  .replace("-", "m").replace("+", "") for key in ("sigma_lo", "sigma_hi")]
+        suffix += f"_plateau_lo{bounds[0]}_hi{bounds[1]}"
+    return suffix
 
 
 class FourierGaussian(nn.Module):
@@ -97,11 +106,25 @@ class FourierGaussian(nn.Module):
 
     def _gate_weights(self, sigma):
         s = sigma[:, None, None, None]
-        if self.gate["mode"] == "log_sigma":
+        if self.gate["mode"] in ("log_sigma", "log_sigma_plateau"):
             logit = self.gate["sharpness"] * (s.log() - math.log(self.gate["sigma_switch"]))
             # Compute 1-g separately: subtracting a rounded sigmoid loses the
             # residual near g=1, especially when the power spectrum is small.
-            return torch.sigmoid(logit), torch.sigmoid(-logit)
+            g, complement = torch.sigmoid(logit), torch.sigmoid(-logit)
+            if self.gate["mode"] == "log_sigma_plateau":
+                lo, hi = self.gate["sigma_lo"], self.gate["sigma_hi"]
+                z = ((s.log() - math.log(lo)) / (math.log(hi) - math.log(lo))).clamp(0, 1)
+                w = z.square() * (3 - 2 * z)
+                # 1-w = (1-z)^2(1+2z), avoiding cancellation near the plateau.
+                taper = (1 - z).square() * (1 + 2 * z)
+                lifted = g + w * complement
+                remaining = taper * complement
+                # Compare sigma itself so the configured endpoints are exact
+                # even when logarithms round differently in FP32.
+                g = torch.where(s <= lo, g, torch.where(s >= hi, torch.ones_like(g), lifted))
+                complement = torch.where(s <= lo, complement,
+                                         torch.where(s >= hi, torch.zeros_like(complement), remaining))
+            return g, complement
         value = self.gate["value"] if self.gate["mode"] == "constant" else 1.0
         return torch.full_like(s, value), torch.full_like(s, 1.0 - value)
 

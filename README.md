@@ -15,7 +15,7 @@ in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 
 [Quick start](#quick-start) · [Method](#method) · [Experiments](#reproduce-the-experiments) ·
 [GMM notebook](#understand-the-mechanism) · [Loss comparison](#gmm-loss-comparison) ·
-[Gated comparison](#gmm-gated-comparison) · [Figures](#figures) ·
+[Gated comparison](#gmm-gated-comparison) · [Plateau experiment](#gmm-plateau-comparison) · [Figures](#figures) ·
 [Development](#development)
 
 ![Method schematic: direct score prediction and a fixed Gaussian score plus a spectrally scaled neural residual share the DSM objective; the analytic residual scale is shown below.](assets/loss_comparison.svg)
@@ -37,6 +37,7 @@ residual scale, determined by fixed training-data moments.
 | Matched-moment Gaussian / GMM | Can the residual learn structure beyond an exactly known Gaussian reference? | Reproducible synthetic mechanism experiment with an analytic true score. |
 | GMM loss comparison | At spectral heterogeneity $\lambda=1$, normalized residual loss reduced Fourier true-score error by 33.4% relative to Fourier DSM; Scalar DSM remained best. | 45 runs, three paired seeds, 5,000 updates; [results and protocol](#gmm-loss-comparison). |
 | GMM gated comparison | At $\lambda=1$, Gated Fourier reduced error by 25.8% versus Scalar DSM, with a high-noise tradeoff. | 99 runs, validation-selected gate, independent test banks; [results](#gmm-gated-comparison). |
+| GMM plateau gate | Forcing $g=1$ above $\sigma=1$ increased Fourier error by 12.6% overall and 25.8% at high noise versus the sigmoid gate. | Fixed transition $[0.8,1.0]$, 18 new runs, three paired seeds; [results](#gmm-plateau-comparison). |
 
 The scalar–Fourier comparison measures the combined effect of frequency-dependent
 covariance in the reference score and residual scale. Pretrained models and
@@ -190,6 +191,38 @@ gate fields retain their original behavior and configuration signatures.
 The implementation computes $g$ and $1-g$ from opposite sigmoid arguments,
 and constructs the target directly from clean data and noise. This avoids
 subtracting nearly equal values when the reference dominates at high noise.
+
+An optional `log_sigma_plateau` gate retains this sigmoid below a specified
+noise level and reaches **exactly one** at a finite upper boundary:
+
+$$
+z=\operatorname{clip}\!\left(\frac{\log\sigma-\log\sigma_L}
+{\log\sigma_H-\log\sigma_L},0,1\right),\qquad
+w=z^2(3-2z),\qquad g_{\rm plateau}=g+w(1-g).
+$$
+
+Both the residual scale and normalized target use this same modified gate.
+For $\sigma\leq\sigma_L$, the adapter and target retain the sigmoid calculation;
+for $\sigma\geq\sigma_H$, they recover the original $g=1$ parameterization.
+This preserves the **equations**, not the trained high-noise predictions of a
+different checkpoint: all noise levels still share the newly trained backbone.
+There is no teacher, ensemble or added model capacity. Retrain when changing
+gate modes; do not substitute the plateau into a trained sigmoid checkpoint.
+
+```bash
+uv run --locked python train.py -c configs/smoke.json \
+  --set loss.objective=normalized_residual \
+  --set fourier.gate.mode=log_sigma_plateau \
+  --set fourier.gate.sigma_switch=1.5 \
+  --set fourier.gate.sharpness=4.0 \
+  --set fourier.gate.sigma_lo=0.8 --set fourier.gate.sigma_hi=1.0 --dry-run
+```
+
+The implementation computes $1-g_{\rm plateau}=(1-z)^2(1+2z)(1-g)$ directly
+and enforces the endpoints using comparisons of $\sigma$, avoiding subtraction
+cancellation near the plateau. Bounds must satisfy $0<\sigma_L<\sigma_H$;
+they are included in experiment names and resume signatures for this mode.
+The added bounds do not change existing sigmoid-gate configuration signatures.
 
 Run the controlled GMM comparison with:
 
@@ -465,6 +498,101 @@ checks all 45 archived final EMA hashes. An independent
 agrees with the 64-dimensional oracle within $2.7\times10^{-14}$ maximum absolute
 score error. [Execution history](assets/gmm_gated_comparison/execution_history.json)
 records the launcher used after increasing CPU concurrency to 12 workers.
+
+## GMM plateau comparison
+
+**The fixed plateau did not improve the sigmoid gate in this experiment.**
+At $\lambda=1$, Plateau Fourier's overall test error increased by **12.6%**
+relative to Gated Fourier, and its high-noise error increased by **25.8%**.
+The overall regression occurs in all three paired seeds at every spectrum.
+Plateau Fourier still beats Scalar/DSM by 16.4% at $\lambda=1$, but does not
+retain the better result of the existing sigmoid gate.
+
+This experiment fixes $\sigma_c=1.5$, $p=4$, $\sigma_L=0.8$ and $\sigma_H=1.0$
+**before training and evaluation**, without searching the bounds or selecting
+on test results. The backbone, parameter count, initialization, online training
+streams, Adam settings, EMA and 5,000-update budget match the gated comparison.
+Only the gate changes; its reference, residual scale and normalized target are
+updated together. No teacher loss or additional model is used.
+
+There are **18 new training runs** (two covariances × three spectra × three
+seeds). The other 63 checkpoints are reused after checking their configurations,
+statistics, initial/final EMA hashes and exact reproduction of every archived
+validation noise-bin metric. All 81 models are evaluated on a **new common test
+bank** (`gmm-plateau-v1`): nine log-noise midpoint bins, 2,048 observations per
+bin, shared across methods and training seeds. These new observations explain
+the small differences from earlier baseline tables. The 12-worker launcher
+runs each job with one CPU thread. No run activated gradient clipping.
+
+Values below are noise-scaled true-score MSE, mean ± one sample standard
+deviation over training seeds 42, 43 and 44; lower is better.
+
+| Parameterization / objective | $\lambda=0$ | $\lambda=0.5$ | $\lambda=1$ |
+|---|---:|---:|---:|
+| Score / DSM | 0.05316 ± 0.00018 | 0.05947 ± 0.00057 | 0.07801 ± 0.00101 |
+| Scalar / DSM | 0.13331 ± 0.00487 | 0.08684 ± 0.00332 | 0.07474 ± 0.00078 |
+| Fourier / DSM | 0.13332 ± 0.00487 | 0.12939 ± 0.00359 | 0.12823 ± 0.00629 |
+| Scalar / normalized residual | 0.12541 ± 0.00638 | 0.09348 ± 0.00203 | 0.07866 ± 0.00159 |
+| Fourier / normalized residual | 0.12541 ± 0.00638 | 0.12045 ± 0.00475 | 0.08509 ± 0.00387 |
+| Gated Scalar / normalized residual | **0.03901 ± 0.00013** | 0.04296 ± 0.00044 | 0.05853 ± 0.00054 |
+| Gated Fourier / normalized residual | **0.03901 ± 0.00013** | **0.04291 ± 0.00044** | **0.05553 ± 0.00064** |
+| Plateau Scalar / normalized residual | 0.06117 ± 0.00062 | 0.05649 ± 0.00092 | 0.06914 ± 0.00138 |
+| Plateau Fourier / normalized residual | 0.06117 ± 0.00062 | 0.05993 ± 0.00064 | 0.06251 ± 0.00020 |
+
+At $\lambda=1$, the low/middle/high regions use the same boundaries as before
+($\sigma<0.3$, $0.3\leq\sigma<1$, and $\sigma\geq1$):
+
+| Noise region | Fourier normalized | Gated Fourier | Plateau Fourier | Plateau vs gated |
+|---|---:|---:|---:|---:|
+| Low | 0.07816 | 0.03455 | **0.02928** | −15.3% |
+| Middle | 0.12659 | **0.07197** | 0.08272 | +14.9% |
+| High | **0.05053** | 0.06005 | 0.07554 | +25.8% |
+
+The low-noise improvement is outweighed by middle/high-noise regressions.
+Despite exactly reaching $g=1$, the plateau's high-noise error is **49.5%**
+above the original Fourier-normalized model. A shared, newly trained backbone
+does not recover the original model's predictions merely by restoring its
+high-noise adapter equations.
+
+![Plateau GMM comparison across spectra and noise levels.](assets/gmm_plateau_comparison/gmm_plateau_comparison.svg)
+
+A separate diagnostic evaluates 15 noise levels around the transition at
+$\lambda=1$, with 1,024 fresh observations per level. These points are **not**
+pooled into the primary nine-bin average. At $\sigma=1$, the test error is
+**0.15923** for Plateau Fourier, versus **0.10203** for Gated Fourier and
+**0.10703** for Fourier normalized. The increased error near the transition is
+visible in every seed. A narrow transition or shared-backbone optimization may
+contribute; this experiment does not isolate those causes, optimize the bounds,
+or establish sample/image quality. It uses one fixed GMM geometry and budget.
+
+![Plateau gate and dense transition diagnostic.](assets/gmm_plateau_comparison/gmm_plateau_transition.svg)
+
+Reproduce all 81 runs from scratch:
+
+```bash
+uv run --locked --extra figures python scripts/run_gmm_plateau.py \
+  --output saved/gmm_plateau_reproduction --workers 12
+```
+
+If the previous comparison checkpoints are available, add
+`--reuse-baselines saved/gmm_gated_20260924` to train only the 18 plateau runs.
+Reuse is read-only and requires exact validation reproduction. Use
+`--preset smoke --seeds 42` for a short pipeline check. The bounds are configurable
+with `--sigma-lo` and `--sigma-hi`; use a new output directory and an independent
+test-bank version for subsequent model-selection experiments.
+
+Archived [protocol](assets/gmm_plateau_comparison/protocol.json) ·
+[summary](assets/gmm_plateau_comparison/summary.json) ·
+[paired comparisons](assets/gmm_plateau_comparison/paired_comparisons.csv) ·
+[per-seed results](assets/gmm_plateau_comparison/per_seed.csv) ·
+[noise regions](assets/gmm_plateau_comparison/noise_regions.csv) ·
+[transition diagnostics](assets/gmm_plateau_comparison/transition_resolved.csv) ·
+[checkpoint audit](assets/gmm_plateau_comparison/checkpoint_audit.json) ·
+[verification](assets/gmm_plateau_comparison/verification.json).
+Figures: [comparison PNG](assets/gmm_plateau_comparison/gmm_plateau_comparison.png) /
+[PDF](assets/gmm_plateau_comparison/gmm_plateau_comparison.pdf),
+[transition PNG](assets/gmm_plateau_comparison/gmm_plateau_transition.png) /
+[PDF](assets/gmm_plateau_comparison/gmm_plateau_transition.pdf).
 
 ## Figures
 

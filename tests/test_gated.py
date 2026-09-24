@@ -42,10 +42,11 @@ def test_gate_endpoints(covariance, value):
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
 @pytest.mark.parametrize("reduction", ["mean", "half_sum"])
 @pytest.mark.parametrize("backend", ["fft", "matmul"])
-def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction, backend):
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction, backend, mode):
     stats, x, noise, raw, level = inputs()
     ref = FourierGaussian(stats, backend, covariance=covariance,
-                          gate=dict(mode="log_sigma", sigma_switch=.7)).double()
+                          gate=dict(mode=mode, sigma_switch=.7, sigma_lo=.25, sigma_hi=.75)).double()
     model = SimpleNamespace(process=NoiseProcess(cfg["process"]), reference=ref,
                             embedding="fourier", backbone=lambda y, condition: raw)
     loss = training_loss(model, x, level, noise, reduction, objective="normalized_residual")
@@ -54,6 +55,9 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
     s = level.sigma[:, None, None, None]
     # Independent rational gate and variance derivation, without adapter helpers.
     g = s.pow(4) / (s.pow(4) + .7 ** 4)
+    if mode == "log_sigma_plateau":
+        z = (torch.log(s / .25) / torch.log(torch.tensor(3., dtype=s.dtype))).clamp(0, 1)
+        g = g + z.square() * (3 - 2*z) * (1 - g)
     total = ref.power[None] + s.square()
     variance = (g.square() * s.square() * ref.power[None]
                 + (ref.power[None] + (1-g)*s.square()).square()) / total.square()
@@ -68,12 +72,13 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-def test_nongaussian_target_second_moment(covariance):
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+def test_nongaussian_target_second_moment(covariance, mode):
     # Finite population with exact covariance: signed scaled basis vectors.
     d = 16
     power = conjugate_symmetrize(torch.arange(1, d+1).reshape(1, 4, 4).float()) / d
     ref = FourierGaussian(dict(mean=torch.zeros_like(power), power=power), covariance=covariance,
-                          gate=dict(mode="log_sigma", sigma_switch=.5)).double()
+                          gate=dict(mode=mode, sigma_switch=.5, sigma_lo=.6, sigma_hi=.8)).double()
     basis = torch.eye(d, dtype=torch.float64).reshape(d, 1, 4, 4) * d ** .5
     population = torch.cat([basis, -basis])
     clean = torch.fft.ifft2(torch.fft.fft2(population, norm="ortho") * power.double().sqrt(), norm="ortho").real
@@ -88,10 +93,11 @@ def test_nongaussian_target_second_moment(covariance):
     torch.testing.assert_close(moment, torch.ones_like(moment), atol=2e-12, rtol=2e-12)
 
 
-def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch):
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mode):
     stats, x, noise, raw, level = inputs()
     stats["power"] = stats["power"].mean((-2, -1), keepdim=True).expand_as(stats["power"])
-    gate = dict(mode="log_sigma", sigma_switch=1.5)
+    gate = dict(mode=mode, sigma_switch=1.5, sigma_lo=.25, sigma_hi=.75)
     scalar = FourierGaussian(stats, covariance="scalar", gate=gate).double()
     fourier = FourierGaussian(stats, gate=gate).double()
     monkeypatch.setattr(scalar.filter, "forward", lambda *args: pytest.fail("Scalar used FFT"))
@@ -103,9 +109,10 @@ def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch):
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-def test_gated_target_extreme_power_noise(covariance):
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau"])
+def test_gated_target_extreme_power_noise(covariance, mode):
     ref = FourierGaussian(dict(mean=torch.zeros(1, 4, 4), power=torch.full((1, 4, 4), 1e-12)),
-                          covariance=covariance, gate=dict(mode="log_sigma")).float()
+                          covariance=covariance, gate=dict(mode=mode)).float()
     rng = torch.Generator().manual_seed(99)
     x = 1e-6 * torch.randn(3, 1, 4, 4, generator=rng)
     noise = torch.randn(x.shape, generator=rng)
@@ -132,6 +139,61 @@ def test_gate_config_names_and_legacy_signatures(cfg):
     assert resume_signature(changed) != resume_signature(cfg)
 
 
+@pytest.mark.parametrize("covariance", ["scalar", "fourier"])
+@pytest.mark.parametrize("dtype", [torch.float32, torch.float64])
+def test_plateau_preserves_low_adapter_and_recovers_high_adapter(covariance, dtype):
+    stats, x, noise, raw, _ = inputs()
+    x, noise, raw = [t.to(dtype) for t in (x, noise, raw)]
+    sigma = torch.tensor([.1, .8, 1., 50.], dtype=dtype)
+    old = FourierGaussian(stats, covariance=covariance,
+                          gate=dict(mode="log_sigma", sigma_switch=1.5)).to(dtype)
+    plateau = FourierGaussian(stats, covariance=covariance,
+                              gate=dict(mode="log_sigma_plateau", sigma_switch=1.5)).to(dtype)
+    original = FourierGaussian(stats, covariance=covariance).to(dtype)
+    g, remaining = plateau._gate_weights(sigma)
+    torch.testing.assert_close(g[:2], old.gate_value(sigma[:2]), atol=0, rtol=0)
+    assert torch.equal(g[2:], torch.ones_like(g[2:]))
+    assert torch.equal(remaining[2:], torch.zeros_like(remaining[2:]))
+    y = x + sigma[:, None, None, None] * noise
+    for a, b in [(plateau.normalized_target(x, noise, sigma),
+                  torch.cat([old.normalized_target(x[:2], noise[:2], sigma[:2]),
+                             original.normalized_target(x[2:], noise[2:], sigma[2:])])),
+                 (plateau.scaled_score(raw, y, torch.ones_like(sigma), sigma),
+                  torch.cat([old.scaled_score(raw[:2], y[:2], torch.ones(2, dtype=dtype), sigma[:2]),
+                             original.scaled_score(raw[2:], y[2:], torch.ones(2, dtype=dtype), sigma[2:])]))]:
+        torch.testing.assert_close(a[:2], b[:2], atol=0, rtol=0)
+        tol = 3e-6 if dtype == torch.float32 else 2e-12
+        torch.testing.assert_close(a[2:], b[2:], atol=tol, rtol=tol)
+
+
+def test_plateau_is_monotone_and_has_continuous_endpoint_slopes(stats):
+    ref = FourierGaussian(stats, gate=dict(mode="log_sigma_plateau", sigma_switch=1.5)).double()
+    sigma = torch.cat([torch.linspace(.1, 2., 200, dtype=torch.float64),
+                       torch.tensor([.8-1e-7, .8, .8+1e-7, 1.-1e-7, 1., 1.+1e-7], dtype=torch.float64)])
+    sigma.requires_grad_()
+    g, complement = ref._gate_weights(sigma)
+    assert (g[1:200] >= g[:199]).all()
+    torch.testing.assert_close(g + complement, torch.ones_like(g), atol=3e-16, rtol=3e-16)
+    derivative = torch.autograd.grad(g.sum(), sigma)[0]
+    torch.testing.assert_close(derivative[-6:-3], derivative[-5].expand(3), atol=3e-5, rtol=1e-5)
+    torch.testing.assert_close(derivative[-3:], torch.zeros(3, dtype=sigma.dtype), atol=2e-5, rtol=0)
+
+
+def test_plateau_config_and_pre_plateau_active_gate_signature(cfg):
+    cfg["fourier"]["gate"]["mode"] = "log_sigma"
+    old = copy.deepcopy(cfg)
+    del old["fourier"]["gate"]["sigma_lo"], old["fourier"]["gate"]["sigma_hi"]
+    assert validate(old) == cfg
+    assert resume_signature(old) == resume_signature(cfg)
+    cfg["fourier"]["gate"].update(mode="log_sigma_plateau", sigma_switch=1.5)
+    validate(cfg)
+    assert experiment_name(cfg).endswith("_gate_s1p5_p4_plateau_lo0p8_hi1")
+    changed = copy.deepcopy(cfg)
+    changed["fourier"]["gate"]["sigma_hi"] = 1.1
+    assert experiment_name(changed) != experiment_name(cfg)
+    assert resume_signature(changed) != resume_signature(cfg)
+
+
 @pytest.mark.parametrize("parameterization,process", [("score", "ve"), ("fourier_gaussian", "ddpm")])
 def test_gate_rejects_unsupported_models(cfg, parameterization, process):
     cfg["loss"]["type"] = parameterization
@@ -142,7 +204,9 @@ def test_gate_rejects_unsupported_models(cfg, parameterization, process):
 
 
 @pytest.mark.parametrize("gate", [dict(mode="learned"), dict(sigma_switch=0), dict(sharpness=-1),
-                                dict(value=1.1), dict(value=float("nan")), dict(sharpness=True)])
+                                dict(value=1.1), dict(value=float("nan")), dict(sharpness=True),
+                                dict(sigma_lo=0), dict(sigma_lo=1), dict(sigma_hi=.5),
+                                dict(sigma_hi=float("inf"))])
 def test_invalid_gate(gate, stats):
     with pytest.raises(ValueError, match="gate"):
         FourierGaussian(stats, gate=gate)

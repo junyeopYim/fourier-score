@@ -1,0 +1,192 @@
+{
+  "config": {
+    "preset": "experiment",
+    "run_tag": "gmm_plateau_20260924",
+    "image_size": 8,
+    "rho": 0.85,
+    "spectrum_lambdas": [
+      0.0,
+      0.5,
+      1.0
+    ],
+    "spectrum_knee": 0.15,
+    "spectrum_exponent": 1.5,
+    "geometry_seed": 31415,
+    "distributions": [
+      "gmm"
+    ],
+    "methods": [
+      "score",
+      "scalar_gaussian",
+      "fourier_gaussian",
+      "scalar_normalized",
+      "fourier_normalized",
+      "scalar_gate_s1p5_p4",
+      "fourier_gate_s1p5_p4",
+      "scalar_gate_s1p5_p4_plateau_lo0p8_hi1",
+      "fourier_gate_s1p5_p4_plateau_lo0p8_hi1"
+    ],
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "steps": 5000,
+    "eval_every": 500,
+    "batch_size": 128,
+    "width": 192,
+    "depth": 3,
+    "time_features": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0,
+    "grad_clip": 1.0,
+    "ema_decay": 0.99,
+    "sigma_min": 0.1,
+    "sigma_max": 3.0,
+    "n_noise_levels": 9,
+    "val_per_noise": 512,
+    "test_per_noise": 2048,
+    "eval_batch_size": 128,
+    "frequency_bins": 4,
+    "cpu_threads": 1,
+    "device": "cpu",
+    "bank_version": "gmm-gated-v1"
+  },
+  "arms": [
+    {
+      "name": "score",
+      "parameterization": "score",
+      "objective": "dsm",
+      "gate_mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "scalar_gaussian",
+      "parameterization": "scalar_gaussian",
+      "objective": "dsm",
+      "gate_mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "fourier_gaussian",
+      "parameterization": "fourier_gaussian",
+      "objective": "dsm",
+      "gate_mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "scalar_normalized",
+      "parameterization": "scalar_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "fourier_normalized",
+      "parameterization": "fourier_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "none",
+      "sigma_switch": 1.0,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "scalar_gate_s1p5_p4",
+      "parameterization": "scalar_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "log_sigma",
+      "sigma_switch": 1.5,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "fourier_gate_s1p5_p4",
+      "parameterization": "fourier_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "log_sigma",
+      "sigma_switch": 1.5,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "scalar_gate_s1p5_p4_plateau_lo0p8_hi1",
+      "parameterization": "scalar_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "log_sigma_plateau",
+      "sigma_switch": 1.5,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    },
+    {
+      "name": "fourier_gate_s1p5_p4_plateau_lo0p8_hi1",
+      "parameterization": "fourier_gaussian",
+      "objective": "normalized_residual",
+      "gate_mode": "log_sigma_plateau",
+      "sigma_switch": 1.5,
+      "sharpness": 4.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
+    }
+  ],
+  "provenance": {
+    "python": "3.11.15",
+    "torch": "2.14.0+cu130",
+    "numpy": "2.4.6",
+    "source_sha256": "a69a635a93ae36be5ef81e5ad50274975c22845f178ba57e48dbbd0bc7245a0a",
+    "runner_sha256": "7c8f48e5e03afd3bfb651976362304ca3b738a94e46c7f652f071b9a7196a591",
+    "reporting_helpers_sha256": "6f75ea79171ad3f703d75f8e7a2908509f80e1740dd7cd0b027f69207a6f1079",
+    "git_revision": "77ec0640c163cdb2b4d5ed301553b19634be253b",
+    "git_dirty": true
+  },
+  "selection": {
+    "criterion": "Fixed proposal before training; no threshold search or test selection",
+    "sigma_switch": 1.5,
+    "sharpness": 4.0,
+    "sigma_lo": 0.8,
+    "sigma_hi": 1.0,
+    "candidates": [
+      {
+        "sigma_switch": 1.5,
+        "sharpness": 4.0,
+        "sigma_lo": 0.8,
+        "sigma_hi": 1.0,
+        "selection": "fixed"
+      }
+    ]
+  },
+  "test_bank_version": "gmm-plateau-v1",
+  "transition_sigmas": [
+    0.6400000000000001,
+    0.76,
+    0.8,
+    0.8200000000000001,
+    0.8400000000000001,
+    0.86,
+    0.88,
+    0.9,
+    0.92,
+    0.9400000000000001,
+    0.96,
+    0.98,
+    1.0,
+    1.05,
+    1.2
+  ],
+  "reuse_baselines": "/home/junyeop/projects/fourier-score/saved/gmm_gated_20260924"
+}

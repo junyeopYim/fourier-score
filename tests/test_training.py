@@ -14,12 +14,13 @@ from fourier_score.config import validate
     ('fourier_gaussian','dsm',False),
     ('scalar_gaussian','normalized_residual',False),
     ('fourier_gaussian','normalized_residual',False),
-    ('fourier_gaussian','normalized_residual',True),
+    ('fourier_gaussian','normalized_residual','log_sigma'),
+    ('fourier_gaussian','normalized_residual','log_sigma_plateau'),
 ])
 def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     cfg['loss'].update(type=parameterization,objective=objective)
     if gated:
-        cfg['fourier']['gate'].update(mode='log_sigma',sigma_switch=.5)
+        cfg['fourier']['gate'].update(mode=gated,sigma_switch=.5)
     a=copy.deepcopy(cfg); a['name']='full'; a['trainer']['iterations']=4
     first=Trainer(a); first.train()
     b=copy.deepcopy(cfg); b['name']='split'; b['trainer']['iterations']=2
@@ -45,6 +46,11 @@ def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
             Trainer(changed,load_checkpoint(first.out/'last.pt'))
         with pytest.raises(ValueError,match='Inference cannot alter'):
             load_inference(first.out/'last.pt',['fourier.gate.sigma_switch=1.0'])
+        if gated == 'log_sigma_plateau':
+            changed=copy.deepcopy(cfg)
+            changed['fourier']['gate']['sigma_hi']=1.1
+            with pytest.raises(ValueError,match='Resume config mismatch'):
+                Trainer(changed,load_checkpoint(first.out/'last.pt'))
     snapshot,_,_,_=load_inference(first.out/f'ema_{first.step:09d}.pt')
     for name,value in last.state_dict().items():
         torch.testing.assert_close(value,snapshot.state_dict()[name],atol=0,rtol=0)

@@ -75,7 +75,9 @@
       "mode": "none",
       "sigma_switch": 1.0,
       "sharpness": 4.0,
-      "value": 1.0
+      "value": 1.0,
+      "sigma_lo": 0.8,
+      "sigma_hi": 1.0
     },
     "power_floor": 0.0001,
     "stats_batch_size": 256,
