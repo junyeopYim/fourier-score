@@ -1,0 +1,53 @@
+{
+ "exact": {
+  "protocol.json": {
+   "arms": [
+    {"delta": 0.5, "gate_mode": "none", "name": "score", "objective": "dsm", "parameterization": "score", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_gaussian", "objective": "dsm", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_gaussian", "objective": "dsm", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_normalized", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_normalized", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "scalar_gate_s0p5_p4", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 0.5},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "fourier_gate_s0p5_p4", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 0.5},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "scalar_gate_s1_p4", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "fourier_gate_s1_p4", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "scalar_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "fourier_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5}
+   ],
+   "config": {
+    "bank_version": "gmm-gated-v1",
+    "batch_size": 32,
+    "cpu_threads": 1,
+    "depth": 2,
+    "device": "cpu",
+    "distributions": ["gmm"],
+    "ema_decay": 0.99,
+    "eval_batch_size": 128,
+    "eval_every": 6,
+    "frequency_bins": 4,
+    "geometry_seed": 31415,
+    "grad_clip": 1.0,
+    "image_size": 4,
+    "learning_rate": 0.001,
+    "methods": ["score", "scalar_gaussian", "fourier_gaussian", "scalar_normalized", "fourier_normalized", "scalar_gate_s0p5_p4", "fourier_gate_s0p5_p4", "scalar_gate_s1_p4", "fourier_gate_s1_p4", "scalar_gate_s1p5_p4", "fourier_gate_s1p5_p4"],
+    "n_noise_levels": 3,
+    "preset": "smoke",
+    "rho": 0.85,
+    "run_tag": "gmm_gated",
+    "seeds": [42],
+    "sigma_max": 3.0,
+    "sigma_min": 0.1,
+    "spectrum_exponent": 1.5,
+    "spectrum_knee": 0.15,
+    "spectrum_lambdas": [0.0, 1.0],
+    "steps": 12,
+    "test_per_noise": 64,
+    "time_features": 16,
+    "val_per_noise": 32,
+    "weight_decay": 0.0,
+    "width": 32
+   },
+   "selection": "One common switch minimizes final validation mean over both covariances, all spectra and seeds; test only after selection"
+  }
+ }
+}

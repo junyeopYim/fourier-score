@@ -1,4 +1,9 @@
-"""Plot the requested log-linear and bounded S-shaped gates, without training."""
+"""Plot the requested log-linear and bounded S-shaped gates, without training.
+
+The committed proposal assets/log_gate_design/design.json is an input of the
+log_gates experiment (hashed into its protocol); write there only on purpose,
+with --output assets/log_gate_design.
+"""
 
 from dataclasses import asdict
 import argparse
@@ -14,11 +19,12 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from fourier_score.gmm import log_gate_arm
 from fourier_score.method import FourierGaussian
+from experiments.common import pyplot, save_figure
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, default=ROOT / "assets/log_gate_design")
+    parser.add_argument("--output", type=Path, default=ROOT / "saved/log_gate_design")
     parser.add_argument("--sigma-lo", type=float, default=.1)
     parser.add_argument("--linear-hi", type=float, default=3.)
     parser.add_argument("--sigmoid-hi", type=float, default=1.5)
@@ -50,9 +56,7 @@ def main():
                   previous_sigma_linear_experiment_is_this_design=False)
     (output / "design.json").write_text(json.dumps(design, indent=2) + "\n")
 
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    plt = pyplot()
     fig, ax = plt.subplots(figsize=(8.7, 5.2))
     ax.plot(sigma.tolist(), curves[0], color="#111111", lw=3,
             label=f"Linear in log sigma: {args.sigma_lo:g} to {args.linear_hi:g}")
@@ -70,12 +74,7 @@ def main():
     ax.spines[["top", "right"]].set_visible(False)
     ax.legend(loc="upper left", frameon=False, fontsize=10)
     fig.tight_layout()
-    for extension in ("png", "svg", "pdf"):
-        path = output / f"log_gate_design.{extension}"
-        fig.savefig(path, dpi=180, bbox_inches="tight")
-        if extension == "svg":
-            path.write_text("\n".join(line.rstrip() for line in path.read_text().splitlines()) + "\n")
-    plt.close(fig)
+    save_figure(fig, output, "log_gate_design")
     print(json.dumps(design["sample_values"], indent=2))
 
 

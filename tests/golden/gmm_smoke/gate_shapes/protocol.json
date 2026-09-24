@@ -1,0 +1,208 @@
+{
+ "exact": {
+  "protocol.json": {
+   "arms": [
+    {"delta": 0.5, "gate_mode": "none", "name": "score", "objective": "dsm", "parameterization": "score", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_gaussian", "objective": "dsm", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_gaussian", "objective": "dsm", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_normalized", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_normalized", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "scalar_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "fourier_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {
+     "delta": 0.5,
+     "gate_mode": "log_sigma_plateau",
+     "name": "scalar_gate_s1p5_p4_plateau_lo0p8_hi1",
+     "objective": "normalized_residual",
+     "parameterization": "scalar_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 1.0,
+     "sigma_lo": 0.8,
+     "sigma_switch": 1.5
+    },
+    {
+     "delta": 0.5,
+     "gate_mode": "log_sigma_plateau",
+     "name": "fourier_gate_s1p5_p4_plateau_lo0p8_hi1",
+     "objective": "normalized_residual",
+     "parameterization": "fourier_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 1.0,
+     "sigma_lo": 0.8,
+     "sigma_switch": 1.5
+    },
+    {"delta": 0.5, "gate_mode": "spectral_cap", "name": "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 2.0, "sigma_lo": 1.0, "sigma_switch": 1.5},
+    {
+     "delta": 0.5,
+     "gate_mode": "spectral_cap",
+     "name": "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5",
+     "objective": "normalized_residual",
+     "parameterization": "fourier_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 2.0,
+     "sigma_lo": 1.0,
+     "sigma_switch": 1.5
+    },
+    {"delta": 0.5, "gate_mode": "linear_sigma", "name": "scalar_gate_s1p5_p4_linear_sigma", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "linear_sigma", "name": "fourier_gate_s1p5_p4_linear_sigma", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "tanh_sigma", "name": "scalar_gate_s1p5_p4_tanh_sigma", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "tanh_sigma", "name": "fourier_gate_s1p5_p4_tanh_sigma", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5}
+   ],
+   "config": {
+    "bank_version": "gmm-gated-v1",
+    "batch_size": 32,
+    "cpu_threads": 1,
+    "depth": 2,
+    "device": "cpu",
+    "distributions": ["gmm"],
+    "ema_decay": 0.99,
+    "eval_batch_size": 128,
+    "eval_every": 6,
+    "frequency_bins": 4,
+    "geometry_seed": 31415,
+    "grad_clip": 1.0,
+    "image_size": 4,
+    "learning_rate": 0.001,
+    "methods": ["score", "scalar_gaussian", "fourier_gaussian", "scalar_normalized", "fourier_normalized", "scalar_gate_s1p5_p4", "fourier_gate_s1p5_p4", "scalar_gate_s1p5_p4_plateau_lo0p8_hi1", "fourier_gate_s1p5_p4_plateau_lo0p8_hi1", "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5", "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5", "scalar_gate_s1p5_p4_linear_sigma", "fourier_gate_s1p5_p4_linear_sigma", "scalar_gate_s1p5_p4_tanh_sigma", "fourier_gate_s1p5_p4_tanh_sigma"],
+    "n_noise_levels": 3,
+    "preset": "smoke",
+    "rho": 0.85,
+    "run_tag": "gmm_gate_shapes",
+    "seeds": [42],
+    "sigma_max": 3.0,
+    "sigma_min": 0.1,
+    "spectrum_exponent": 1.5,
+    "spectrum_knee": 0.15,
+    "spectrum_lambdas": [0.0, 1.0],
+    "steps": 12,
+    "test_per_noise": 64,
+    "time_features": 16,
+    "val_per_noise": 32,
+    "weight_decay": 0.0,
+    "width": 32
+   },
+   "constraints": {"auxiliary_losses": false, "backbones_per_model": 1, "loss": "normalized_residual for new arms", "pretrained_initialization": false, "teachers": false},
+   "gate_definitions": {
+    "center_slope": "p/(4*sigma_c)",
+    "center_value": 0.5,
+    "linear_sigma": "clip(1/2 + (p/4)*(sigma/sigma_c - 1), 0, 1)",
+    "log_tanh_identity": "(1+tanh((p/2)*log(sigma/sigma_c)))/2 equals existing sigmoid; no duplicate training",
+    "tanh_sigma": "(1 + tanh((p/2)*(sigma/sigma_c - 1)))/2"
+   },
+   "reuse_baselines": ["<OUT>/gmm_gated", "<OUT>/gmm_plateau", "<OUT>/gmm_spectral"],
+   "selection": {
+    "candidates": [
+     {"mode": "linear_sigma", "selection": "fixed", "sharpness": 4.0, "sigma_switch": 1.5},
+     {"mode": "tanh_sigma", "selection": "fixed", "sharpness": 4.0, "sigma_switch": 1.5}
+    ],
+    "criterion": "Fixed before training; no search or test selection",
+    "sharpness": 4.0,
+    "sigma_switch": 1.5
+   },
+   "test_bank_version": "gmm-linear-tanh-v1",
+   "transition_sigmas": [0.5, 0.625, 0.75, 0.8, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2.0, 2.125, 2.25, 2.375, 2.5]
+  },
+  "report/protocol.json": {
+   "arms": [
+    {"delta": 0.5, "gate_mode": "none", "name": "score", "objective": "dsm", "parameterization": "score", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_gaussian", "objective": "dsm", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_gaussian", "objective": "dsm", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "scalar_normalized", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "none", "name": "fourier_normalized", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.0},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "scalar_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "log_sigma", "name": "fourier_gate_s1p5_p4", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {
+     "delta": 0.5,
+     "gate_mode": "log_sigma_plateau",
+     "name": "scalar_gate_s1p5_p4_plateau_lo0p8_hi1",
+     "objective": "normalized_residual",
+     "parameterization": "scalar_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 1.0,
+     "sigma_lo": 0.8,
+     "sigma_switch": 1.5
+    },
+    {
+     "delta": 0.5,
+     "gate_mode": "log_sigma_plateau",
+     "name": "fourier_gate_s1p5_p4_plateau_lo0p8_hi1",
+     "objective": "normalized_residual",
+     "parameterization": "fourier_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 1.0,
+     "sigma_lo": 0.8,
+     "sigma_switch": 1.5
+    },
+    {"delta": 0.5, "gate_mode": "spectral_cap", "name": "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 2.0, "sigma_lo": 1.0, "sigma_switch": 1.5},
+    {
+     "delta": 0.5,
+     "gate_mode": "spectral_cap",
+     "name": "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5",
+     "objective": "normalized_residual",
+     "parameterization": "fourier_gaussian",
+     "sharpness": 4.0,
+     "sigma_hi": 2.0,
+     "sigma_lo": 1.0,
+     "sigma_switch": 1.5
+    },
+    {"delta": 0.5, "gate_mode": "linear_sigma", "name": "scalar_gate_s1p5_p4_linear_sigma", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "linear_sigma", "name": "fourier_gate_s1p5_p4_linear_sigma", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "tanh_sigma", "name": "scalar_gate_s1p5_p4_tanh_sigma", "objective": "normalized_residual", "parameterization": "scalar_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5},
+    {"delta": 0.5, "gate_mode": "tanh_sigma", "name": "fourier_gate_s1p5_p4_tanh_sigma", "objective": "normalized_residual", "parameterization": "fourier_gaussian", "sharpness": 4.0, "sigma_hi": 1.0, "sigma_lo": 0.8, "sigma_switch": 1.5}
+   ],
+   "config": {
+    "bank_version": "gmm-gated-v1",
+    "batch_size": 32,
+    "cpu_threads": 1,
+    "depth": 2,
+    "device": "cpu",
+    "distributions": ["gmm"],
+    "ema_decay": 0.99,
+    "eval_batch_size": 128,
+    "eval_every": 6,
+    "frequency_bins": 4,
+    "geometry_seed": 31415,
+    "grad_clip": 1.0,
+    "image_size": 4,
+    "learning_rate": 0.001,
+    "methods": ["score", "scalar_gaussian", "fourier_gaussian", "scalar_normalized", "fourier_normalized", "scalar_gate_s1p5_p4", "fourier_gate_s1p5_p4", "scalar_gate_s1p5_p4_plateau_lo0p8_hi1", "fourier_gate_s1p5_p4_plateau_lo0p8_hi1", "scalar_gate_s1p5_p4_cap_lo1_hi2_d0p5", "fourier_gate_s1p5_p4_cap_lo1_hi2_d0p5", "scalar_gate_s1p5_p4_linear_sigma", "fourier_gate_s1p5_p4_linear_sigma", "scalar_gate_s1p5_p4_tanh_sigma", "fourier_gate_s1p5_p4_tanh_sigma"],
+    "n_noise_levels": 3,
+    "preset": "smoke",
+    "rho": 0.85,
+    "run_tag": "gmm_gate_shapes",
+    "seeds": [42],
+    "sigma_max": 3.0,
+    "sigma_min": 0.1,
+    "spectrum_exponent": 1.5,
+    "spectrum_knee": 0.15,
+    "spectrum_lambdas": [0.0, 1.0],
+    "steps": 12,
+    "test_per_noise": 64,
+    "time_features": 16,
+    "val_per_noise": 32,
+    "weight_decay": 0.0,
+    "width": 32
+   },
+   "constraints": {"auxiliary_losses": false, "backbones_per_model": 1, "loss": "normalized_residual for new arms", "pretrained_initialization": false, "teachers": false},
+   "gate_definitions": {
+    "center_slope": "p/(4*sigma_c)",
+    "center_value": 0.5,
+    "linear_sigma": "clip(1/2 + (p/4)*(sigma/sigma_c - 1), 0, 1)",
+    "log_tanh_identity": "(1+tanh((p/2)*log(sigma/sigma_c)))/2 equals existing sigmoid; no duplicate training",
+    "tanh_sigma": "(1 + tanh((p/2)*(sigma/sigma_c - 1)))/2"
+   },
+   "reuse_baselines": ["<OUT>/gmm_gated", "<OUT>/gmm_plateau", "<OUT>/gmm_spectral"],
+   "selection": {
+    "candidates": [
+     {"mode": "linear_sigma", "selection": "fixed", "sharpness": 4.0, "sigma_switch": 1.5},
+     {"mode": "tanh_sigma", "selection": "fixed", "sharpness": 4.0, "sigma_switch": 1.5}
+    ],
+    "criterion": "Fixed before training; no search or test selection",
+    "sharpness": 4.0,
+    "sigma_switch": 1.5
+   },
+   "test_bank_version": "gmm-linear-tanh-v1",
+   "transition_sigmas": [0.5, 0.625, 0.75, 0.8, 0.875, 1.0, 1.125, 1.25, 1.375, 1.5, 1.625, 1.75, 1.875, 2.0, 2.125, 2.25, 2.375, 2.5]
+  }
+ }
+}
