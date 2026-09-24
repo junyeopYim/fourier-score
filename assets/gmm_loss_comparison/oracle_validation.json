@@ -1,0 +1,23 @@
+[
+  {
+    "lambda": 0.0,
+    "dimension": 64,
+    "components": 128,
+    "log_density_max_abs_error": 1.4210854715202004e-14,
+    "score_max_abs_error": 7.105427357601002e-14
+  },
+  {
+    "lambda": 0.5,
+    "dimension": 64,
+    "components": 128,
+    "log_density_max_abs_error": 8.526512829121202e-14,
+    "score_max_abs_error": 3.552713678800501e-14
+  },
+  {
+    "lambda": 1.0,
+    "dimension": 64,
+    "components": 128,
+    "log_density_max_abs_error": 8.526512829121202e-14,
+    "score_max_abs_error": 1.8829382497642655e-13
+  }
+]
