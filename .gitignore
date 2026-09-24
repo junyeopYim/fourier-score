@@ -38,3 +38,7 @@ pretrained/
 
 # Small source arrays supporting committed, reproducible scientific figures.
 !assets/diagnostics_data.npz
+
+# Golden contract payloads written by the epoch-0 code (tests/golden/record_goldens.py);
+# tracked despite the global *.pt / *.npz rules above.
+!tests/golden/payloads/**

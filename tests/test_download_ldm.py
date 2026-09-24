@@ -28,7 +28,13 @@ def archive_bytes(name="model.ckpt", payload=CHECKPOINT):
 
 
 @contextmanager
-def serve(archive, config=CONFIG, extra_length=0):
+def serve_bundle(archive, config=CONFIG, extra_length=0):
+    """Two-route LDM bundle server: ``/config.yaml`` or the archive, no Range.
+
+    Unlike the ``http_server`` fixture it answers every other path with the
+    archive and can overstate its Content-Length (``extra_length``) to
+    simulate a truncated transfer; ``calls`` lists request paths only.
+    """
     calls = []
 
     class Handler(BaseHTTPRequestHandler):
@@ -75,7 +81,7 @@ def local_sources(monkeypatch, base):
 def test_download_bundle_and_offline_verified_reuse(tmp_path, monkeypatch):
     payload = archive_bytes()
     digest = hashlib.sha256(payload).hexdigest()
-    with serve(payload) as (base, calls):
+    with serve_bundle(payload) as (base, calls):
         local_sources(monkeypatch, base)
         destination = download_ldm.download_model("ffhq", tmp_path, digest)
         assert (destination / "model.ckpt").read_bytes() == CHECKPOINT
@@ -101,7 +107,7 @@ def test_download_bundle_and_offline_verified_reuse(tmp_path, monkeypatch):
 def test_failed_download_never_publishes_a_partial_bundle(tmp_path, monkeypatch, failure):
     payload = archive_bytes()
     expected = "0" * 64 if failure == "checksum" else None
-    with serve(payload, extra_length=100 if failure == "truncated" else 0) as (base, _):
+    with serve_bundle(payload, extra_length=100 if failure == "truncated" else 0) as (base, _):
         local_sources(monkeypatch, base)
         with pytest.raises(ValueError):
             download_ldm.download_model("ffhq", tmp_path / "downloads", expected)
