@@ -42,7 +42,7 @@ def test_gate_endpoints(covariance, value):
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
 @pytest.mark.parametrize("reduction", ["mean", "half_sum"])
 @pytest.mark.parametrize("backend", ["fft", "matmul"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
 def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction, backend, mode):
     stats, x, noise, raw, level = inputs()
     ref = FourierGaussian(stats, backend, covariance=covariance,
@@ -62,6 +62,10 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
         z = (torch.log(s / .25) / torch.log(torch.tensor(3., dtype=s.dtype))).clamp(0, 1)
         ramp = z.square() * (3 - 2*z)
         g = 1 - (1-g) / (1 + ramp * (1-g).square() * s.square() / (.5**2 * ref.power[None])).sqrt()
+    elif mode == "linear_sigma":
+        g = (s / .7 - .5).clamp(0, 1)
+    elif mode == "tanh_sigma":
+        g = .5 * (1 + torch.tanh(2 * (s / .7 - 1)))
     total = ref.power[None] + s.square()
     variance = (g.square() * s.square() * ref.power[None]
                 + (ref.power[None] + (1-g)*s.square()).square()) / total.square()
@@ -76,7 +80,7 @@ def test_gated_loss_matches_weighted_dsm_and_gradient(cfg, covariance, reduction
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
 def test_nongaussian_target_second_moment(covariance, mode):
     # Finite population with exact covariance: signed scaled basis vectors.
     d = 16
@@ -97,7 +101,7 @@ def test_nongaussian_target_second_moment(covariance, mode):
     torch.testing.assert_close(moment, torch.ones_like(moment), atol=2e-12, rtol=2e-12)
 
 
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
 def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mode):
     stats, x, noise, raw, level = inputs()
     stats["power"] = stats["power"].mean((-2, -1), keepdim=True).expand_as(stats["power"])
@@ -113,7 +117,7 @@ def test_flat_spectrum_gated_scalar_matches_fourier_without_fft(monkeypatch, mod
 
 
 @pytest.mark.parametrize("covariance", ["scalar", "fourier"])
-@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap"])
+@pytest.mark.parametrize("mode", ["log_sigma", "log_sigma_plateau", "spectral_cap", "linear_sigma", "tanh_sigma"])
 def test_gated_target_extreme_power_noise(covariance, mode):
     ref = FourierGaussian(dict(mean=torch.zeros(1, 4, 4), power=torch.full((1, 4, 4), 1e-12)),
                           covariance=covariance, gate=dict(mode=mode)).float()
@@ -247,6 +251,52 @@ def test_spectral_delta_preserves_legacy_signatures(cfg, mode):
         changed["fourier"]["gate"][key] = value
         assert resume_signature(changed) != resume_signature(cfg)
         assert experiment_name(changed) != experiment_name(cfg)
+
+
+@pytest.mark.parametrize("sharpness", [2., 4., 8.])
+@pytest.mark.parametrize("mode", ["linear_sigma", "tanh_sigma"])
+def test_sigma_gate_center_slope_and_shape(stats, mode, sharpness):
+    ref = FourierGaussian(stats, gate=dict(mode=mode, sigma_switch=1.5, sharpness=sharpness)).double()
+    sigma = torch.linspace(.1, 3., 200, dtype=torch.float64)
+    g, q = ref._gate_weights(sigma)
+    assert (g[1:] >= g[:-1]).all() and ((g >= 0) & (g <= 1)).all()
+    torch.testing.assert_close(g+q, torch.ones_like(g), rtol=3e-16, atol=3e-16)
+    center = torch.tensor([1.5], dtype=torch.float64, requires_grad=True)
+    value = ref.gate_value(center)
+    torch.testing.assert_close(value, torch.full_like(value, .5), atol=0, rtol=0)
+    slope = torch.autograd.grad(value.sum(), center)[0]
+    torch.testing.assert_close(slope, torch.full_like(center, sharpness/(4*1.5)), atol=1e-15, rtol=1e-15)
+    if mode == "tanh_sigma":
+        expected = .5 * (1+torch.tanh((sharpness/2)*(sigma/1.5-1)))
+        torch.testing.assert_close(g.flatten(), expected, atol=3e-16, rtol=3e-16)
+        # log-sigma tanh is an algebraic identity, not a distinct comparator.
+        old = FourierGaussian(stats, gate=dict(mode="log_sigma", sigma_switch=1.5, sharpness=sharpness)).double()
+        log_tanh = .5 * (1+torch.tanh((sharpness/2)*torch.log(sigma/1.5)))
+        torch.testing.assert_close(old.gate_value(sigma).flatten(), log_tanh, atol=3e-16, rtol=3e-16)
+        assert not torch.allclose(g, old.gate_value(sigma))
+        _, high_q = ref._gate_weights(torch.tensor([20.], dtype=torch.float64))
+        assert high_q.item() > 0  # Keep the tail after the gate rounds to one.
+    else:
+        assert (g[sigma <= 1.5*(1-2/sharpness)] == 0).all()
+        assert (g[sigma >= 1.5*(1+2/sharpness)] == 1).all()
+
+
+@pytest.mark.parametrize("mode", ["linear_sigma", "tanh_sigma"])
+def test_sigma_gate_names_and_resume_contract(cfg, mode):
+    old = copy.deepcopy(cfg)
+    old["fourier"]["gate"].update(mode="log_sigma", sigma_switch=1.5)
+    cfg["fourier"]["gate"].update(mode=mode, sigma_switch=1.5)
+    validate(cfg)
+    assert experiment_name(cfg).endswith("_gate_s1p5_p4_"+mode)
+    assert resume_signature(cfg) != resume_signature(old)
+    for key in ("sigma_switch", "sharpness"):
+        changed = copy.deepcopy(cfg)
+        changed["fourier"]["gate"][key] *= 2
+        assert experiment_name(changed) != experiment_name(cfg)
+        assert resume_signature(changed) != resume_signature(cfg)
+    ignored = copy.deepcopy(cfg)
+    ignored["fourier"]["gate"].update(sigma_lo=.1, sigma_hi=3., delta=.25)
+    assert resume_signature(ignored) == resume_signature(cfg)
 
 
 @pytest.mark.parametrize("parameterization,process", [("score", "ve"), ("fourier_gaussian", "ddpm")])

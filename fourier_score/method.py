@@ -26,8 +26,10 @@ def validate_gate(gate=None):
     if gate is not None and (not isinstance(gate, dict) or set(gate) - GATE_DEFAULTS.keys()):
         raise ValueError("Invalid Gaussian gate configuration")
     result = {**GATE_DEFAULTS, **(gate or {})}
-    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau", "spectral_cap"):
-        raise ValueError("gate.mode must be none, constant, log_sigma, log_sigma_plateau, or spectral_cap")
+    if result["mode"] not in ("none", "constant", "log_sigma", "log_sigma_plateau", "spectral_cap",
+                               "linear_sigma", "tanh_sigma"):
+        raise ValueError("gate.mode must be none, constant, log_sigma, log_sigma_plateau, "
+                         "spectral_cap, linear_sigma, or tanh_sigma")
     for key in ("sigma_switch", "sharpness", "value", "sigma_lo", "sigma_hi", "delta"):
         value = result[key]
         if type(value) not in (int, float) or not math.isfinite(value):
@@ -52,6 +54,8 @@ def gate_suffix(gate=None):
     if gate["mode"] == "constant":
         return "_gate_constant" + number(gate["value"])
     suffix = f"_gate_s{number(gate['sigma_switch'])}_p{number(gate['sharpness'])}"
+    if gate["mode"] in ("linear_sigma", "tanh_sigma"):
+        return suffix + "_" + gate["mode"]
     if gate["mode"] in ("log_sigma_plateau", "spectral_cap"):
         # Shortest round-trip representations keep distinct bounds distinct.
         bounds = [repr(float(gate[key])).removesuffix(".0").replace(".", "p")
@@ -115,6 +119,17 @@ class FourierGaussian(nn.Module):
 
     def _gate_weights(self, sigma, prior=None):
         s = sigma[:, None, None, None]
+        if self.gate["mode"] in ("linear_sigma", "tanh_sigma"):
+            offset = s / self.gate["sigma_switch"] - 1
+            if self.gate["mode"] == "linear_sigma":
+                ramp = (self.gate["sharpness"] / 4) * offset
+                return (.5 + ramp).clamp(0, 1), (.5 - ramp).clamp(0, 1)
+            # (1+tanh(z/2))/2 = sigmoid(z). Opposite logits preserve the
+            # small complement after tanh itself would round to one.
+            # The argument is LINEAR in sigma; log-sigma tanh would be the
+            # existing log_sigma gate. All three share center and local slope.
+            logit = self.gate["sharpness"] * offset
+            return torch.sigmoid(logit), torch.sigmoid(-logit)
         if self.gate["mode"] in ("log_sigma", "log_sigma_plateau", "spectral_cap"):
             logit = self.gate["sharpness"] * (s.log() - math.log(self.gate["sigma_switch"]))
             # Compute 1-g separately: subtracting a rounded sigmoid loses the

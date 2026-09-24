@@ -117,6 +117,15 @@ def spectral_cap_arm(covariance, sigma_switch=1.5, sharpness=4.0, sigma_lo=1.0, 
                   sigma_lo, sigma_hi, delta)
 
 
+def shaped_gate_arm(covariance, mode, sigma_switch=1.5, sharpness=4.0):
+    """Sigma-linear and sigma-tanh gates, with matched center and local slope."""
+    if covariance not in ("scalar", "fourier") or mode not in ("linear_sigma", "tanh_sigma"):
+        raise ValueError((covariance, mode))
+    gate = dict(mode=mode, sigma_switch=sigma_switch, sharpness=sharpness)
+    return GMMArm(covariance + gate_suffix(gate), covariance + "_gaussian",
+                  "normalized_residual", mode, sigma_switch, sharpness)
+
+
 NOTEBOOK_ARMS = {arm.name: arm for arm in BASELINE_ARMS}
 NOTEBOOK_ARMS.update({f"{covariance}_gated": gated_arm(covariance)
                      for covariance in ("scalar", "fourier")})

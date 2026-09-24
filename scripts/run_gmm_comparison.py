@@ -99,7 +99,7 @@ def test_selected(cfg, output, results, arms):
 
 
 def export_report(report, cfg, provenance, results, tested, selection, pairing, arms,
-                  *, figure_stem="gmm_gated_comparison"):
+                  *, figure_stem="gmm_gated_comparison", paired_arms=None):
     report.mkdir(parents=True, exist_ok=True)
     per_seed, noise, frequency, curves = [], [], [], []
     for result in tested:
@@ -134,7 +134,7 @@ def export_report(report, cfg, provenance, results, tested, selection, pairing, 
     indexed = {(r["spectrum_lambda"], r["seed"], r["method"]): r for r in per_seed}
     paired = []
     for lam in cfg.spectrum_lambdas:
-        for arm in arms[-2:]:
+        for arm in arms[-2:] if paired_arms is None else paired_arms:
             for baseline in arms:
                 if baseline.name == arm.name:
                     continue
@@ -170,6 +170,12 @@ def plot_report(report, cfg, arms, summary, noise, *, figure_stem="gmm_gated_com
     appearances = {arm.name: (label, color, style)
                    for arm, label, color, style in zip(BASELINE_ARMS, labels, colors, styles)}
     for arm in arms:
+        if arm.gate_mode in ("linear_sigma", "tanh_sigma"):
+            scalar = arm.parameterization == "scalar_gaussian"
+            linear = arm.gate_mode == "linear_sigma"
+            appearances[arm.name] = (("Linear " if linear else "Tanh ") + ("Scalar" if scalar else "Fourier"),
+                                     ("#936b45" if scalar else "#703000") if linear else
+                                     ("#cf72af" if scalar else "#bc087e"), "--" if scalar else "-")
         if arm.gate_mode == "spectral_cap":
             scalar = arm.parameterization == "scalar_gaussian"
             appearances[arm.name] = ("Spectral " + ("Scalar" if scalar else "Fourier"),

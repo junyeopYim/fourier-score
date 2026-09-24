@@ -17,6 +17,8 @@ from fourier_score.config import validate
     ('fourier_gaussian','normalized_residual','log_sigma'),
     ('fourier_gaussian','normalized_residual','log_sigma_plateau'),
     ('fourier_gaussian','normalized_residual','spectral_cap'),
+    ('fourier_gaussian','normalized_residual','linear_sigma'),
+    ('fourier_gaussian','normalized_residual','tanh_sigma'),
 ])
 def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     cfg['loss'].update(type=parameterization,objective=objective)

@@ -8,7 +8,7 @@ import torch
 
 from fourier_score.gmm import (
     GMMConfig, MatchedMomentFamily, bank_seed, gated_arm, make_bank,
-    make_model, plateau_arm, spectral_cap_arm, select_gate, train_arm,
+    make_model, plateau_arm, spectral_cap_arm, shaped_gate_arm, select_gate, train_arm,
 )
 
 
@@ -47,7 +47,8 @@ def test_bank_version_changes_evaluation_only():
                                changed.sample_cpu(8, torch.Generator().manual_seed(42)), atol=0, rtol=0)
 
 
-@pytest.mark.parametrize("arm", [gated_arm("fourier", .5), plateau_arm("fourier"), spectral_cap_arm("fourier")])
+@pytest.mark.parametrize("arm", [gated_arm("fourier", .5), plateau_arm("fourier"), spectral_cap_arm("fourier"),
+                                 shaped_gate_arm("fourier", "linear_sigma"), shaped_gate_arm("fourier", "tanh_sigma")])
 def test_gmm_gate_resume_matches_uninterrupted(tmp_path, arm):
     cfg = small_config()
     family = MatchedMomentFamily(cfg, "gmm", 1.)
@@ -80,7 +81,8 @@ def test_gate_selection_uses_validation_and_one_shared_switch():
         select_gate(results[:-1], [.5, 1.])
 
 
-@pytest.mark.parametrize("arm", [gated_arm("fourier"), plateau_arm("fourier"), spectral_cap_arm("fourier")])
+@pytest.mark.parametrize("arm", [gated_arm("fourier"), plateau_arm("fourier"), spectral_cap_arm("fourier"),
+                                 shaped_gate_arm("fourier", "linear_sigma"), shaped_gate_arm("fourier", "tanh_sigma")])
 def test_toy_backbone_unchanged_between_arms(arm):
     family = MatchedMomentFamily(small_config(), "gmm", 1.)
     baseline = make_model(family, "score", 42)
