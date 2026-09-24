@@ -8,8 +8,8 @@ controls of every earlier output) with ``--preset smoke --seeds 42
 ``tests/golden/gmm_smoke/``, recorded from the epoch-0 runners by
 ``tests/golden/record_gmm_smoke.py``.  ``exact`` sections must match
 everywhere; ``numeric`` sections bit-for-bit on the recording machine and
-within ``rtol=1e-4`` elsewhere (digests skipped), per
-``golden_probes.exact_numeric``.
+within tolerance elsewhere (``golden_probes.compare``: digests and noisy
+statistics skipped), per ``golden_probes.exact_numeric``.
 
 Then the first link runs once more through ``python -m experiments gmm
 gated`` (``--workers 2``; the recorder proved the epoch-0 output does not

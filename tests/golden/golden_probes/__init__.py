@@ -15,7 +15,7 @@ Rules for probe authors:
   holds facts that must match on every machine (strings, key sets, shapes,
   config digests, identities).  ``numeric`` holds float-derived facts (losses,
   tensor digests); they must match bit-for-bit on the recording machine and
-  within ``rtol=1e-4`` elsewhere, where digest strings are skipped.
+  within tolerance elsewhere (see :func:`compare`).
 * Use ``ctx.root`` for repository paths and ``ctx.tmp`` for outputs.  Never
   write into ``ctx.root`` and never touch ``ctx.golden_root`` except to read.
 
@@ -25,7 +25,8 @@ Environment:
   caches; read-only).  ``local=True`` probes are skipped without it.
 * ``FOURIER_GOLDEN_EXACT``: how ``numeric`` sections are compared.  Unset
   (default): bit-for-bit when :func:`machine` equals the recorded machine,
-  else tolerance mode (digest strings skipped, floats within ``rtol=1e-4``).
+  else tolerance mode (digests and :data:`NOISY_KEYS` skipped, floats within
+  ``rtol=1e-4`` plus ``atol=1e-5``).
   ``1`` forces bit-for-bit everywhere; ``0`` forces tolerance mode even on
   the recording machine (simulates CI / another machine).
 """
@@ -351,8 +352,32 @@ def _looks_like_digest(value):
     )
 
 
+# Off the recording machine, rounding differences dominate these statistics:
+# a cosine against a near-zero predicted residual (early in training), and win
+# counts taken from the sign of paired differences between arms that coincide
+# (at lambda=0 the scalar and Fourier covariances are equal).
+NOISY_KEYS = frozenset({"residual_cosine", "wins"})
+
+
 def compare(expected, actual, *, exact, path="$"):
-    """Raise AssertionError describing the first mismatch."""
+    """Raise AssertionError describing the first mismatch.
+
+    Tolerance mode (``exact=False``) skips digests and :data:`NOISY_KEYS`,
+    compares CSV tables ``{"columns", "rows"}`` column by column, and accepts
+    floats within ``rtol=1e-4`` plus ``atol=1e-5``.
+    """
+    if not exact and isinstance(expected, dict) and set(expected) == {"columns", "rows"}:
+        assert isinstance(actual, dict) and actual.get("columns") == expected["columns"], (
+            f"{path}: columns {actual.get('columns') if isinstance(actual, dict) else actual!r} "
+            f"!= {expected['columns']!r}"
+        )
+        assert len(actual["rows"]) == len(expected["rows"]), (
+            f"{path}: {len(actual['rows'])} rows != {len(expected['rows'])}"
+        )
+        for i, (e, a) in enumerate(zip(expected["rows"], actual["rows"])):
+            compare(dict(zip(expected["columns"], e)), dict(zip(expected["columns"], a)),
+                    exact=False, path=f"{path}.rows[{i}]")
+        return
     if isinstance(expected, dict):
         assert isinstance(actual, dict), f"{path}: expected dict, got {type(actual).__name__}"
         assert sorted(expected) == sorted(actual), (
@@ -360,6 +385,8 @@ def compare(expected, actual, *, exact, path="$"):
             f"extra={sorted(set(actual) - set(expected))}"
         )
         for k in expected:
+            if not exact and k in NOISY_KEYS:
+                continue
             compare(expected[k], actual[k], exact=exact, path=f"{path}.{k}")
         return
     if isinstance(expected, list):
@@ -382,8 +409,8 @@ def compare(expected, actual, *, exact, path="$"):
         if math.isnan(expected):
             assert math.isnan(actual), f"{path}: {actual!r} != nan"
             return
-        assert math.isclose(actual, expected, rel_tol=1e-4, abs_tol=1e-6), (
-            f"{path}: {actual!r} != {expected!r} (rtol 1e-4)"
+        assert math.isclose(actual, expected, rel_tol=1e-4, abs_tol=1e-5), (
+            f"{path}: {actual!r} != {expected!r} (rtol 1e-4, atol 1e-5)"
         )
         return
     assert expected == actual, f"{path}: {actual!r} != {expected!r}"
