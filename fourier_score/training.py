@@ -122,7 +122,8 @@ class Trainer:
         )
         self.console.message(
             f"[config] batch={a['batch_size']} microbatch={cfg['trainer']['microbatch_size'] or a['batch_size']}"
-            f" | loss={cfg['loss']['reduction']} | log_every={cfg['trainer']['log_every']}"
+            f" | objective={cfg['loss']['objective']} reduction={cfg['loss']['reduction']}"
+            f" | log_every={cfg['trainer']['log_every']}"
             f" eval_every={cfg['trainer']['eval_every']}"
         )
         self.console.message(f"[metrics] {self.out / 'metrics.jsonl'}")
@@ -148,6 +149,7 @@ class Trainer:
                 lev.slice(start, end),
                 noise[start:end],
                 self.cfg["loss"]["reduction"],
+                objective=self.cfg["loss"]["objective"],
             )
             loss = loss * ((end - start) / len(clean))
             if not torch.isfinite(loss):
@@ -250,6 +252,7 @@ class Trainer:
                         / window_images
                         * pixel_scale,
                         "reduction": self.cfg["loss"]["reduction"],
+                        "objective": self.cfg["loss"]["objective"],
                         "grad_norm_before_clip": norm,
                         "lr": self.optimizer.param_groups[0]["lr"],
                         "steps_per_second": window_steps / max(window_seconds, 1e-12),

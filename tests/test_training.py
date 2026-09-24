@@ -1,4 +1,5 @@
 import copy
+import json
 import pytest
 import torch
 from fourier_score.training import Trainer
@@ -6,10 +7,16 @@ from fourier_score.data import build_data,prepare_stats
 from fourier_score.data import BatchStream
 from fourier_score.utils import load_checkpoint
 from fourier_score.checkpoints import load_inference
+from fourier_score.config import validate
 
 
-def test_resume_matches_uninterrupted(cfg):
-    cfg['loss']['type']='fourier_gaussian'
+@pytest.mark.parametrize('parameterization,objective', [
+    ('fourier_gaussian','dsm'),
+    ('scalar_gaussian','normalized_residual'),
+    ('fourier_gaussian','normalized_residual'),
+])
+def test_resume_matches_uninterrupted(cfg,parameterization,objective):
+    cfg['loss'].update(type=parameterization,objective=objective)
     a=copy.deepcopy(cfg); a['name']='full'; a['trainer']['iterations']=4
     first=Trainer(a); first.train()
     b=copy.deepcopy(cfg); b['name']='split'; b['trainer']['iterations']=2
@@ -22,10 +29,14 @@ def test_resume_matches_uninterrupted(cfg):
     assert first.stream.state_dict()==third.stream.state_dict()
     assert torch.equal(first.generator.get_state(),third.generator.get_state())
     for n,v in first.ema.shadow.items(): torch.testing.assert_close(v,third.ema.shadow[n],atol=0,rtol=0)
-    last,_,_,_=load_inference(first.out/'last.pt')
+    last,loaded_cfg,_,_=load_inference(first.out/'last.pt')
+    assert loaded_cfg['loss']['objective']==objective
     snapshot,_,_,_=load_inference(first.out/f'ema_{first.step:09d}.pt')
     for name,value in last.state_dict().items():
         torch.testing.assert_close(value,snapshot.state_dict()[name],atol=0,rtol=0)
+    records=[json.loads(line) for line in (first.out/'metrics.jsonl').read_text().splitlines()]
+    assert all(r['objective']==objective for r in records if r['split']=='train')
+    assert any('dsm_pixel_mean' in r for r in records)
 
 
 @pytest.mark.parametrize('source_change', ['edited', 'missing'])
@@ -57,11 +68,34 @@ def test_checkpoint_keeps_startup_source_when_checkout_changes(cfg, monkeypatch,
             Trainer(cfg, checkpoint)
 
 
-def test_resume_rejects_changes(cfg):
+@pytest.mark.parametrize('objective,patch', [
+    ('dsm',{'type':'scalar_gaussian'}),
+    ('dsm',{'objective':'normalized_residual'}),
+    ('normalized_residual',{'objective':'dsm'}),
+])
+def test_resume_rejects_changes(cfg,objective,patch):
+    cfg['loss']['objective']=objective
     t=Trainer(cfg); t.train(); state=load_checkpoint(t.out/'last.pt')
     c=copy.deepcopy(cfg); c['trainer']['iterations']=4
-    c['loss']['type']='scalar_gaussian'
+    c['loss'].update(patch)
     with pytest.raises(ValueError,match='Resume config mismatch'): Trainer(c,state)
+
+
+def test_legacy_dsm_checkpoint_without_objective(cfg,tmp_path):
+    trainer=Trainer(cfg)
+    try:
+        trainer.save()
+    finally:
+        trainer.log.close()
+    state=load_checkpoint(trainer.out/'last.pt')
+    del state['config']['loss']['objective']
+    assert 'objective' not in state['signature']['loss']
+    path=tmp_path/'legacy.pt'
+    torch.save(state,path)
+    _,loaded_cfg,_,_=load_inference(path)
+    assert loaded_cfg['loss']['objective']=='dsm'
+    resumed=Trainer(validate(state['config']),state)
+    resumed.log.close()
 
 
 def test_reference_statistics_no_validation_leak(cfg):

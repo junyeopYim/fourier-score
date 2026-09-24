@@ -1,6 +1,6 @@
 """Gaussian reference scores and frequencywise residual parameterizations.
 
-Read this file with the method section in README.md. The backbone and DSM loss are shared.
+Read this file with the method section in README.md. The loss is selected separately.
 """
 
 import torch
@@ -57,6 +57,24 @@ class FourierGaussian(nn.Module):
             if self.covariance == "scalar"
             else self.filter.resolved_backend(device)
         )
+
+    @torch.no_grad()
+    def normalized_target(self, clean, noise, sigma):
+        """Return the VE target F^-1[(sigma*F(x-mu) - P*F(noise))/sqrt(P*(P+sigma^2))].
+
+        Compute directly from clean data, avoiding cancellation in the Gaussian
+        score at large sigma followed by division by a small residual scale b.
+        The scalar control uses the same stored channelwise power without FFTs.
+        """
+        s = sigma[:, None, None, None]
+        root_power = self.power[None].sqrt()
+        root_total = (self.power[None] + s.square()).sqrt()
+        clean_scale = (s / root_total) / root_power
+        noise_scale = root_power / root_total
+        centered = clean - self.mean[None]
+        if self.covariance == "scalar":
+            return clean_scale * centered - noise_scale * noise
+        return self.filter(centered, clean_scale) - self.filter(noise, noise_scale)
 
     def scaled_score(self, raw, y, alpha, sigma):
         """Return the scaled score sigma*s, with shape [B, C, H, W].

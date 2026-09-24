@@ -13,6 +13,9 @@ FORMAT = "fourier-image-template-v1"
 
 def resume_signature(cfg):
     c = copy.deepcopy(cfg)
+    # Missing objective in v1 checkpoints means DSM; retain their signatures.
+    if c["loss"].get("objective", "dsm") == "dsm":
+        c["loss"].pop("objective", None)
     for k in ("name", "device", "evaluation", "sampling"):
         c.pop(k)
     for k in (

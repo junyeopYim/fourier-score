@@ -9,8 +9,8 @@ statistics, while a neural residual models the remaining structure
 and dependencies. The residual output scale follows from the second moment of
 the Gaussian-subtracted denoising target.
 
-The experiments preserve the backbone and DSM objective. They study whether
-frequency-dependent covariance helps relative to a channelwise scalar covariance,
+By default, the experiments preserve the backbone and DSM objective. They study
+whether frequency-dependent covariance helps relative to a channelwise scalar covariance,
 in both **pixel-space NCSN++** and **frozen-autoencoder latent diffusion**.
 
 [Quick start](#quick-start) · [Method](#method) · [Experiments](#reproduce-the-experiments) ·
@@ -65,7 +65,8 @@ training. On a supported Mac, use `--device mps`. Optional extras include
 
 ## Method
 
-For $y=x+\sigma_t\epsilon$, $\epsilon\sim\mathcal N(0,I)$, all pixel arms minimize
+For $y=x+\sigma_t\epsilon$, $\epsilon\sim\mathcal N(0,I)$, all pixel arms default to
+`loss.objective=dsm` and minimize
 
 $$
 \mathcal L_{\mathrm{DSM}}=
@@ -110,6 +111,37 @@ by $\alpha_t^2P_k$; the common adapter returns total epsilon. The first stage
 stays frozen. The [method implementation](fourier_score/method.py) and
 [GMM notebook](notebooks/gmm_fourier_residual.ipynb) give the corresponding
 reference and residual calculations.
+
+### Normalized residual loss (VE)
+
+Set `loss.objective=normalized_residual` with `scalar_gaussian` or
+`fourier_gaussian` to regress the raw backbone output directly against
+
+$$
+\tau_k=\frac{\sigma_t\mathcal F(x-\mu)_k-P_k\mathcal F\epsilon_k}
+{\sqrt{P_k(P_k+\sigma_t^2)}},\qquad
+\mathcal L_{\mathrm{norm}}=\mathbb E\|h_\theta-\mathcal F^{-1}\tau\|^2.
+$$
+
+The scalar control uses the same formula with the channelwise average power.
+The target is computed directly from clean data to avoid cancellation at large
+noise levels. Both objectives use the configured `mean` or `half_sum` reduction.
+The score adapter and sampler still apply the same residual scale $b_k$.
+This objective currently supports pixel-space VE only.
+
+```bash
+uv run --locked python scripts/run_comparison.py -c configs/mnist.json \
+  --parameterizations scalar_gaussian fourier_gaussian --seeds 0 \
+  --set loss.objective=normalized_residual \
+  --set trainer.iterations=30000 --dry-run
+```
+
+Use `loss.objective=dsm` for the paired DSM controls. Normalized runs append
+`_normalized_residual` to the resolved run name, and record the objective in
+training logs and checkpoint configs. Changing objectives is rejected on resume;
+older configs without this field mean `dsm`. Compare common validation DSM,
+noise/frequency diagnostics and matched-sampler FID, rather than comparing the
+training loss values across objectives. `grad_norm_before_clip` is also logged.
 
 ## Reproduce the experiments
 
@@ -266,7 +298,7 @@ the [development notes below](#development) for source navigation and debugging.
 
 Start with `fourier_score/method.py` for the Gaussian adapter,
 `statistics.py` for training-only moments, and `model.py` / `loss.py` for the
-shared DSM path. Pixel training and samplers are in `training.py` and
+pixel objectives. Pixel training and samplers are in `training.py` and
 `diffusion.py`; native latent equivalents live under `fourier_score/ldm/`.
 
 ```bash

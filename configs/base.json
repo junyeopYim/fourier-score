@@ -67,6 +67,7 @@
   },
   "loss": {
     "type": "fourier_gaussian",
+    "objective": "dsm",
     "reduction": "half_sum"
   },
   "fourier": {

@@ -12,7 +12,7 @@ import json
 import math
 from pathlib import Path
 from string import Formatter
-from fourier_score.method import OBJECTIVES
+from fourier_score.method import GAUSSIAN_OBJECTIVES, OBJECTIVES
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -121,6 +121,7 @@ def validate(cfg: dict) -> dict:
             raise ValueError(f"{path} must be one of {options}; got {x!r}")
 
     choice("loss.type", OBJECTIVES)
+    choice("loss.objective", ("dsm", "normalized_residual"))
     choice("loss.reduction", ("mean", "half_sum"))
     choice("trainer.console", ("human", "json", "quiet"))
     choice("arch.type", ("NCSNpp",))
@@ -129,6 +130,14 @@ def validate(cfg: dict) -> dict:
         "data_loader.args.dataset", ("mnist", "cifar10", "image_folder", "synthetic")
     )
     choice("process.type", ("ve", "ddpm"))
+    if cfg["loss"]["objective"] == "normalized_residual" and (
+        cfg["process"]["type"] != "ve"
+        or cfg["loss"]["type"] not in GAUSSIAN_OBJECTIVES
+    ):
+        raise ValueError(
+            "loss.objective=normalized_residual requires VE with "
+            "scalar_gaussian or fourier_gaussian"
+        )
     choice("optimizer.type", ("Adam",))
     choice("backend.precision", ("fp32",))
     choice("backend.spectral_transform", ("auto", "fft", "matmul", "cpu"))
@@ -278,10 +287,13 @@ def load_config(path="config.json", overrides=()) -> dict:
 
 def experiment_name(cfg):
     if cfg["name"] != "auto":
-        return cfg["name"].format(
+        name = cfg["name"].format(
             parameterization=cfg["loss"]["type"], seed=cfg["seed"]
         )
-    return f"{cfg['data_loader']['args']['dataset']}_{cfg['process']['type']}_{cfg['loss']['type']}_s{cfg['seed']}"
+    else:
+        name = f"{cfg['data_loader']['args']['dataset']}_{cfg['process']['type']}_{cfg['loss']['type']}_s{cfg['seed']}"
+    objective = cfg["loss"].get("objective", "dsm")
+    return name if objective == "dsm" else f"{name}_{objective}"
 
 
 def add_config_args(parser: argparse.ArgumentParser):
@@ -291,7 +303,7 @@ def add_config_args(parser: argparse.ArgumentParser):
     parser.add_argument(
         "--parameterization",
         choices=OBJECTIVES,
-        help="Output parameterization; the DSM objective stays the same",
+        help="Output parameterization; select loss.objective separately with --set",
     )
     return parser
 

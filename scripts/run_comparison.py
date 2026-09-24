@@ -1,4 +1,4 @@
-"""Run paired-seed DSM ablations, changing only output parameterization and name."""
+"""Run paired-seed ablations under one configured loss objective."""
 
 import argparse
 import json
