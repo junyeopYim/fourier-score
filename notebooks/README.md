@@ -5,6 +5,23 @@ Gaussian and mixture distributions with exactly matched population moments.
 It uses the repository's DSM objective and evaluates against the exact noisy
 joint score. A spectral sweep compares Scalar and Fourier Gaussian covariance.
 
+The population, MLP and evaluation code are shared with
+[`fourier_score/gmm.py`](../fourier_score/gmm.py). The notebook retains its three
+DSM arms by default. For the five existing baselines plus gated Scalar/Fourier,
+including validation-only switch selection and independent test banks, run:
+
+```bash
+uv run --locked --extra figures python scripts/run_gmm_comparison.py \
+  --output saved/gmm_gated_example --workers 3
+```
+
+Add `--preset smoke --seeds 42` for a short CPU pipeline check. The full comparison
+trains 99 runs (three switches, three spectra, three seeds), selects one shared
+switch using validation, then evaluates the seven final methods. The default
+bank version `gmm-gated-v1` differs from the notebook's original `gmm-oracle-v1`.
+Both validation and test observations change when the bank version changes;
+the training streams remain paired and unchanged.
+
 ## Run
 
 From the repository root:

@@ -16,6 +16,9 @@ def resume_signature(cfg):
     # Missing objective in v1 checkpoints means DSM; retain their signatures.
     if c["loss"].get("objective", "dsm") == "dsm":
         c["loss"].pop("objective", None)
+    # Adding disabled-gate defaults must preserve pre-gate v1 signatures.
+    if c["fourier"].get("gate", {}).get("mode", "none") == "none":
+        c["fourier"].pop("gate", None)
     for k in ("name", "device", "evaluation", "sampling"):
         c.pop(k)
     for k in (

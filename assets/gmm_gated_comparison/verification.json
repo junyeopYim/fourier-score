@@ -1,0 +1,38 @@
+{
+  "numerical_source_sha256_matches": true,
+  "numerical_source_sha256": "67974920c1757d74e034bbf9894c36d4a3c18592f9ac815644c79102a76d9ef5",
+  "report_renderer_sha256": "5410a8334db1da4dc389c1262ff18b86545e812856953c600587ff7c56b1ee40",
+  "pytest": {
+    "passed": 99,
+    "command": ".venv/bin/python -m pytest -q"
+  },
+  "doctor": {
+    "passed": true,
+    "command": ".venv/bin/python scripts/doctor.py --device cpu"
+  },
+  "notebook": {
+    "passed": true,
+    "command": ".venv/bin/python scripts/check_notebooks.py --execute"
+  },
+  "analytical_figures": {
+    "passed": true,
+    "scripts": [
+      "scripts/plot_method.py",
+      "scripts/plot_diagnostics.py"
+    ]
+  },
+  "parallel_resume_smoke": {
+    "passed": true,
+    "workers_before": 2,
+    "workers_after": 4,
+    "report_sha256_unchanged": true
+  },
+  "baseline_reproduction": {
+    "n_runs": 45,
+    "final_ema_and_training_stream_exact_matches": 45
+  },
+  "independent_test_bank": {
+    "version": "gmm-gated-v1",
+    "differs_from_original": true
+  }
+}

@@ -84,6 +84,7 @@ class GenerativeModel(nn.Module):
             self.reference = FourierGaussian(
                 stats,
                 cfg["backend"]["spectral_transform"],
+                gate=cfg["fourier"].get("gate"),
                 **GAUSSIAN_OBJECTIVES[self.objective],
             )
 

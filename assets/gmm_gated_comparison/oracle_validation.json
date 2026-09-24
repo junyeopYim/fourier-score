@@ -1,0 +1,18 @@
+{
+  "reference": "Autograd of dense mixture log density using linear solve and log determinant; no eigencoordinates",
+  "dimension": 64,
+  "checks": [
+    {
+      "spectrum_lambda": 0.0,
+      "max_absolute_score_error": 2.2648549702353193e-14
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "max_absolute_score_error": 1.509903313490213e-14
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "max_absolute_score_error": 2.6645352591003757e-14
+    }
+  ]
+}

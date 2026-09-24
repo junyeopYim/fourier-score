@@ -1,0 +1,320 @@
+{
+  "n_runs": 45,
+  "checks": [
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 44,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 44,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 42,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 42,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 44,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 42,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 43,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 44,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 43,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 42,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 43,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 43,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 44,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 42,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 1.0,
+      "seed": 43,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 44,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 44,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 42,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 42,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 44,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 42,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 43,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 44,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 43,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 42,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 43,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 43,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 44,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 42,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.0,
+      "seed": 43,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 44,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 44,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 42,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 42,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 44,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 42,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 43,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 44,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 43,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 42,
+      "method": "scalar_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 43,
+      "method": "fourier_normalized",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 43,
+      "method": "score",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 44,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 42,
+      "method": "scalar_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    },
+    {
+      "spectrum_lambda": 0.5,
+      "seed": 43,
+      "method": "fourier_gaussian",
+      "final_ema_matches_archive": true,
+      "training_stream_matches_archive": true
+    }
+  ]
+}

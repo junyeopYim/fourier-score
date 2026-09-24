@@ -1,0 +1,15 @@
+[
+  {
+    "started_utc": "2026-09-24T04:58:15.802732+00:00",
+    "workers": 12,
+    "provenance": {
+      "python": "3.11.15",
+      "torch": "2.14.0+cu130",
+      "numpy": "2.4.6",
+      "source_sha256": "67974920c1757d74e034bbf9894c36d4a3c18592f9ac815644c79102a76d9ef5",
+      "runner_sha256": "a64d4985f700a9affc68f409120ce106d70e72f9326305637376cf9286ea1eb7",
+      "git_revision": "36ae779cf1c1434d29bd95a2d395e0aa8971f881",
+      "git_dirty": true
+    }
+  }
+]

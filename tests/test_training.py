@@ -10,13 +10,16 @@ from fourier_score.checkpoints import load_inference
 from fourier_score.config import validate
 
 
-@pytest.mark.parametrize('parameterization,objective', [
-    ('fourier_gaussian','dsm'),
-    ('scalar_gaussian','normalized_residual'),
-    ('fourier_gaussian','normalized_residual'),
+@pytest.mark.parametrize('parameterization,objective,gated', [
+    ('fourier_gaussian','dsm',False),
+    ('scalar_gaussian','normalized_residual',False),
+    ('fourier_gaussian','normalized_residual',False),
+    ('fourier_gaussian','normalized_residual',True),
 ])
-def test_resume_matches_uninterrupted(cfg,parameterization,objective):
+def test_resume_matches_uninterrupted(cfg,parameterization,objective,gated):
     cfg['loss'].update(type=parameterization,objective=objective)
+    if gated:
+        cfg['fourier']['gate'].update(mode='log_sigma',sigma_switch=.5)
     a=copy.deepcopy(cfg); a['name']='full'; a['trainer']['iterations']=4
     first=Trainer(a); first.train()
     b=copy.deepcopy(cfg); b['name']='split'; b['trainer']['iterations']=2
@@ -31,6 +34,17 @@ def test_resume_matches_uninterrupted(cfg,parameterization,objective):
     for n,v in first.ema.shadow.items(): torch.testing.assert_close(v,third.ema.shadow[n],atol=0,rtol=0)
     last,loaded_cfg,_,_=load_inference(first.out/'last.pt')
     assert loaded_cfg['loss']['objective']==objective
+    assert loaded_cfg['fourier']['gate']==cfg['fourier']['gate']
+    if gated:
+        from fourier_score.diffusion import sample_batch
+        generated=sample_batch(last,loaded_cfg,2,torch.device('cpu'),torch.Generator().manual_seed(50))
+        assert torch.isfinite(generated[0]).all()
+        changed=copy.deepcopy(cfg)
+        changed['fourier']['gate']['sigma_switch']=1.
+        with pytest.raises(ValueError,match='Resume config mismatch'):
+            Trainer(changed,load_checkpoint(first.out/'last.pt'))
+        with pytest.raises(ValueError,match='Inference cannot alter'):
+            load_inference(first.out/'last.pt',['fourier.gate.sigma_switch=1.0'])
     snapshot,_,_,_=load_inference(first.out/f'ema_{first.step:09d}.pt')
     for name,value in last.state_dict().items():
         torch.testing.assert_close(value,snapshot.state_dict()[name],atol=0,rtol=0)

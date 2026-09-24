@@ -12,7 +12,7 @@ import json
 import math
 from pathlib import Path
 from string import Formatter
-from fourier_score.method import GAUSSIAN_OBJECTIVES, OBJECTIVES
+from fourier_score.method import GAUSSIAN_OBJECTIVES, OBJECTIVES, validate_gate, gate_suffix
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -130,6 +130,11 @@ def validate(cfg: dict) -> dict:
         "data_loader.args.dataset", ("mnist", "cifar10", "image_folder", "synthetic")
     )
     choice("process.type", ("ve", "ddpm"))
+    gate = validate_gate(cfg["fourier"]["gate"])
+    if gate["mode"] != "none" and (
+        cfg["process"]["type"] != "ve" or cfg["loss"]["type"] not in GAUSSIAN_OBJECTIVES
+    ):
+        raise ValueError("Gaussian gate requires VE with scalar_gaussian or fourier_gaussian")
     if cfg["loss"]["objective"] == "normalized_residual" and (
         cfg["process"]["type"] != "ve"
         or cfg["loss"]["type"] not in GAUSSIAN_OBJECTIVES
@@ -293,7 +298,8 @@ def experiment_name(cfg):
     else:
         name = f"{cfg['data_loader']['args']['dataset']}_{cfg['process']['type']}_{cfg['loss']['type']}_s{cfg['seed']}"
     objective = cfg["loss"].get("objective", "dsm")
-    return name if objective == "dsm" else f"{name}_{objective}"
+    name = name if objective == "dsm" else f"{name}_{objective}"
+    return name + gate_suffix(cfg["fourier"].get("gate"))
 
 
 def add_config_args(parser: argparse.ArgumentParser):
