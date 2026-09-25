@@ -117,11 +117,7 @@ command.
    identical parameter counts asserted, `label = name`, and no `stub`, which
    only the five legacy experiments have (`python -m experiments gmm <name>`
    is the entry point).
-5. **Tests.** Add the new flag defaults and test-bank blacklist to the literal
-   tables `DEFAULTS` and `FORBIDDEN` in `tests/test_gmm_experiments.py`. The
-   contract tests in `tests/contracts/test_contract_gmm_*.py` pin the five
-   epoch-0 experiments to their archived protocols and smoke goldens.
-6. **Run** into `saved/`, reusing every earlier output:
+5. **Run** into `saved/`, reusing every earlier output:
    `python -m experiments gmm <name> --output saved/gmm_<name>_<date>
    --reuse-baselines saved/gmm_gated_... saved/gmm_log_gates_...`.
 

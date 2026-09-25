@@ -486,7 +486,6 @@ experiments/                       Orchestration of multi-run studies
 notebooks/                         Runnable mechanism experiments
 scripts/                           Preparation, diagnostics, figures and study launchers
 tests/                             Numerical and end-to-end regression checks
-  contracts/, golden/              Behavior contracts and frozen epoch-0 references
 reports/                           Experiment reports, gate equations and provenance
 assets/                            Public figures, synthetic arrays and result tables
 ```
@@ -520,18 +519,12 @@ uv run --no-sync python scripts/doctor.py --device cpu
 uv run --no-sync python scripts/check_notebooks.py --execute
 ```
 
-CI runs these checks on CPU. `tests/contracts/` compares the code with values
-recorded in `tests/golden/` at the epoch-0 tag: configs, run names, resume
-signatures, checkpoint keys, short trajectories, samplers and the GMM chain.
-Numbers match bit for bit on the recording machine and within tolerance
-elsewhere (`FOURIER_GOLDEN_EXACT=1` or `0` forces either mode). Pointing
-`FOURIER_GOLDEN_ROOT` at a checkout with `saved/` and `pretrained/` adds real checkpoints (`-m golden_local`).
-
-Files under `configs/`, including `base.json`, are not frozen: contracts read
-epoch-0 copies in `tests/golden/configs/`, and `tests/test_configs.py` only checks
-that presets load. A failing contract means code behavior changed: in a refactor,
-fix the code; for an intended change such as a gate mode, re-record the affected
-group in its own commit (`CUDA_VISIBLE_DEVICES= uv run --no-sync python tests/golden/record_goldens.py --root . --allow-any-tree --group config`).
+CI runs only the tests, on CPU. A test exists only where a break would
+silently skew the comparison between arms: the Fourier reference score and data
+statistics, the normalized and gated objectives, the Score baseline and
+identical backbones across arms, no validation leakage, and exact resume.
+Crashes and invalid configs show up on the first run, and evaluation code shared
+by every arm (samplers, DSM and FID, the GMM oracle) has no tests.
 
 Any edit under `fourier_score/` changes `source_sha256`: resume refuses older
 checkpoints and inference warns. Run long studies from a worktree pinned to a

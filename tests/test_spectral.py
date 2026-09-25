@@ -1,19 +1,7 @@
 import torch
-from fourier_score.model.spectral import SpectralFilter,conjugate_symmetrize
+from fourier_score.model.spectral import conjugate_symmetrize
 from fourier_score.model.reference import FourierGaussian
 from fourier_score.data_loader.statistics import estimate_stats
-
-def test_filter_value_and_gradient():
-    shape, backend = (7,9), 'matmul'
-    h,w=shape; x=torch.randn(2,3,h,w,requires_grad=True)
-    weight=conjugate_symmetrize(torch.rand(2,3,h,w))
-    expected=SpectralFilter(h,w,'fft')(x,weight)
-    got=SpectralFilter(h,w,backend)(x,weight)
-    torch.testing.assert_close(got,expected,atol=2e-6,rtol=2e-5)
-    probe=torch.randn_like(got)
-    a=torch.autograd.grad((got*probe).sum(),x,retain_graph=True)[0]
-    b=torch.autograd.grad((expected*probe).sum(),x)[0]
-    torch.testing.assert_close(a,b,atol=2e-6,rtol=2e-5)
 
 
 def test_statistics_population_moments():

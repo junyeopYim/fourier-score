@@ -31,9 +31,7 @@ if args.output.exists():
     parser.error(f"Output already exists: {args.output}")
 # The original DDIM buffer loader assumes CUDA; this audit retains that behavior.
 if not torch.cuda.is_available():
-    parser.error(
-        "This original-source parity audit requires CUDA; run tests/test_ldm.py for portable CPU checks"
-    )
+    parser.error("This original-source parity audit requires CUDA")
 temporary = tempfile.TemporaryDirectory(prefix="fourier-ldm-parity-")
 root = args.source_dir or Path(temporary.name)
 ldm_revision = "a506df5756472e2ebaf9078affdde2c4f1502cd4"

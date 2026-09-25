@@ -46,5 +46,3 @@ Put it under `reports/<area>/<name>.md`, starting with an H1 title and a link
 back to its README section. Add a row above and keep a two-to-four sentence
 summary with one figure in the README. Links are relative to the report, so
 repository files are reached through `../../`.
-`tests/contracts/test_contract_docs.py` checks that every relative link and
-anchor in the README, the reports and the notebook guide resolves.
